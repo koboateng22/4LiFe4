@@ -1,0 +1,10 @@
+{
+  "name": "4Life - Substance Abuse Recovery & Therapy Assistant",
+  "description": "AI-powered mobile therapy assistant for substance abuse recovery with mood tracking, biometric stress monitoring, CBT thought reframing, anonymous village community, and emergency EMS dispatch map.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,440 @@
+# 4Life — backend refined, all Supabase Edge Functions (30 October 2026)
+
+- **One backend, two places.** What each route does now lives once, in `server/core` (plain TypeScript, no Node or Express). The Vercel API (`server/routes.ts`) and the Supabase Edge Functions both run it, so they always behave the same.
+- **All Edge Functions added** in `supabase/functions`: `chat`, `cbt-suggest`, `moderate`, `village-guide`, `first-aid-videos`, `health` and `client-error`, plus `_shared/http.ts` (CORS, sign-in, rate limit, JSON), `config.toml` and `deno.json`. Type-checked and run with Deno 2.
+- `npm run sync:functions` copies `server/core` into `supabase/functions/_shared/core` with Deno-style imports; `npm run test:unit` fails if the copy is out of date.
+- **The app falls back for every route**, not just chat: if `/api` is missing or down, `apiFetch()` calls the matching Edge Function.
+- **Gemini without the SDK.** The backend talks to Gemini (or OpenAI, if that's the only key) over plain HTTPS, the same in Node and Deno. `@google/genai` was removed (36 fewer packages).
+- `server/app.ts` is split into `routes.ts`, `middleware.ts` and `core/`.
+- Sign-in checks are cached for a minute, so each chat message doesn't wait for an extra round trip. Health, first aid videos and crash reports no longer need sign-in. If `REQUIRE_SIGN_IN=true` but Supabase isn't set up, AI routes are refused instead of left open.
+- The chat stops asking the AI when the person closes the app or presses Stop, and keeps any part of the reply that already arrived if the AI fails midway.
+- Profile details that go into the AI's instructions (region, mood, faith, craving level) are cleaned like names.
+- `.env.example`: `VITE_API_BACKEND` (the old `VITE_CHAT_BACKEND` still works) and optional `OPENAI_API_KEY`. Key values unchanged.
+
+# 4Life — Vercel fix, first aid and phone polish (October 2026)
+
+**Checked against Vercel's docs, the security checklist and the launch checklist**
+- `server.ts` is now `dev-server.ts`. Vercel treats a root `server.ts` that imports Express as a whole Express app, which could hide the Vite front end.
+- Node version: `package.json` now asks for Node 22 or newer (Vercel maps this to 24). Vercel stopped deploying Node 20 on 1 October 2026.
+- Missing files under `/assets/` now return a real 404 instead of the app page.
+- Dependency audit: fixed a high-severity `body-parser` issue (used by the API) and issues in `qs` and `vite`, without forced upgrades. `npm audit` now finds 0.
+- Names typed by people (nickname, the AI's name, circle title, language) are cleaned and shortened before they go into the AI's instructions.
+- Extra security headers on Vercel: HSTS, and a basic Content-Security-Policy (no framing by other sites, no plugins, no `<base>` tricks).
+- If a page crashes, people see "This page didn't load", with Reload and the 112/193 numbers. The menu and SOS stay on screen. An old tab that can't find a page after a new deploy reloads once by itself.
+- Crashes in people's browsers are reported to the server logs (`/api/client-error`: error text and page path only, nothing personal).
+- Accessibility: the show/hide PIN button on sign-in now has a name and a bigger tap area. An automated WCAG A/AA scan (axe) finds no issues on sign-in, Home, AI Therapy, Village, Instant EMS or the first aid sheet.
+- The AI Therapy screen no longer says the conversation "stays on this phone" without saying more: chats are saved only on the phone, and each message is sent to Google's Gemini to write the reply.
+- New **LAUNCH.md**: decisions to make before launch, Vercel settings, checks after each deploy, and how to roll back.
+
+**Deploying to Vercel**
+- The full API is back (chat, thought-record help, Village moderation, circle guide). It lives in `server/app.ts` and runs on Vercel as one function, `api/index.ts`; `dev-server.ts` (renamed from `server.ts`, see below) only starts it on your own computer.
+- Fixed the cause of the Vercel "module not found" errors: relative imports used by the API now end in `.js`, which Node needs for ES modules.
+- `vercel.json` rewritten: every `/api/...` path reaches the API (before, they all went to the chat route), the page fallback pattern is valid, assets are cached for a year, `sw.js` is never cached, and basic security headers are set.
+- Chat tries `/api/chat` first and falls back to the Supabase Edge Function if the API isn't there.
+- The API now answers unknown `/api` paths and bad requests with clear JSON errors, limits AI requests per visitor (30 a minute by default), and only allows other websites listed in `ALLOWED_ORIGINS`.
+- Supabase values are trimmed, so a stray space pasted into Vercel no longer breaks sign-in. Key values in `.env.example` are unchanged.
+- Removed the old `bun.lock` (it disagreed with `package-lock.json`); Vercel installs with npm.
+- `npm run build` builds the app and `dist/server.mjs` again; `npm start` runs it.
+
+**First aid with YouTube** (Instant EMS)
+- Eight topics with short, numbered steps, "Call 112 first" where it matters, and what not to do. They work offline.
+- "Watch on YouTube" opens a search. Add `YOUTUBE_API_KEY` on the server later to show videos inside the app (safe search, Ghana region, loaded only when tapped). Also in the search palette: "First aid".
+
+**Made for phones**
+- The app downloads faster: AI Therapy, Village, Settings, sign-up and the counsellor app load when first opened, and the map loads on its own. Home and Instant EMS stay in the first download. The offline helper saves every part after the first visit.
+- Home: a shorter welcome banner (buttons side by side, smaller streak ring with the next milestone), and the support cards drop their pictures on phones.
+- Village: the reaction buttons fit on one line (icon and count) instead of four rows.
+- Instant EMS: the emergency buttons take three rows instead of four.
+- Bigger tap areas for the slideshow dots, "Forgot your PIN?" and "Copy".
+- Remaining "4Life-AI" names changed to "4Life".
+
+# 4Life-AI — UI/UX redesign
+
+This version makes the app easier to read and easier to find your way around. All features, data and server calls work the same as before.
+
+## What changed
+
+**One way to get around**
+- One sidebar for navigation, grouped into *Support* and *Daily growth*.
+- Removed the extra tab bar, page banner, floating "Exit to Dashboard" button and "Close Tab" buttons — they all did the same job.
+- The top bar now has the page title and just four actions: Language, Breathe, SOS and your account menu.
+- On phones: a bottom bar (Home, Talk, Daily, Village, More). "More" opens the full menu.
+
+**Easier to read**
+- One font: Nunito, a soft, rounded typeface that ships with the app (also used for the logo).
+- Body text is 16px. Nothing in the app is smaller than 13px.
+- No more ALL-CAPS or typewriter-style labels.
+- Every button and tap target is at least 44px tall.
+- Pinch-to-zoom is allowed again on phones.
+- The Text size setting now scales the whole app (Small, Normal, Large, Extra large).
+
+**Plain words**
+- "Shield Hub" is now Home, "AI CBT Therapy" is now AI Companion, "EMS & Crisis Map" is now Help nearby.
+- Jargon such as "Stage 3: Active Shielding & Triage Focus" and "Behavioral Relapse-Risk Model" is rewritten in plain words.
+- The model name is no longer printed on every chat message.
+
+**Calmer layout**
+- Each screen has one clear main action and cards in a steady order.
+- The Home screen: greeting and streak → four key numbers → one check-in → today's risk → today's goals → counselors.
+- The two separate check-in boxes on Home are now one.
+- Sections with many parts (Village, Wellness, Settings) use simple tabs or a side menu, so you only see one part at a time.
+- Settings only shows a Save bar when you have changed something.
+
+**Colour with meaning**
+- Uses the 4Life Universal Color System: emerald primary, slate neutrals, forest dark mode, amber, rose and sky (see COLOR_SYSTEM.md).
+- Green is used for main buttons and the page you are on.
+- Red is used only for SOS and danger.
+- Amber is used for streaks and warnings.
+- Emoji in menus and headings are replaced with simple line icons.
+- Dark mode uses the same colour tokens, so every screen switches cleanly.
+
+**Help is always one tap away**
+- SOS is in the top bar on every screen and in the phone menu.
+- The SOS screen shows four large choices: Call 112, Alert your support person, Breathe with me, Talk to 4Life-AI.
+- Help nearby opens with "In danger right now?" and a Call 112 button.
+
+## Small fixes made along the way
+- The Atomic Habits reader button now shows for the right book.
+- Memory Match no longer changes card data in place.
+- The relapse-risk check waits until you stop moving the slider, instead of sending a request for every step.
+- If the server is not running, the risk estimate is worked out on the device.
+- Pop-up windows now always sit above the phone's bottom bar.
+- Counselor photos fall back to initials if an image cannot load.
+
+## Where things are in the code
+- `src/index.css` — colour tokens (light and dark), fonts, text sizes and readability rules.
+- `src/components/ui.tsx` — shared building blocks: Card, Button, Tabs, Chip, Field, Modal and others.
+- `src/navigation.ts` — the list of sections, used by the sidebar, top bar and bottom bar.
+- `src/components/Sidebar.tsx`, `TopBar.tsx`, `BottomNav.tsx` — the app shell.
+- `src/components/tabs/*` — the eight sections, all rebuilt with the shared building blocks.
+- Removed: `TopTabScroller.tsx`, `TabHeaderBanner.tsx`, `Header.tsx`, `StreakTracker.tsx`. Their features now live in the new shell and on the Home screen.
+- The first-time setup screens (onboarding) now use the Universal Color System tokens throughout, so they match the app in light and dark mode. Login, chess, the book reader and the language picker keep their original layout with the new fonts, colours and minimum text sizes.
+
+## Run it
+```
+npm install
+npm run dev
+```
+Set `GEMINI_API_KEY` in `.env.local` for the AI features, as before.
+
+## Language page (Google Translate)
+- New **Language** page in the menu (above Settings). The globe button in the top bar and "All languages" in Settings open it too.
+- Choose a language and the whole app switches to it: menus, buttons, pages and new content. The page shows whether the change worked, lets you search for a language, and has a one-tap **Show original English** button.
+- Languages are grouped as *Languages of Ghana*, *Across Africa* and *Other languages*. Once Google Translate has loaded, *More languages* lists everything else it offers.
+- Fante uses Google's Twi (Akan) translation. If Google has no translation for a language (for example Dagbani), the page says so.
+- The AI Companion, thought reframing and the circle guide reply directly in the chosen language (`server.ts` adds a language rule to the prompts). Those replies and your own messages are marked so Google doesn't translate them a second time.
+- Labels that already have hand-written translations in `translations.ts` are also skipped by Google.
+- `main.tsx` installs a small guard so React and Google Translate can change the page together without errors.
+- While the app is translated, a slim bar under the top bar shows the language, with **Change** and **English** buttons.
+- Translation needs an internet connection. When Google can't be reached, the Language page says so and offers **Try again**.
+
+## Sign-up in four short steps
+Creating an account no longer shows every question at once. It now has four short steps, with a progress bar and a Back button:
+1. **About you** — your name and an optional community name.
+2. **Secure your account** — email address and PIN (typed twice), with a Show PIN option.
+3. **What would you like help with?** — your focus area and the kind of encouragement you prefer.
+4. **Support and safe space** — an optional support person's email and the safe-space promise.
+
+- Each step checks its own answers. Problems are shown at the top of that step in plain words.
+- Pressing Enter moves to the next step.
+- Steps you have finished can be reopened from the progress bar.
+- The sign-up screen uses the Universal Color System, bigger text and 48px fields.
+- On phones, the top bar no longer runs off the screen.
+
+## Therapist accounts and workspace
+On the sign-in screen, people now choose **I want support** or **I’m a therapist**. Therapists get their own workspace, built around how therapy sessions actually run.
+
+**Joining as a therapist: five short steps**
+1. **Account:** title, name, work email, PIN.
+2. **Qualifications:** profession, licensing body, licence number and years in practice.
+3. **Practice:** the areas they help with, how they work (CBT, motivational interviewing…) and the languages they use.
+4. **Sessions and availability:** formats, days, hours, session length, fee, and whether they offer a lower fee.
+5. **Profile and agreement:** a short introduction, accepting new clients, and three professional agreements (confidentiality, crisis protocol, accurate information).
+
+New accounts start as *verification pending*, and their profile is hidden from clients until the licence is checked. A short checklist helps them get ready for their first client. For the demo, use **Dr. Ama Konadu** (PIN 1234).
+
+**The workspace**
+- **Today:**
+  - the next session with Prepare and start;
+  - today’s schedule;
+  - what needs attention, most serious first: high-risk clients, rising cravings, missed check-ins, notes to finish and new requests;
+  - the week in numbers.
+- **Sessions:** coming up, past, and notes to finish. Book a session; you are warned about clashes or times outside your hours.
+- **Each session runs in three steps:**
+  1. **Prepare:** mood and craving trends since the last session, last session’s plan, homework to review, goals, and the safety plan when risk is raised.
+  2. **In session:** a timer, a six-point agenda checklist, a safety check, observed mood, and quick private notes.
+  3. **Wrap up:** a DAP note (Data, Assessment, Plan) and homework. You can book the next session in the same step. Signing the note updates the client’s risk level and homework list.
+- **Clients:**
+  - a caseload with filters and search;
+  - each client record has Progress (14-day mood and craving charts, goals, homework), Session history, Safety plan and Private notes.
+- **Requests:** people who booked through the app. Accept to add them as a client and book a first session, or decline with a reason.
+- **Availability:** working days and hours, session length, formats, fee, and accepting new clients, with a preview of the week.
+- **Crisis and resources:** step-by-step crisis guidance with 112 and 193 call buttons, common worksheets, and referral centres.
+- **Profile and settings:** edit what clients see, with a live preview. Qualifications are shown as read-only.
+
+**Connected to the client app**
+- When someone books a counsellor, the request now goes to that counsellor’s workspace. Booking Dr. Ama Konadu shows up in her Requests.
+- The booking screen lets people add a short message and choose whether to share their check-ins. Chats with the AI companion are never shared.
+
+**Notes**
+- Risk is always shown as a word plus an icon, never colour alone.
+- Charts have keyboard and hover read-outs and a table view.
+- Everything is stored on the device, like the rest of the prototype. A real launch needs a secure server, real licence checks and data protection review.
+
+## Safety map for therapists
+- **New "Safety map" section** in the therapist workspace. It shows clients at high risk who agreed to share their location, with the nearest emergency services (hospitals and the ambulance service).
+  - A dashed line links each client to their nearest service.
+  - A circle around each client shows how precise their location is.
+- **Respond panel for the selected client:**
+  - their shared location, how long ago it was shared, and a warning when it is more than 30 minutes old;
+  - Ask for an updated location; Open in Google Maps;
+  - Call 112 and Ambulance 193;
+  - Copy details for EMS (location, map link and the nearest service);
+  - EMS is on the way;
+  - the three nearest services, each with distance, a rough drive time and phone number;
+  - Close this alert, with an outcome and a note.
+- **"What has happened" record:** every step is time-stamped.
+- **When a client presses SOS:** calling 112 or alerting their support person in the client app also tells their counsellor. The client's risk becomes high, and a red banner appears across the therapist workspace with an "Open safety map" button.
+- **Consent first:** the client's location is only included if they turned on *Share my location with my counsellor if I press SOS* (Settings → Privacy and data). If the phone cannot give a location, the centre of their region is used and marked as approximate. Clients who have not agreed are listed without a location, with a prompt to use their safety plan instead.
+- **Other ways in:** the safety map can also be opened from Today's "Needs your attention", from a high-risk client's record, and from the session safety check. Choosing "High risk" during a session now applies straight away.
+- **Prototype limits:**
+  - "Ask for updated location" is simulated.
+  - SOS alerts pass between the client and therapist apps only on the same device.
+  - Map tiles come from OpenStreetMap and need an internet connection.
+  - A real launch needs a secure server and push notifications, a privacy review of location sharing, and verified contact details for emergency services.
+
+## Supabase (database, accounts and live updates)
+The app can now run on Supabase. Without Supabase settings it keeps working in device mode, exactly as before. Setup steps are in **SUPABASE.md**.
+
+- **Database** (`supabase/migrations/`): 19 tables with Row Level Security on every one.
+  - Clients own their data. A therapist only sees clients linked to them, and only what each client chose to share.
+  - Licence details are private, and only admins can verify a therapist.
+  - Rules are enforced by the database itself: roles, verification, who can change sharing or risk, and SOS location consent (coordinates are removed unless the person agreed).
+  - Multi-step actions run as one transaction: accepting a request, and signing a note.
+  - Signed notes keep their earlier versions. The crisis record and the audit log cannot be edited or deleted.
+  - Old SOS coordinates can be cleared automatically.
+  - People can download all their data or ask for their account to be deleted.
+- **Accounts:** sign-up and sign-in use Supabase Auth with email and password, including email confirmation and password reset. Therapists sign up through the same five steps; their details go to the database, starting as "pending".
+- **Live updates:** across devices, the therapist workspace updates by itself when a request arrives, a client checks in, or a client presses SOS. "Ask for updated location" now reaches the client's phone.
+- **Client app:** these now save to the database:
+  - the profile and support contacts, saved in the background;
+  - daily check-ins;
+  - booking requests;
+  - SOS alerts;
+  - data export.
+
+  The counsellor list now shows real verified therapists, marked "New" instead of with invented ratings.
+- **AI server:** `/api` calls carry the person's sign-in. The server checks it, and can refuse calls from people who are not signed in (`REQUIRE_SIGN_IN=true`).
+- **Tests:**
+  - `supabase/tests/database_checks.sql`: 41 privacy and workflow checks.
+  - `scripts/integration-test.ts`: 24 checks of the app's data layer against a real database.
+  - Both pass.
+- **Demo data:** `npm run db:seed-demo` creates a verified demo therapist and two clients.
+
+## Focused on three features
+The app now does three things, and does them properly: **AI CBT therapy**, the **Global Village** and **Instant EMS**. Sign-up, Home, Settings and the therapist workspace stay, because these features rely on them.
+
+**Removed:** Daily routine and wisdom, Wellness and books, Calm games and chess, points and the leaderboard, blocked-sites settings, the relapse-risk card (it used a made-up heart rate), and the separate Language page (language is still in the top bar and Settings). The unused server routes (`/api/relapse-risk`, `/api/daily-drop`, `/api/chat/chess`) and the fake `/api/emergency-alert` are gone.
+
+**Home** now shows your streak, the three features (with your last thought record and the next group circle), a check-in that points you to the right help (a strong craving → ride it out; a hard day → talk it through), and counsellors.
+
+### AI CBT therapy
+- **Crisis detection before the AI answers.** Words about suicide, self-harm, overdose or someone not breathing show a red "Your safety comes first" card at once (Call 112, Ambulance 193, alert my support person) — even without internet. The AI also rates risk in any language, and the higher of the two is used. Strong cravings or relapse show an "urge" prompt.
+- **Replies stream in word by word** (`/api/chat` with server-sent events), with a Stop button.
+- **Suggestions fit the conversation.** Gemini returns three next things to say, instead of a fixed list.
+- **Full CBT thought record** in six steps: situation → thought and feeling (rated 0–100) → thinking trap (AI suggests one, you choose) → evidence for and against → a fairer thought → rate the feeling again. The before/after numbers show whether it helped.
+- **Saved records**, with a per-record "Share with my counsellor" switch. Shared records appear in the therapist's client view.
+- **Urge rating before and after** ("Started at 7… now 4 — the wave is passing").
+- **Conversations are saved on this device only** (never uploaded), with "Start a new conversation".
+- Cleaner prompts: no model name in the text, no "dopamine reset" claims, no medicine advice, one question at a time, under 120 words.
+
+### Global Village
+- **Real, shared Village** with Supabase: posts, replies, "Send support", group circle chat (live), all with Row Level Security. Without Supabase it works on the device, with sample posts.
+- **Checked before posting:** on the device (instantly) and on the server (with Gemini when available). Blocks slurs, insults aimed at others, explicit slang, phone numbers/emails, and help finding drugs. Honest words people in recovery need ("porn", "relapse", "I feel useless") are allowed.
+- **Posts that suggest someone is in danger are not published.** The person is shown 112, SOS, the Yonkodo helpline and AI therapy instead, and their words are kept.
+- **Report and Block.** Three reports from different people hide a post until an admin reviews it. Blocked people's posts, replies and circle messages disappear for you (enforced by the database).
+- **Group circles** are honest text circles with a weekly time, a host, "Add to calendar" (a weekly reminder file) and a private "Ask the guide" (AI answer only you see).
+- **"Talk to someone"** replaces the fake peer call: counsellors, the Yonkodo helpline (checked Aug 2026) and circles. Peer calls are marked "coming".
+- The leaderboard is gone: ranking people by streak can hurt someone who relapses.
+
+### Instant EMS
+- **"Send my location" really sends.** It opens the phone's own messaging app (SMS or WhatsApp) with a message and a Google Maps link to where you are. The old button pretended an ambulance had been "dispatched".
+- **SOS → Alert my support person** does the same, and still tells a linked counsellor.
+- **Nearest first.** Places are sorted by distance with rough drive times, the nearest hospital is highlighted, and "open now" is shown. The ambulance service shows Call 193/112 instead of directions.
+- **Only checked numbers.** Hotlines are 112, 193, 191, 192 and the Yonkodo Foundation (0558 288 288), each with the month it was checked. Unconfirmed numbers were removed; centre phone numbers that are not confirmed say so and point to 112.
+- **What to tell the ambulance** and **while you wait** guides.
+- **Works offline after the first visit** (service worker in production builds): call buttons, hotlines, the list of places and the location message still work. The map needs internet.
+
+### Database and tests
+- New migration `supabase/migrations/20261016000005_cbt_village_ems.sql`: thought records, Village tables, circles, emergency hotlines, rate limits, report auto-hide, updated data export.
+- Database checks: **68** (was 41). Integration checks: **40** (was 24). New `npm run test:unit`: **49** checks (streaming, crisis words, Village rules, circle times, phone numbers). All pass.
+- The database refuses phone numbers, emails, slurs and harassment in the Village even if the app is bypassed, stops back-dated posts, hides what you reported from you, and stops a therapist reopening an ended care link.
+- `npm run db:seed-demo` also adds a shared thought record and starter Village posts.
+
+### Where the three features live in the code
+- AI CBT therapy: `src/components/tabs/AiTherapyTab.tsx`, `src/components/cbt/ThoughtRecordModal.tsx`, `src/lib/cbt.ts`, `src/lib/cbtStore.ts`, `src/lib/aiChat.ts` (streaming), `src/lib/aiTrailer.ts`; server route `/api/chat` and `/api/cbt/suggest`.
+- Global Village: `src/components/tabs/CommunityVillageTab.tsx`, `src/lib/village.ts`; server routes `/api/moderate` and `/api/village/guide`.
+- Instant EMS: `src/components/tabs/EmergencyMapTab.tsx`, `src/components/maps/EmsMap.tsx`, `src/lib/ems.ts`, `src/components/modals/SosModal.tsx`, `public/sw.js` (offline).
+- Safety rules shared by app and server: `src/lib/safety.ts`.
+
+## User-friendly pass with the Universal Color System everywhere
+- **No colours outside the palette.** Sign-in, PIN recovery, Setup (onboarding), the language picker, "Ask the developers" and the group-circle chat now use the colour tokens, so they match the rest of the app in light and dark mode. No raw Tailwind colour classes are left in the app's components.
+- **Sign-in:** the side panel is now a slideshow of flat illustrations drawn in code, with no words: meditating calmly, friends holding up wellbeing icons, a joyful healthy day around a big heart, and a care team. It moves on by itself; swipe, tap it, or tap a dot. On phones it sits at the top of the card. All the explaining happens in the welcome tour.
+- **Setup:** a simple header ("Set up 4Life-AI · Step 1 of 4 · About you") with a progress bar instead of a dark banner; plain labels ("Your name", "Language", "Faith or tradition", "How should AI therapy encourage you?"); larger text and buttons; a roomy support-person form; AI companions described in everyday words; no "Auto-SMS" claim (nothing is sent automatically).
+- **Language picker:** one clear list grouped as *Languages of Ghana*, *Across Africa* and *Other languages*, with search and "Back to English".
+- **Ask the developers:** an honest form and common questions about the three features. With `VITE_FEEDBACK_EMAIL` set, it opens the email app; otherwise it keeps the message on the device and says so.
+- **Group circles:** chat bubbles like AI therapy (yours on the right), on the normal card colours.
+- **Phones:** short page titles ("AI Therapy", "Village") and a "Therapy" tab label so nothing is cut off.
+
+## Darker green
+The main green is now deep emerald **#047857** (was #059669), with **#065F46** for hover and links. In dark mode, links and accents use #10B981. Pale "selected" fills stay #D1FAE5. Buttons with white text are now easier to read (5.5:1 contrast).
+
+## New sign-in and sign-up screen (students and therapists)
+- **One split card**: the form on the left, an illustrated story on the right, on a softly moving background in the Universal Color System (forest, emerald, amber, sky, rose). On phones the story becomes a short banner above the form.
+- **Student / Therapist switch** at the top. Each has its own story:
+  - Students: AI CBT therapy (a plant being watered), an interactive "How are you feeling today?" check (tap a face for a kind reply), the Global Village (people of different backgrounds around a heart) and Instant EMS (112 and a location pin).
+  - Therapists: the day at a glance, the safety map and structured session notes.
+- **Interactive story panel**: next/previous arrows, dots, swipe on phones, and it moves on by itself every 7 seconds (it pauses while you hover, focus or use the mood check, and stays still if the phone asks for reduced motion).
+- **"In danger right now? Call 112"** card is always one tap away, without signing in.
+- All illustrations are original drawings made for 4Life-AI (`src/components/auth/AuthIllustrations.tsx`); the reference pictures were used only for style.
+- Clearer form: equal-size labels, demo accounts show the name in full, and the sign-up steps are unchanged.
+- Code: `src/components/auth/AuthShell.tsx` (layout, story panel), `AuthIllustrations.tsx`; `AuthPage.tsx` and `TherapistAuth.tsx` keep the forms.
+- **Living background** (now `src/components/LivingBackground.tsx`): leaves, petals and bubbles float up and move out of the way of your pointer or finger; a soft glow follows the pointer; the colour clouds lean towards it; and tapping the background around the card makes a flower bloom with petals flying out. It pauses when the tab is hidden and stays still if the device asks for reduced motion.
+
+## The living background across the whole app (students and therapists)
+Ideas taken from well-known apps: glass navigation bars (Apple, Linear), calm illustrated banners (Headspace, Calm), face-based mood check-ins (Daylio), and small celebrations for progress (Duolingo).
+- **Same living background as the sign-in screen** behind every page, at a lower density so it never gets in the way of reading. Leaves and petals move away from your pointer, and tapping empty space beside the content makes a flower bloom.
+- **It stays still when calm matters**: on Instant EMS, while the SOS window is open, on the therapist safety map, and whenever the device asks for reduced motion. You can turn it off in **Settings → Language and display → Moving background** (saved on this device).
+- **Glass sidebar, top bar and phone bottom bar**: slightly see-through with a blur, so the background shows through softly.
+- **Illustrated banners** on Home, AI CBT therapy, Global Village and the therapist Today page, using the same drawings as the sign-in story.
+- **Home**: the greeting banner has "Check in now" and "Talk to …" buttons and an amber ring showing your clean-day streak; the support cards have small illustrations; mood is picked with five faces instead of words only; saving a good check-in makes flowers bloom from the button (not shown when cravings are high or mood is low).
+- **Feel**: cards lift slightly on hover, and buttons press in when tapped.
+- **Fix**: the therapist SOS alert banner no longer squeezes its text on phones — the "Open safety map" button moves to its own full-width row.
+- Code: `src/components/LivingBackground.tsx` (exports `bloomAt`, `celebrateFrom`), `src/components/PageHero.tsx`, `src/components/MoodFaces.tsx`, `src/lib/motion.ts` (the Moving background setting).
+
+## The green ribbon: mental health as the design element
+The green ribbon is the international symbol of mental health awareness, and green is already the app's main colour, so it is now 4Life-AI's design element everywhere. (It replaces the capsule helix, which looked like medicine pills — not a good fit for a recovery app.) All drawings are original.
+- **3D background** behind the sign-in screen, the student app and the therapist workspace: a soft ribbon that twists corner to corner, porcelain on one side and mental-health green on the other, so the colours swap as it turns.
+  - It breathes slowly (in for 4 seconds, out for 6).
+  - The part near your pointer or finger lifts towards you; the ribbon tilts towards the pointer.
+  - Scrolling or dragging on empty space makes the twist flow; tapping empty space sends a ripple along it.
+  - Dark mode: deep forest green with an emerald side.
+- **Ribbon mark** (`src/components/RibbonMark.tsx`) used across the app:
+  - the opening screen while the app loads (a breathing ribbon with "Mental health matters");
+  - the green page banners on Home, AI CBT therapy, Global Village and therapist Today;
+  - the sign-in story panel, plus a short note under the card explaining what the ribbon means;
+  - loading messages (Village, counsellors) as a calm breathing ribbon;
+  - the footers of the student app and the therapist workspace.
+- **Calm and light on phones** (unchanged rules): still on Instant EMS, during SOS, on the therapist safety map, with reduced motion, or when Settings → "Moving background" is off; lighter version on phones and slow computers; pauses when the tab is hidden. The breathing marks also stop when reduced motion is on.
+- **Loads after the app**: the 3D code (three.js, about 120 KB compressed) loads separately; without WebGL the plain background stays.
+- Code: `src/components/ribbon/ribbonScene.ts` (3D ribbon), `src/components/LivingBackground.tsx` (pointer, taps, scrolling, celebration flowers), `src/components/RibbonMark.tsx` (`RibbonMark`, `RibbonLoader`), opening screen in `index.html`.
+
+## Interface refinements from the best websites
+Small, proven details from well-known products, applied across the student app and the therapist workspace.
+- **Quick search (Ctrl K / ⌘ K, or "/")** — like Linear, Raycast and Notion. One box to jump anywhere or do something: "Ride out a craving", "Breathe with me", "Start a thought record", "Write a Village post", "Join a group circle", switch theme, change language and more.
+  - "Get help now" always comes first (Call 112, SOS, nearest hospital), and "In danger? Call 112" sits in the footer of the box.
+  - It understands everyday words ("urge", "drink", "panic", "hospital", "friends").
+  - If you type a feeling ("I feel lonely tonight"), it offers to take your words to 4Life-AI.
+  - Therapists can search sections, crisis steps and their clients by name.
+  - Open it from the search box in the top bar (the magnifier on phones).
+- **Frosted top bar that is see-through at the top of the page and frosts once you scroll** (Apple). It also now really stays at the top while you scroll — a page setting (`overflow-x: hidden`) had been stopping it; it is now `overflow-x: clip`.
+- **Calmer depth** (Stripe, Linear): layered soft shadows on cards, a faint top highlight in dark mode, main buttons with a soft "key" highlight, and cards that rise a little on hover.
+- **Gentle motion** (Apple): each page fades in when you open it, cards fade up as they scroll into view (pure CSS; nothing changes on browsers that don't support it), dialogs rise like a sheet on phones (with a grab handle) and settle in on larger screens, and the theme switch cross-fades.
+- **Typography** (Apple, Stripe): tighter headings that wrap evenly, paragraphs without a lonely last word, numbers that line up, and selection in the brand colours.
+- **Phone bottom bar** (iOS, Material): the open section gets a soft green pill behind its icon; the therapist bar is frosted too.
+- **Battery**: the moving ribbon rests while a dialog or quick search covers the page.
+- Everything respects "reduce motion".
+- Code: `src/components/CommandPalette.tsx`, `src/lib/actions.ts` (quick-search requests such as "open a thought record"), `src/lib/motion.ts` (`useScrolled`, `lockPage`), styles at the end of `src/index.css`.
+
+## Friendlier, roomier, faster: the three features
+### AI CBT therapy
+- **Chat first.** The big banner and four large cards show on the first visit only. After that there is one heading, and the four kinds of help are chips at the top of the chat, so the conversation is on screen straight away (especially on phones).
+- **Starts in the right place:** remembers the kind of help you used last; on a first morning visit it suggests "Stay on track", otherwise "Ride out a craving".
+- **Welcome back** line when a conversation is still open, with "Start fresh".
+- **Craving rating with five big, named levels** (Barely, Mild, Medium, Strong, Intense) instead of eleven small numbers.
+- **Ride the wave: a 20-minute craving timer.** Every 5 minutes it asks how strong the craving is and draws the line, next to the usual shape of a craving wave. It survives a refresh. Flowers bloom when the craving goes down.
+- **Wrap up: "What helped today?"** Tick what helped (breathing, calling someone, going outside…). It is remembered on the phone: next time a bar says "Last time, this helped" with one-tap Breathe or Call buttons, and 4Life-AI is told to suggest those first.
+- **Quick thought record:** 3 steps (what happened → the thought → a kinder thought), with the thinking trap guessed for you. "Use all 6 steps" switches to the full version. It starts with your last chat message already filled in.
+
+### Global Village
+- **One-tap support:** "Sending strength", "Me too" and "This helped me", each with its own count — no need to write.
+- **Calmer feed:** long posts show 4 lines with "Read more"; "N new since your last visit" and an "Earlier" divider; posts about a relapse or a strong craving are covered with a short note and "Show the post" (or switch on "Always show" in the rules card).
+- **Guided posting:** tap "What happened", "What helped" or "What I need" to start a line. Drafts are kept on the phone until you post.
+- **Circles:** one clear "Next circle" card with "I'll be there", "Remind me" (calendar reminder 15 minutes before) and how many are going. Only the number is shared, never who. In a circle, **"Just listen"** hides the message box.
+- **Talk to someone:** counsellors with "Available now" first (from their working hours); tap to see and book.
+- Remembers your last section and topic. The big banner shows on the first visit only, and topics scroll sideways on phones.
+
+### Instant EMS
+- **Three big buttons in thumb reach on phones:** Call 112, Text (your support person, with your location) and Nearest help (directions to the nearest hospital).
+- **SOS can't go off by accident:** "Alert …" now counts down 5 seconds with Cancel and Send now. Calling 112 is still one tap.
+- **My safety plan:** warning signs → things I can do on my own → safe places → people I can call (one-tap call buttons) → reasons to keep going → professional help (112, 193, Yonkodo). Tap-to-add ideas make it quick. With Supabase it is saved to your account and your linked counsellor can see it and help; otherwise it stays on the phone. Also reachable from SOS and quick search.
+- **Simpler list:** places open now come first, then nearest; each place has Call and Directions buttons; an "Open now" filter; on phones a List / Map switch instead of both at once.
+- **Home-screen app:** a web app manifest and icon (the green ribbon). Once added to the home screen, a long press on the icon gives **SOS**, **Help nearby** and **Ride out a craving** shortcuts, and it opens offline.
+
+### Across the app
+- **"Right now" suggestion on Home** that fits the time of day (evening: plan tonight; late night: breathe; morning: check in; afternoon: the next circle).
+- Quick search moved into the menu on phones so the top bar has room for the page name.
+- Fix: the page fade no longer stops fixed bars (like the EMS buttons) from staying at the bottom of the screen.
+
+### Data and tests
+- New migration `20261021000006_village_reactions_rsvps.sql`: reaction kinds on `village_support` (with counts on posts), `circle_rsvps` with a count-only function, and `reasons` / `safe_places` on `safety_plans`.
+- Database checks: 68 → 77. Unit checks: 49 → 59. Integration checks: 40 → 45.
+- `USABILITY_TEST.md`: a 20-minute test plan with 5–6 students, tasks and time targets.
+
+## Photo sign-in, visible theme and Translate buttons, welcome tour
+
+- **Sign-in:** a minimal side panel with a flat illustration (a young person meditating, with floating icons drawn in code) and three side tabs. The icon for the open tab glows; tap an icon to open its tab. On phones the illustration sits at the top of the card. The panel has a short headline and three side tabs (AI CBT therapy, Global Village, Instant EMS; therapists see their own three). The tabs move on by themselves and pause while you read; tap one to open it. The photos are used only in the welcome tour.
+- **Theme and Translate** are always visible: in the sign-in card header, and in the app top bar at every screen size. Translate opens a menu with Ghanaian languages first.
+- **Welcome tour:** a short full-screen slideshow (icons and photos) shows once after someone creates an account. Replay it from quick search: "Show the welcome tour".
+- Photos live in `src/assets/photos` as small WebP files. Make sure you hold a licence for them before a public launch.
+- **Glass:** the buttons in the top bar (search, Translate, theme, Breathe, menu and your avatar) are clear glass: a light green tint, a glossy sheen and a bright rim, with no frosting. SOS stays solid red with a glossy shine. The side menu is clear glass too, and its selected item is a glass pill. Works in light and dark mode.
+
+## Smoother view (refinements on top of everything above)
+
+- **Reading progress:** a thin green line under the top bar fills as you scroll down a page.
+- **Back to top:** a round glass button appears on long pages and glides you back up (hidden in AI therapy, Instant EMS and during SOS).
+- **Offline pill:** if the phone loses its connection, a calm note says SOS, 112 and your safety plan still work; "Back online" shows briefly when it returns.
+- **Phone tab bar:** the selected tab is a glass pill that pops in, matching the side menu. Tabs and SOS give a tiny vibration on Android phones.
+- **Side menu:** a slim green marker beside the page you are on; icons nudge on hover.
+- **Home:** the days-clean ring draws in and the number counts up.
+- **Sideways rows** (topic chips, tabs, quick replies) fade at the edge when there is more to swipe to.
+- **Forms:** fields glow softly green while you type.
+- **Loading screen:** the breathing ribbon and three soft dots instead of plain text.
+- **Notches:** the top bar leaves room for phone notches in the installed app.
+- Everything respects the device's "reduce motion" setting.
+- **Welcome tour on a computer:** wider, in two columns: the picture on the left and the words and buttons on the right, with a bigger title. On phones it stays the same single column.
+
+## Dev server fixes
+
+- The uploaded copy would not start: the dev server stopped with "No matching export in src/therapist/data.ts for import DEMO_DATA" and showed a blank page. Several files in that copy had been rewritten into shorter versions (the data layer, the therapist workspace, AI therapy, the stylesheet and others) and some files were missing. This version restores the full app and keeps the new deployment parts from that copy:
+  - `api/index.ts` and `vercel.json` for Vercel,
+  - `--port` and `--host` options, CORS headers for `/api`, Vite loaded only in development, and the Express app exported for serverless use.
+- The app, the API and Vite's live reload now share one port (live reload used a second port before, which proxies and tunnels often block).
+- If the port is busy, the server says so in plain words and shows how to use another port. `npm run dev -- --port 3001` now works.
+- The server prints the address to open in your browser.
+
+## Sign-in fits the screen
+
+- The 4Life logo and name sit centred at the top of the sign-in form, with Student / Therapist right below.
+- The light / dark theme button sits in the top-right corner of the illustrations (on phones, the corner of the illustrations above the form).
+- The Translate and 112 buttons were removed from the sign-in screen. Language can still be changed in the welcome tour and in the app; the emergency numbers (112 and ambulance 193) are in the fine print under the illustrations (and at the bottom on phones).
+- The big page title is hidden (still read out by screen readers), so the form starts higher.
+- Sign-up step 3 is more compact on a computer.
+- The page never scrolls on a computer: it fits 1280 × 720, 1366 × 768 and larger. A long step (the therapist sign-up) scrolls inside the card instead.
+- The name shown in the logo is now **4Life** (sign-in, side menu, therapist workspace, welcome tour, loading screen, browser tab and installed-app name).
+- **Sign-in slideshow switches on its own** every 5 seconds, even with the mouse over it. It only stops while you press and hold, or while the browser tab is hidden. With "reduce motion" turned on it still switches, every 8 seconds, without the slide animation.
+
+## Instant EMS: free, open-source map services
+
+All free, with no API key or account (code in `src/lib/osm.ts`):
+
+- **Places near you (Overpass API, OpenStreetMap):** after you find your location, hospitals, clinics, pharmacies, police and fire stations within 10 km are added to the list and the map. The app's own checked places stay first; a map place at the same spot is not shown twice. Map places carry an "OpenStreetMap" badge and a note to call ahead. New filters: Clinics, Pharmacies, Police.
+- **Your street and area (Nominatim):** "Found: near Prempeh II Street, Adum, Kumasi". The help message you text to your support person now says where you are in words as well as the map link.
+- **Route by road (OSRM):** picking a place draws the real driving route on the map and shows the distance by road and the driving time.
+- **Offline:** the last places found near you are saved on the phone, so the list still works without internet. Calls to 112 and 193 never wait on these services.
+- **Privacy:** your location is sent to these services only to look things up, only after you press a button, and 4Life does not store it.
+- **Map tiles** are OpenStreetMap's, softened in dark mode, with the required credit on the map.
+- The public servers are for light use. For a big launch, set `VITE_OVERPASS_URL`, `VITE_NOMINATIM_URL` and `VITE_OSRM_URL` (see `.env.example`) to your own or a paid server.
+- **The map always shows:** a simple built-in map of Ghana (coastline, borders and main towns, from Natural Earth, public domain) now sits under the street map. If the street tiles can't load (offline, slow or blocked network, or the claude.ai preview), you still see the map with all the places and a note that the detailed street map needs internet. It zooms out so the towns give a sense of where things are.
+- The map is visible straight away on tablets and computers (no List / Map switch there), and on phones the Map view now opens first.
+

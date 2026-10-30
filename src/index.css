@@ -1,0 +1,673 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   4Life — UI foundations
+   One typeface (Nunito, rounded), one accent (emerald), generous spacing.
+   Colours are CSS variables so light and dark themes switch in one place.
+   ===================================================================== */
+
+/* Semantic colour tokens — 4Life Universal Color System ------------------
+   Primary: Emerald · Neutral: Slate · Accent: Amber · Danger: Rose · Info: Sky
+   Light mode sits on Slate; dark mode on deep Forest.
+   Fills use the headline shades (#047857, #F59E0B, #E11D48, #0284C7).
+   Text uses a darker shade of the same colour where the headline shade
+   would be too faint to read on white. */
+:root {
+  --bg: #f8fafc;          /* slate-50: page background */
+  --surface: #ffffff;     /* cards */
+  --muted: #f1f5f9;       /* slate-100: quiet fills, tracks */
+  --line: #e2e8f0;        /* slate-200: borders and dividers */
+  --ink: #0f172a;         /* slate-900: headings and body text */
+  --ink-2: #475569;       /* slate-600: secondary text */
+  --ink-3: #64748b;       /* slate-500: helper text (4.5:1 on white) */
+
+  --pri: #047857;         /* emerald-700: main buttons, active item (darker green) */
+  --pri-hover: #065f46;   /* emerald-800 */
+  --pri-text: #065f46;    /* emerald-800: links and accent icons on white */
+  --pri-soft: #d1fae5;    /* emerald-100: selected states */
+  --pri-ink: #064e3b;     /* emerald-900: text on pri-soft */
+
+  --warn: #b45309;        /* amber-700: streak and warning text */
+  --warn-bar: #f59e0b;    /* amber-500: progress and attention fills */
+  --warn-soft: #fef3c7;   /* amber-100 */
+
+  --danger: #e11d48;      /* rose-600: SOS and danger only */
+  --danger-hover: #be123c;
+  --danger-text: #be123c; /* rose-700 for text on white */
+  --danger-soft: #ffe4e6; /* rose-100 */
+
+  --info: #0369a1;        /* sky-700 text; sky-600 is used for fills */
+  --info-soft: #e0f2fe;   /* sky-100 */
+
+  --night: #022c22;       /* emerald-950 / forest: wind-down card */
+  --focus: rgba(16, 185, 129, 0.35);
+  /* Elevation (layered, soft shadows in the style of Stripe and Linear) */
+  --shadow-card: 0 0 0 1px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 28px -14px rgba(15, 23, 42, 0.14);
+  --shadow-lift: 0 0 0 1px rgba(15, 23, 42, 0.03), 0 2px 4px rgba(15, 23, 42, 0.05), 0 22px 44px -18px rgba(2, 44, 34, 0.25);
+  --shadow-pop: 0 0 0 1px rgba(15, 23, 42, 0.04), 0 12px 24px -8px rgba(15, 23, 42, 0.18), 0 40px 80px -24px rgba(2, 44, 34, 0.35);
+  --btn-shine: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(2, 44, 34, 0.25);
+
+  /* Full emerald ramp and legacy aliases, kept so older components keep working */
+  --ui-primary-50: #ecfdf5;
+  --ui-primary-100: #d1fae5;
+  --ui-primary-200: #a7f3d0;
+  --ui-primary-300: #6ee7b7;
+  --ui-primary-400: #34d399;
+  --ui-primary-500: #10b981;
+  --ui-primary-600: #059669;
+  --ui-primary-700: #047857;
+  --ui-primary-800: #065f46;
+  --ui-primary-900: #064e3b;
+  --ui-primary-950: #022c22;
+  --ui-bg: var(--bg);
+  --ui-surface: var(--surface);
+  --ui-surface-muted: var(--muted);
+  --ui-border: var(--line);
+  --ui-text: var(--ink);
+  --ui-text-muted: var(--ink-2);
+  --ui-accent: #f59e0b;
+  --ui-danger: #e11d48;
+  --ui-info: #0284c7;
+  --ui-focus: var(--focus);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #07110b;          /* deep forest */
+  --surface: #0c2014;
+  --muted: #10281a;
+  --line: #1b3a28;        /* emerald-tinted border */
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --ink-3: #94a3b8;
+
+  --pri: #047857;
+  --pri-hover: #059669;
+  --pri-text: #10b981;
+  --pri-soft: #0b3322;
+  --pri-ink: #a7f3d0;
+
+  --warn: #fbbf24;
+  --warn-bar: #f59e0b;
+  --warn-soft: #33260a;
+
+  --danger: #e11d48;
+  --danger-hover: #f43f5e;
+  --danger-text: #fda4af;
+  --danger-soft: #3b0f1c;
+
+  --info: #38bdf8;
+  --info-soft: #082f49;
+
+  --night: #041b14;
+  --focus: rgba(52, 211, 153, 0.4);
+  /* In the dark, depth comes from a faint top highlight rather than shadow */
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 28px -16px rgba(0, 0, 0, 0.7);
+  --shadow-lift: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 24px 48px -20px rgba(0, 0, 0, 0.8);
+  --shadow-pop: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 40px 80px -24px rgba(0, 0, 0, 0.85);
+  --btn-shine: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Make the tokens available as Tailwind utilities: bg-surface, text-ink, border-line … */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-pri: var(--pri);
+  --color-pri-hover: var(--pri-hover);
+  --color-pri-text: var(--pri-text);
+  --color-pri-soft: var(--pri-soft);
+  --color-pri-ink: var(--pri-ink);
+  --color-warn: var(--warn);
+  --color-warn-bar: var(--warn-bar);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-night: var(--night);
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+  --shadow-pop: var(--shadow-pop);
+}
+
+/* Typography: Nunito everywhere, a soft, rounded typeface (logo included).
+   It ships with the app (Latin and Latin Extended, which covers Ɛ, Ɔ and Ʋ for
+   Twi, Ga and Ewe), so it works offline and needs no font service.
+   The small sizes are raised so nothing in the app drops below 13px. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url('./assets/fonts/nunito-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url('./assets/fonts/nunito-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@theme {
+  --font-sans: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-logo: 'Nunito', ui-rounded, system-ui, sans-serif;
+  --text-xs: 0.8125rem;            /* 13px (was 12px) */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;            /* 15px (was 14px) */
+  --text-sm--line-height: 1.45rem;
+  --text-base: 1rem;               /* 16px */
+  --text-base--line-height: 1.6rem;
+}
+
+/* Base -------------------------------------------------------------------- */
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    overflow-x: hidden;
+    overflow-x: clip; /* clip keeps position: sticky working */
+    width: 100%;
+    max-width: 100vw;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea {
+    font: inherit;
+  }
+  ::placeholder {
+    color: var(--ink-3);
+    opacity: 1;
+  }
+  input[type='range'],
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--pri);
+  }
+}
+
+/* One visible keyboard focus style for every control */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Legacy font helpers now all map to Nunito, so older screens match */
+.font-display,
+.font-comfortaa,
+.font-poppins {
+  font-family: var(--font-sans);
+}
+.font-pacifico,
+.font-logo {
+  font-family: var(--font-logo);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Small helpers used across the app -------------------------------------- */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+/* 'backwards' (not 'both') so the finished animation does not trap pop-ups in a stacking context */
+.animate-fadeIn { animation: fadeIn 0.25s ease-out backwards; }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 6s linear infinite; }
+
+@keyframes heart-pulse {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.18); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  60% { transform: scale(1); }
+}
+.animate-heart-pulse { animation: heart-pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes breath-cycle {
+  0%, 100% { transform: scale(0.86); }
+  50% { transform: scale(1.12); }
+}
+.animate-calm-breath { animation: breath-cycle 8s ease-in-out infinite; }
+
+
+/* Cards that lift a little on hover (like the cards in Headspace or Notion) */
+.lift { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.lift:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -24px rgba(2, 44, 34, 0.45); }
+button:not(:disabled):active { transform: scale(0.98); }
+
+/* Sign-in screen ------------------------------------------------------------ */
+@keyframes auth-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(18px, -22px, 0) scale(1.05); }
+}
+.auth-blob { animation: auth-float 14s ease-in-out infinite; }
+.auth-blob-slow { animation: auth-float 20s ease-in-out infinite reverse; }
+
+@keyframes auth-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.auth-sway { animation: auth-sway 5s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+
+@keyframes auth-drop {
+  0% { transform: translateY(-6px); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(46px); opacity: 0; }
+}
+.auth-drop { animation: auth-drop 1.6s ease-in infinite; transform-box: fill-box; }
+
+@keyframes auth-ring {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.auth-ring { animation: auth-ring 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+
+@keyframes auth-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.auth-bob { animation: auth-bob 4s ease-in-out infinite; transform-box: fill-box; }
+
+@keyframes auth-draw { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+.auth-draw { stroke-dasharray: 260; animation: auth-draw 2.4s ease-out both; }
+
+@keyframes auth-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+.auth-slide-in { animation: auth-slide-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Sign-in side tabs and the welcome tour */
+@keyframes calm-breathe { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.025); } }
+.calm-breathe { transform-box: fill-box; transform-origin: 50% 100%; animation: calm-breathe 6s ease-in-out infinite; }
+@keyframes calm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.calm-float { animation: calm-float 4.8s ease-in-out infinite; }
+@keyframes calm-spin { to { transform: rotate(360deg); } }
+.calm-spin { transform-origin: 0 0; animation: calm-spin 18s linear infinite; }
+.calm-spin-slow { transform-origin: 0 0; animation: calm-spin 60s linear infinite; }
+.calm-icon { transform-origin: 0 0; transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease; }
+.calm-icon:focus-visible { outline: none; }
+@keyframes heart-beat { 0%, 60%, 100% { transform: scale(1); } 10% { transform: scale(1.06); } 20% { transform: scale(0.98); } 30% { transform: scale(1.04); } }
+.heart-beat { transform-box: fill-box; transform-origin: center; animation: heart-beat 2.4s ease-in-out infinite; }
+@keyframes joy-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+.joy-hop { animation: joy-hop 1.8s ease-in-out infinite; }
+.calm-icon:focus-visible circle:first-child { opacity: 0.25; }
+@keyframes photo-zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+.photo-zoom { animation: photo-zoom 9s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+@keyframes story-fill { from { width: 0%; } to { width: 100%; } }
+.story-fill { width: 0%; animation-name: story-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes tab-fill { from { height: 0%; } to { height: 100%; } }
+.tab-fill { height: 0%; animation-name: tab-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes welcome-pop { from { opacity: 0; transform: translateY(18px) scale(0.96); } to { opacity: 1; transform: none; } }
+.welcome-pop { animation: welcome-pop 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes welcome-float { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-10px) rotate(var(--r, 0deg)); } }
+.welcome-float { animation: welcome-float 5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet map */
+.leaflet-container {
+  font-family: var(--font-sans);
+  z-index: 10;
+  border-radius: 0.875rem;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.35); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.6); }
+
+/* Accessibility text-size setting (Settings → Language and display).
+   Applied to <html> so every rem-based size scales together. */
+html.text-size-sm { font-size: 15px; }
+html.text-size-md { font-size: 16px; }
+html.text-size-lg { font-size: 18px; }
+html.text-size-xl { font-size: 20px; }
+
+/* =====================================================================
+   Compatibility layer for screens that still use raw Tailwind colours
+   (login, onboarding, chess, reader modals). Keeps one palette and
+   readable dark mode everywhere.
+   ===================================================================== */
+
+/* Purple, violet and indigo are folded into the emerald palette */
+[class*="text-purple-"], [class*="text-violet-"], [class*="text-indigo-"] { color: var(--pri-text) !important; }
+[class*="bg-purple-"], [class*="bg-violet-"], [class*="bg-indigo-"] { background-color: var(--pri-soft) !important; color: var(--pri-ink) !important; }
+[class*="border-purple-"], [class*="border-violet-"], [class*="border-indigo-"] { border-color: var(--line) !important; }
+
+/* Solid emerald fills always carry white text */
+.bg-emerald-500, .bg-emerald-600, .bg-emerald-700 { color: #fff; }
+
+/* Tiny arbitrary text sizes are raised to a readable minimum */
+.text-\[9px\], .text-\[10px\] { font-size: 0.75rem !important; line-height: 1.1rem; }
+.text-\[11px\] { font-size: 0.8125rem !important; line-height: 1.2rem; }
+
+/* Dark mode for legacy utility classes */
+.dark .bg-white { background-color: var(--surface) !important; color: var(--ink); border-color: var(--line) !important; }
+.dark .bg-white\/95, .dark .bg-white\/90, .dark .bg-white\/80 { background-color: var(--surface) !important; color: var(--ink); }
+.dark .bg-slate-50, .dark .bg-slate-100 { background-color: var(--muted) !important; color: var(--ink); }
+.dark .border-slate-100, .dark .border-slate-200, .dark .border-emerald-100 { border-color: var(--line) !important; }
+.dark .text-slate-900, .dark .text-slate-800, .dark .text-slate-700 { color: var(--ink) !important; }
+.dark .text-slate-600, .dark .text-slate-500 { color: var(--ink-2) !important; }
+.dark .text-slate-400 { color: var(--ink-3) !important; }
+.dark input, .dark select, .dark textarea { background-color: var(--muted); color: var(--ink); border-color: var(--line); }
+
+/* The green ribbon breathes: in for 4 seconds, out for 6 */
+@keyframes ribbon-breathe {
+  0% { transform: scale(0.94); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(0.94); }
+}
+.ribbon-breathe { animation: ribbon-breathe 10s ease-in-out infinite; transform-origin: 50% 40%; }
+@media (prefers-reduced-motion: reduce) {
+  .ribbon-breathe { animation: none; }
+}
+
+/* =====================================================================
+   Refinements borrowed from the best websites
+   ===================================================================== */
+
+/* Apple / Stripe typography: tighter headings that wrap evenly,
+   paragraphs without lonely last words, numbers that line up */
+h1, h2, h3, .text-balance { text-wrap: balance; }
+h1, h2 { letter-spacing: -0.02em; }
+h3 { letter-spacing: -0.01em; }
+p, li { text-wrap: pretty; }
+.tabular-nums, [data-number] { font-variant-numeric: tabular-nums; }
+
+/* Selection and scrollbars in the brand colours (Linear) */
+::selection { background: var(--pri-soft); color: var(--pri-ink); }
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* Buttons with a soft highlight on top, like a real key (Stripe, Linear) */
+.btn-shine { box-shadow: var(--btn-shine); }
+.btn-shine:hover { box-shadow: var(--btn-shine), 0 6px 16px -8px rgba(2, 44, 34, 0.45); }
+
+/* Cards rise a little more on hover */
+.lift:hover { box-shadow: var(--shadow-lift); }
+
+/* A gentle fade when you move between pages (Apple) */
+@keyframes page-in {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: none; }
+}
+.page-in { animation: page-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; } /* backwards: leaves no transform behind, so fixed bars inside stay fixed */
+
+/* Cards fade up as they scroll into view (Apple, Stripe) — pure CSS, no effect where unsupported */
+@supports (animation-timeline: view()) {
+  @keyframes reveal-up {
+    /* individual translate/scale so hover lifts (transform) still work */
+    from { opacity: 0.35; translate: 0 14px; scale: 0.985; }
+    to { opacity: 1; translate: none; scale: none; }
+  }
+  .reveal {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+/* Quick search panel (Linear, Raycast) */
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.palette-panel { animation: palette-in 0.18s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.palette-backdrop { animation: backdrop-in 0.18s ease-out both; }
+
+/* Dialogs rise like a sheet on phones and settle in on larger screens (iOS, Linear) */
+@keyframes sheet-in { from { opacity: 0; translate: 0 32px; } to { opacity: 1; translate: none; } }
+@keyframes dialog-in { from { opacity: 0; scale: 0.97; } to { opacity: 1; scale: none; } }
+.modal-panel { animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (min-width: 640px) { .modal-panel { animation-name: dialog-in; animation-duration: 0.2s; } }
+
+/* Clear glass for the side menu.
+   No frosting (no blur): the app's background shows through clearly, just tinted
+   with the brand green, with a glossy sheen, a bright top edge and a crisp rim.
+   About two-thirds solid so the words on the bars stay easy to read. */
+.glass-bar {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.18) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pri-soft) 30%, transparent), color-mix(in srgb, var(--pri-soft) 12%, transparent)),
+    color-mix(in srgb, var(--surface) 66%, transparent);
+  -webkit-backdrop-filter: saturate(170%);
+  backdrop-filter: saturate(170%);
+  border-color: color-mix(in srgb, var(--pri) 20%, rgba(255, 255, 255, 0.7));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(4, 120, 87, 0.08);
+}
+.dark .glass-bar {
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.03) 38%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.05) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pri-soft) 50%, transparent), color-mix(in srgb, var(--pri-soft) 22%, transparent)),
+    color-mix(in srgb, var(--surface) 66%, transparent);
+  border-color: color-mix(in srgb, #34d399 22%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+}
+.glass-side { box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.8), inset 1px 0 0 rgba(255, 255, 255, 0.5), 10px 0 30px -24px rgba(2, 44, 34, 0.35); }
+.dark .glass-side { box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.07), 10px 0 30px -24px rgba(0, 0, 0, 0.6); }
+
+/* Clear glass buttons (top bar buttons and the selected side-menu item).
+   No frosting: a light green tint, a glossy sheen, a bright rim and a soft shadow. */
+.glass-btn {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.28) 45%, rgba(255, 255, 255, 0.06) 56%, rgba(255, 255, 255, 0.32) 100%),
+    color-mix(in srgb, var(--pri-soft) 26%, transparent);
+  -webkit-backdrop-filter: saturate(170%);
+  backdrop-filter: saturate(170%);
+  border-color: color-mix(in srgb, var(--pri) 20%, rgba(255, 255, 255, 0.85));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(4, 120, 87, 0.1), 0 6px 16px -10px rgba(2, 44, 34, 0.35);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.glass-btn:hover {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.3) 45%, rgba(255, 255, 255, 0.08) 56%, rgba(255, 255, 255, 0.36) 100%),
+    color-mix(in srgb, var(--pri-soft) 48%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 -1px 0 rgba(4, 120, 87, 0.12), 0 8px 20px -10px rgba(2, 44, 34, 0.4);
+}
+.glass-btn-on,
+.glass-btn-on:hover {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 45%, rgba(255, 255, 255, 0.04) 56%, rgba(255, 255, 255, 0.25) 100%),
+    color-mix(in srgb, var(--pri-soft) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pri) 26%, rgba(255, 255, 255, 0.8));
+}
+.dark .glass-btn {
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.06) 100%),
+    color-mix(in srgb, var(--pri-soft) 55%, transparent);
+  border-color: rgba(52, 211, 153, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 6px 16px -10px rgba(0, 0, 0, 0.7);
+}
+.dark .glass-btn:hover { background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0.02) 56%, rgba(255, 255, 255, 0.08)), color-mix(in srgb, var(--pri-soft) 85%, transparent); }
+.dark .glass-btn-on,
+.dark .glass-btn-on:hover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.06)), color-mix(in srgb, #047857 45%, transparent);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+/* A glossy shine on a solid button (the red SOS stays solid red) */
+.glass-sheen {
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.08) 45%, rgba(255, 255, 255, 0) 56%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 6px 16px -8px rgba(225, 29, 72, 0.55);
+}
+
+/* Top bar: see-through at the top of the page, frosted once you scroll (Apple) */
+.topbar { transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
+.topbar[data-scrolled='false'] { background-color: color-mix(in srgb, var(--surface) 55%, transparent); border-color: transparent; }
+.topbar[data-scrolled='true'] { box-shadow: 0 1px 0 var(--line), 0 8px 24px -18px rgba(15, 23, 42, 0.35); }
+
+/* Theme switch cross-fades (View Transitions) */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 0.35s; }
+
+/* Respect "reduce motion" everywhere */
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .reveal, .palette-panel, .palette-backdrop, .modal-panel { animation: none !important; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Smoother view: small refinements layered on top of everything above
+   ------------------------------------------------------------------------- */
+
+/* Respect phone notches in the installed app */
+@media (max-width: 1023px) {
+  .topbar { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+}
+
+/* A thin green line under the top bar shows how far down the page you are */
+@property --tb-progress { syntax: '<number>'; inherits: false; initial-value: 0; }
+@supports (animation-timeline: scroll()) {
+  .topbar::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(90deg, #10b981, var(--pri));
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    animation: tb-progress linear both;
+    animation-timeline: scroll(root block);
+    pointer-events: none;
+  }
+  @keyframes tb-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+}
+
+/* Rows that scroll sideways (chips, tabs) fade at the edge that has more,
+   so it is clear there is more to swipe to. Only shows when the row can scroll. */
+@property --fade-l { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@supports (animation-timeline: scroll()) {
+  .fade-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+    animation: fade-x linear both;
+    animation-timeline: scroll(self inline);
+  }
+  @keyframes fade-x {
+    0% { --fade-l: 0px; --fade-r: 36px; }
+    8% { --fade-l: 24px; --fade-r: 36px; }
+    92% { --fade-l: 24px; --fade-r: 36px; }
+    100% { --fade-l: 24px; --fade-r: 0px; }
+  }
+}
+
+/* Phone tab bar: the selected tab's pill is glass and pops in */
+@keyframes nav-pop { 0% { transform: scale(0.82); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.nav-pop { animation: nav-pop 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Back-to-top button: glides in, sits above the phone tab bar */
+.back-to-top { bottom: calc(5.75rem + env(safe-area-inset-bottom)); transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, box-shadow 0.2s ease; }
+@media (min-width: 1024px) { .back-to-top { bottom: 2rem; } }
+
+/* Online / offline pill */
+@keyframes status-in { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.status-pill { animation: status-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; pointer-events: auto; }
+.status-offline { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.dark .status-offline { background: #291a05; border-color: #78350f; color: #fcd34d; }
+
+/* Loading screen */
+@keyframes dot-pulse { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.dot-pulse > span { display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background: var(--pri); animation: dot-pulse 1.2s ease-in-out infinite; }
+.dot-pulse > span:nth-child(2) { animation-delay: 0.15s; }
+.dot-pulse > span:nth-child(3) { animation-delay: 0.3s; }
+
+/* Side menu: icons nudge a touch on hover; the selected one gets a slim marker */
+#main-navigation nav button svg { transition: transform 0.2s ease; }
+#main-navigation nav button:hover svg { transform: translateX(2px); }
+#main-navigation nav button[aria-current='page'] { position: relative; }
+#main-navigation nav button[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 25%;
+  bottom: 25%;
+  width: 3px;
+  border-radius: 9999px;
+  background: var(--pri);
+}
+
+/* Form fields: a soft green glow when you type in them */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
+textarea:focus,
+select:focus {
+  box-shadow: 0 0 0 4px color-mix(in srgb, #10b981 18%, transparent);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Cleaner long lists: skip drawing cards that are far off screen */
+.cv-auto { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar::after, .fade-x { animation: none !important; }
+  .nav-pop, .status-pill, .dot-pulse > span { animation: none !important; }
+  #main-navigation nav button:hover svg { transform: none; }
+}
+
+/* Sign-in on a computer: the whole screen fits the window. The form sits in the middle;
+   a long step (like the therapist sign-up) scrolls inside the card, never the page. */
+@media (min-width: 1024px) {
+  .auth-form { justify-content: center; justify-content: safe center; scrollbar-gutter: stable; }
+}
+
+/* Sign-in on laptop screens up to 800px tall (1366 × 768, 1280 × 720): a little tighter so it fits without scrolling */
+@media (min-width: 1024px) and (max-height: 800px) {
+  .auth-form { padding-top: 0.75rem; padding-bottom: 0.75rem; gap: 0.75rem; }
+  .auth-form h1 { font-size: 1.625rem; }
+  .auth-form [role='radiogroup'] > button { min-height: 2.75rem; }
+}
+
+/* EMS map in dark mode: soften the bright OpenStreetMap tiles to match the app */
+.dark .leaflet-tile-pane { filter: brightness(0.78) contrast(1.08) saturate(0.85); }
+.leaflet-control-attribution { font-size: 11px; }
+
+/* EMS map: the simple built-in map under the street tiles (sea, land, towns) */
+.ems-map { background: #cfe6f2; }
+.dark .ems-map { background: #0b2533; }
+.ems-land { fill: #f3f5f2; stroke: #a8b3ad; }
+.ems-land-gh { fill: #e6f4ec; stroke: #047857; }
+.dark .ems-land { fill: #13241b; stroke: #2c4a3a; }
+.dark .ems-land-gh { fill: #12311f; stroke: #34d399; }
+.ems-town { position: relative; }
+.ems-town-dot { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 9999px; background: #475569; }
+.ems-town-dot.big { left: -4px; top: -4px; width: 8px; height: 8px; background: #14532d; box-shadow: 0 0 0 2px #fff; }
+.ems-town-name { position: absolute; left: 7px; top: -9px; white-space: nowrap; font: 600 11px/1 Nunito, ui-rounded, system-ui, sans-serif; color: #334155; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
+.ems-town-name.big { font-weight: 800; font-size: 12.5px; color: #0f172a; }
+.dark .ems-town-dot { background: #94a3b8; }
+.dark .ems-town-name { color: #cbd5e1; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+.dark .ems-town-name.big { color: #f1f5f9; }

@@ -1,0 +1,28 @@
+# Supabase CLI settings for 4Life (only what differs from the defaults).
+# Deploy every function:  supabase functions deploy
+project_id = "4life"
+
+# The functions check sign-in themselves (_shared/core/guard.ts), because the app's
+# publishable key (sb_publishable_…) is not a JWT that the gateway could verify.
+# Chat, thought-record help, moderation and the circle guide still refuse callers who
+# are not signed in, unless the secret REQUIRE_SIGN_IN=false is set.
+[functions.chat]
+verify_jwt = false
+
+[functions.cbt-suggest]
+verify_jwt = false
+
+[functions.moderate]
+verify_jwt = false
+
+[functions.village-guide]
+verify_jwt = false
+
+[functions.first-aid-videos]
+verify_jwt = false
+
+[functions.health]
+verify_jwt = false
+
+[functions.client-error]
+verify_jwt = false

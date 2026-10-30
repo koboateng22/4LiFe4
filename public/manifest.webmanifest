@@ -1,0 +1,20 @@
+{
+  "name": "4Life — recovery support",
+  "short_name": "4Life",
+  "description": "AI CBT therapy, an anonymous Global Village and instant emergency help for young people in recovery in Ghana.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8faf9",
+  "theme_color": "#047857",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "SOS: get help now", "short_name": "SOS", "url": "/?go=sos", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Help nearby", "short_name": "Help nearby", "url": "/?go=ems", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ride out a craving", "short_name": "Craving", "url": "/?go=craving", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

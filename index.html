@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#047857" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <title>4Life - Recovery support</title>
+    <meta name="description" content="AI CBT therapy, an anonymous Global Village and instant emergency help for young people in recovery in Ghana." />
+    <meta property="og:title" content="4Life - Recovery support" />
+    <meta property="og:description" content="AI CBT therapy, an anonymous Global Village and instant emergency help for young people in recovery in Ghana." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+      /* Completely suppress Google Translate popups, floating bars, and tooltips */
+      .goog-te-banner-frame,
+      .goog-te-banner-frame.skiptranslate,
+      .goog-te-balloon-frame,
+      #goog-gt-tt,
+      .goog-te-combo,
+      .goog-tooltip,
+      .goog-tooltip:hover,
+      .goog-text-highlight,
+      iframe.skiptranslate,
+      .VIpgJd-ZVi9od-ORHb-OEVmcd,
+      .VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+      .VIpgJd-ZVi9od-vH1Gmf,
+      .VIpgJd-ZVi9od-l4eHX-hSRGPd {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+      }
+      body {
+        top: 0px !important;
+        position: static !important;
+      }
+      #google_translate_element {
+        position: absolute !important;
+        top: -9999px !important;
+        left: -9999px !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        opacity: 0.01 !important;
+        pointer-events: none !important;
+      }
+      /* Prevent mobile viewport side wobble */
+      html, body {
+        /* clip (not hidden) so the sticky top bar keeps working */
+        overflow-x: hidden !important;
+        overflow-x: clip !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      /* Opening screen (replaced as soon as the app starts) */
+      #splash { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #f8faf9; color: #0f172a; font-family: Nunito, ui-rounded, system-ui, sans-serif; }
+      #splash svg { animation: splash-breathe 10s ease-in-out infinite; transform-origin: 50% 40%; margin-bottom: 6px; }
+      #splash strong { font-size: 22px; font-weight: 800; }
+      #splash span { font-size: 15px; color: #475569; }
+      @keyframes splash-breathe { 0% { transform: scale(0.94); } 40% { transform: scale(1.06); } 100% { transform: scale(0.94); } }
+      @media (prefers-color-scheme: dark) { #splash { background: #0b1512; color: #f1f5f9; } #splash span { color: #94a3b8; } }
+      @media (prefers-reduced-motion: reduce) { #splash svg { animation: none; } }
+    </style>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        if (window.google && window.google.translate) {
+          new window.google.translate.TranslateElement({
+            pageLanguage: 'en',
+            autoDisplay: false,
+            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
+          }, 'google_translate_element');
+        }
+      }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  </head>
+  <body class="font-sans antialiased overflow-x-clip">
+    <div id="google_translate_element"></div>
+    <div id="root" class="w-full max-w-full overflow-x-clip">
+      <!-- Opening screen while the app loads: the green ribbon of mental health awareness, breathing -->
+      <div id="splash" role="status" aria-label="4Life is opening">
+        <svg viewBox="0 0 60 100" width="56" height="94" aria-hidden="true">
+          <path d="M15 94 L30 58 C36 44 44 32 42 20 C40 8 20 8 18 20" fill="none" stroke="#047857" stroke-width="11" stroke-linejoin="round" />
+          <path d="M18 20 C16 32 24 44 30 58 L45 94" fill="none" stroke="#10b981" stroke-width="11" />
+        </svg>
+        <strong>4Life</strong>
+        <span>Mental health matters</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
