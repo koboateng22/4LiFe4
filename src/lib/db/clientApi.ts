@@ -85,9 +85,24 @@ export async function getSignedInUser(): Promise<{ id: string; role: 'client' | 
 export async function signIn(email: string, password: string) {
   const { data, error } = await db().auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
   if (error) throw error;
-  const { data: row, error: e2 } = await db().from('profiles').select('role').eq('id', data.user.id).single();
+  const { data: row, error: e2 } = await db().from('profiles').select('role').eq('id', data.user.id).maybeSingle();
   if (e2) throw e2;
+  if (!row) {
+    // Created before the sign-up trigger existed. Don't stay half signed in.
+    await db().auth.signOut();
+    throw new Error('Your password is right, but this account has no profile yet. Please contact the 4Life team.');
+  }
   return { id: data.user.id, role: row.role as 'client' | 'therapist' | 'admin' };
+}
+
+/** Send the sign-up confirmation link again. */
+export async function resendConfirmation(email: string) {
+  const { error } = await db().auth.resend({
+    type: 'signup',
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: window.location.origin },
+  });
+  if (error) throw error;
 }
 
 export async function signOut() {
@@ -119,6 +134,8 @@ export async function signUpClient(
     },
   });
   if (error) throw error;
+  // With email confirmation on, Supabase hides taken emails: no error, no identities, no email sent
+  if (data.user?.identities?.length === 0) throw new Error('User already registered');
   return { userId: data.user?.id || null, needsConfirmation: !data.session };
 }
 

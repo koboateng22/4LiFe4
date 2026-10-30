@@ -54,6 +54,16 @@ export const newId = (): string =>
         return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
       });
 
+/** The problem Supabase reports when an email link fails (it arrives in the page address), in plain words. */
+export function emailLinkError(hash: string, search = ''): string {
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const query = new URLSearchParams(search);
+  const code = params.get('error_code') || query.get('error_code');
+  if (!code && !params.get('error') && !query.get('error')) return '';
+  if (code === 'otp_expired') return 'That email link has expired or was already used. Try signing in, or ask for a new link.';
+  return 'That email link did not work. Try signing in, or ask for a new link.';
+}
+
 /** Turn database and auth errors into short, plain messages people can act on. */
 export function friendlyError(e: unknown): string {
   const msg = String((e as any)?.message || e || '');
@@ -61,6 +71,9 @@ export function friendlyError(e: unknown): string {
   if (/Email not confirmed/i.test(msg)) return 'Please confirm your email first — we sent you a link.';
   if (/User already registered/i.test(msg)) return 'An account with this email already exists. Please sign in instead.';
   if (/profiles_nickname_key|duplicate key.*nickname/i.test(msg)) return 'That community name is already taken. Please choose another.';
+  // The sign-up trigger's real error stays on the server; a taken community name is the usual cause
+  if (/Database error saving new user/i.test(msg)) return 'We could not create your account. That community name may already be taken, so please try another.';
+  if (/sending .*email/i.test(msg)) return 'We could not send the email just now. Please try again in a few minutes.';
   if (/Password should be/i.test(msg)) return 'Please choose a longer password (at least 8 characters).';
   if (/rate limit/i.test(msg)) return 'Too many tries. Please wait a minute and try again.';
   if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'Could not reach the server. Check your internet connection.';

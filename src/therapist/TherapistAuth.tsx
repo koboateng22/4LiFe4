@@ -5,6 +5,7 @@ import type { Profession, SessionFormat, TherapistProfile, Weekday } from './typ
 import { friendlyError, isRemote } from '../lib/supabase';
 import { signIn, signOut } from '../lib/db/clientApi';
 import { loadTherapistProfile, signUpTherapist } from '../lib/db/therapistApi';
+import { ResendConfirmation, needsNewLink } from '../components/auth/ResendConfirmation';
 
 /** With Supabase, accounts use a password; on this device only, a short PIN. */
 const SECRET = isRemote ? 'password' : 'PIN';
@@ -60,7 +61,7 @@ const toggleIn = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter(x => x
  * Sign in and sign up for therapists.
  * Sign-up is five short steps; a new account starts as "verification pending".
  */
-export const TherapistAuth: React.FC<{ onLogin: (t: TherapistProfile) => void }> = ({ onLogin }) => {
+export const TherapistAuth: React.FC<{ onLogin: (t: TherapistProfile) => void; onForgotPassword?: (email: string) => void }> = ({ onLogin, onForgotPassword }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
 
   /* ----- sign in ----- */
@@ -78,7 +79,7 @@ export const TherapistAuth: React.FC<{ onLogin: (t: TherapistProfile) => void }>
       setBusy(true);
       setLoginError('');
       try {
-        const user = await signIn(email, pin);
+        const user = await signIn(email, pin.trim());
         if (user.role !== 'therapist') {
           await signOut();
           setLoginError('This is not a therapist account. Choose “I want support” above to sign in.');
@@ -284,6 +285,7 @@ export const TherapistAuth: React.FC<{ onLogin: (t: TherapistProfile) => void }>
       {mode === 'login' ? (
         <form onSubmit={handleLogin} className="flex flex-col gap-5 lg:gap-4" noValidate>
           {loginError && <ErrorBox>{loginError}</ErrorBox>}
+          {isRemote && needsNewLink(loginError) && <ResendConfirmation email={email} />}
           <Field label="Work email" htmlFor="th-email">
             <input id="th-email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. ama@clinic.org" className={inputClass} />
           </Field>
@@ -308,6 +310,11 @@ export const TherapistAuth: React.FC<{ onLogin: (t: TherapistProfile) => void }>
                 {showPin ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
+            {isRemote && onForgotPassword && (
+              <button type="button" onClick={() => onForgotPassword(email)} className="min-h-10 self-start text-sm font-semibold text-pri-text hover:underline cursor-pointer">
+                Forgot password?
+              </button>
+            )}
           </Field>
           <button type="submit" disabled={busy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-pri text-base font-bold text-[#fff] hover:bg-pri-hover disabled:opacity-60 cursor-pointer">
             {busy ? 'Signing in…' : 'Sign in'} <ArrowRight className="h-5 w-5" aria-hidden="true" />

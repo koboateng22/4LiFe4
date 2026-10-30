@@ -7,13 +7,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { UserProfile } from '../types';
 import type { TherapistProfile } from '../therapist/types';
-import { db, friendlyError, isRemote } from './supabase';
+import { db, emailLinkError, friendlyError, isRemote } from './supabase';
 import * as clientApi from './db/clientApi';
 import { loadTherapistProfile } from './db/therapistApi';
 import { getCrisisLocation } from './location';
 import { Button, Field, Modal, Notice, inputClass } from '../components/ui';
 
 const isUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+const RESTORE_WAIT_MS = 8000;
 
 /** Restore a saved session on load, and react to sign-out or password-reset links. */
 export function useRemoteSession(opts: {
@@ -24,12 +26,16 @@ export function useRemoteSession(opts: {
 }) {
   const [checking, setChecking] = useState(isRemote);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [linkError] = useState(() => (isRemote ? emailLinkError(window.location.hash, window.location.search) : ''));
   const ref = useRef(opts);
   ref.current = opts;
 
   useEffect(() => {
     if (!isRemote) return;
     let alive = true;
+    // A slow connection must not hold back the app (and its emergency help). A restore that finishes later still signs in.
+    const stopWaiting = setTimeout(() => setChecking(false), RESTORE_WAIT_MS);
+    if (linkError) window.history.replaceState(null, '', window.location.pathname);
     (async () => {
       try {
         const user = await clientApi.getSignedInUser();
@@ -48,11 +54,12 @@ export function useRemoteSession(opts: {
     });
     return () => {
       alive = false;
+      clearTimeout(stopWaiting);
       data.subscription.unsubscribe();
     };
   }, []);
 
-  return { checking, passwordRecovery, closePasswordRecovery: () => setPasswordRecovery(false) };
+  return { checking, linkError, passwordRecovery, closePasswordRecovery: () => setPasswordRecovery(false) };
 }
 
 /** Save the client's profile and support contacts a moment after they change. */
@@ -110,10 +117,11 @@ export const PasswordRecoveryModal: React.FC<{ isOpen: boolean; onClose: () => v
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
-    if (pw.length < 8) return setMsg({ ok: false, text: 'Please use at least 8 characters.' });
+    if (pw.trim().length < 8) return setMsg({ ok: false, text: 'Please use at least 8 characters.' });
     if (pw !== pw2) return setMsg({ ok: false, text: 'The two passwords do not match.' });
     setBusy(true);
-    const { error } = await db().auth.updateUser({ password: pw });
+    // Trimmed, because sign-up and sign-in trim the password too
+    const { error } = await db().auth.updateUser({ password: pw.trim() });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: friendlyError(error) });
     setMsg({ ok: true, text: 'Your new password is saved.' });

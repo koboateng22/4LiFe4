@@ -188,4 +188,13 @@ ok(levels.cravingLabel(9) === 'intense' && levels.cravingLabel(4) === 'mild' && 
   ok(synced, 'supabase/functions/_shared/core matches server/core (run npm run sync:functions)');
 }
 
+// Sign-in messages
+const auth = await import('../src/lib/supabase');
+ok(auth.friendlyError(new Error('Email not confirmed')).includes('confirm your email'), 'unconfirmed email is explained');
+ok(auth.friendlyError(new Error('Database error saving new user')).includes('community name'), 'failed sign-up trigger is explained');
+ok(auth.friendlyError(new Error('Error sending confirmation email')).includes('could not send'), 'email failure is explained');
+ok(auth.emailLinkError('#error=access_denied&error_code=otp_expired&error_description=x').includes('expired'), 'expired link is recognised');
+ok(auth.emailLinkError('', '?error=server_error').includes('did not work'), 'other link errors are recognised');
+ok(auth.emailLinkError('#access_token=abc', '?go=sos') === '', 'a good link is not an error');
+
 console.log(`All ${n} unit checks passed`);

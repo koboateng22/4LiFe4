@@ -56,6 +56,8 @@ export async function signUpTherapist(email: string, password: string, t: Omit<T
     },
   });
   if (error) throw error;
+  // With email confirmation on, Supabase hides taken emails: no error, no identities, no email sent
+  if (data.user?.identities?.length === 0) throw new Error('User already registered');
   return { userId: data.user?.id || null, needsConfirmation: !data.session };
 }
 

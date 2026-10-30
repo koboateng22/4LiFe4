@@ -21,6 +21,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
    - Set **Site URL** to where the app runs, e.g. `http://localhost:3000`, and later your real domain.
    - Add the same address under **Redirect URLs**. Confirmation and password-reset links point there.
    - Keep **Confirm email** switched on (Authentication → Providers → Email). The app shows a "Check your email" screen after sign-up.
+   - **Send real email.** Supabase's built-in sender only reaches your own team and is heavily rate-limited, so people can't confirm their accounts. Using Resend: verify your domain in Resend, then go to Authentication → Emails → SMTP Settings and set host `smtp.resend.com`, port `465`, username `resend`, password = your Resend API key, and a sender address on the verified domain. Saving the key with `supabase secrets set` does **not** do this: those secrets only reach Edge Functions, and no 4Life function sends email.
 3. **Create the database.** Either:
    - **Supabase CLI** (recommended, keeps history):
      ```bash

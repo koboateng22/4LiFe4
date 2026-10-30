@@ -1,3 +1,14 @@
+# 4Life — sign-in fixes (30 October 2026)
+
+- Passwords longer than 20 characters work on the sign-in form. It used to cut them off, although sign-up allows 72.
+- "Please confirm your email" and expired email links now offer **Send the confirmation link again**, for clients and therapists.
+- Signing up with an email that is already registered now says so, instead of promising an email that never comes.
+- A taken community name and email-sending failures get plain messages instead of Supabase's raw errors.
+- An account with no profile row is signed out with a clear message, instead of being left half signed in.
+- With Supabase on, the sign-in and reset forms no longer mention PINs or demo accounts, and the reset form no longer fills in a demo email. Therapists can now reset a forgotten password.
+- A slow connection can't hold the "Opening 4Life" screen for more than 8 seconds.
+- SUPABASE.md and LAUNCH.md explain email setup: a key in Supabase secrets does not send auth email; SMTP settings do.
+
 # 4Life — backend refined, all Supabase Edge Functions (30 October 2026)
 
 - **One backend, two places.** What each route does now lives once, in `server/core` (plain TypeScript, no Node or Express). The Vercel API (`server/routes.ts`) and the Supabase Edge Functions both run it, so they always behave the same.

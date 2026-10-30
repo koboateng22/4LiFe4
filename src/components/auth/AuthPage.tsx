@@ -11,6 +11,7 @@ import { changeLanguage } from '../../utils/translateUtils';
 import { Field, inputClass, cx } from '../ui';
 import { TherapistAuth } from '../../therapist/TherapistAuth';
 import { AuthShell } from './AuthShell';
+import { ResendConfirmation, needsNewLink } from './ResendConfirmation';
 import { db, friendlyError, isRemote } from '../../lib/supabase';
 import * as clientApi from '../../lib/db/clientApi';
 import { loadTherapistProfile } from '../../lib/db/therapistApi';
@@ -65,6 +66,8 @@ interface AuthPageProps {
   onChangeLanguage: (lang: string) => void;
   /** Called when a therapist signs in or finishes signing up */
   onTherapistLogin?: (t: TherapistProfile) => void;
+  /** A problem to show straight away, such as an expired email link */
+  initialError?: string;
 }
 
 const DEMO_ACCOUNTS: AuthAccount[] = [
@@ -207,6 +210,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   currentLanguage,
   onChangeLanguage,
   onTherapistLogin,
+  initialError,
 }) => {
   // Who is signing in: a person in recovery, or a therapist
   const [role, setRole] = useState<'client' | 'therapist'>('client');
@@ -217,7 +221,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [loginPin, setLoginPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showLoginPin, setShowLoginPin] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState(initialError || '');
 
   // Signup Form States
   const [signupName, setSignupName] = useState('');
@@ -570,6 +574,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     setForgotSuccess('');
     const emailToReset = forgotEmail.trim().toLowerCase();
     if (isRemote) {
+      if (!emailToReset.includes('@')) {
+        setForgotSuccess('Please enter the email address you signed up with.');
+        return;
+      }
       const { error } = await db().auth.resetPasswordForEmail(emailToReset, { redirectTo: window.location.origin });
       setForgotSuccess(
         error ? friendlyError(error) : `If an account exists for ${emailToReset}, we have sent a link to set a new password. Check your email.`
@@ -611,7 +619,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       subtitle={shellSubtitle}
     >
       {role === 'therapist' && onTherapistLogin ? (
-        <TherapistAuth onLogin={onTherapistLogin} />
+        <TherapistAuth
+          onLogin={onTherapistLogin}
+          onForgotPassword={email => {
+            setForgotEmail(email);
+            setForgotSuccess('');
+            setForgotModalOpen(true);
+          }}
+        />
       ) : (
         <div>
           {/* Mode Switcher Tabs */}
@@ -658,6 +673,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <div className="leading-relaxed">{loginError}</div>
                 </div>
               )}
+              {isRemote && needsNewLink(loginError) && <ResendConfirmation email={loginEmail} />}
 
               {/* Email / Username */}
               <div>
@@ -668,6 +684,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <Mail className="w-4 h-4 text-ink-3 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
+                    autoComplete="username"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org or SoberWarrior_GH'}
@@ -685,7 +702,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setForgotEmail(loginEmail || 'kwame@4life.org');
+                      setForgotEmail(loginEmail || (isRemote ? '' : 'kwame@4life.org'));
+                      setForgotSuccess('');
                       setForgotModalOpen(true);
                     }}
                     className="-my-2.5 inline-flex min-h-10 items-center text-sm font-semibold text-pri-text hover:underline cursor-pointer"
@@ -699,14 +717,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     type={showLoginPin ? 'text' : 'password'}
                     value={loginPin}
                     onChange={(e) => setLoginPin(e.target.value)}
-                    placeholder="Enter your 4-digit PIN (Demo: 1234)"
-                    maxLength={20}
+                    autoComplete="current-password"
+                    placeholder={isRemote ? 'Your password' : 'Enter your 4-digit PIN (Demo: 1234)'}
+                    maxLength={isRemote ? 72 : 20}
                     className={cx(inputClass, 'pl-11 pr-11')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPin(!showLoginPin)}
-                    aria-label={showLoginPin ? 'Hide PIN' : 'Show PIN'}
+                    aria-label={showLoginPin ? `Hide ${SECRET}` : `Show ${SECRET}`}
                     aria-pressed={showLoginPin}
                     className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-ink-3 hover:text-ink-2"
                   >
@@ -731,7 +750,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-pri hover:bg-pri-hover text-[#fff] font-bold rounded-2xl text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                disabled={authBusy}
+                className="w-full py-3 bg-pri hover:bg-pri-hover text-[#fff] font-bold rounded-2xl text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
               >
                 <span>{authBusy ? 'Signing in…' : 'Sign in'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1094,8 +1114,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <KeyRound className="w-5 h-5 text-pri-text" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ink">PIN Recovery</h3>
-                  <p className="text-xs text-ink-3">Find your 4-digit PIN</p>
+                  <h3 className="text-base font-bold text-ink">{isRemote ? 'Reset your password' : 'PIN Recovery'}</h3>
+                  <p className="text-xs text-ink-3">{isRemote ? 'We will email you a link' : 'Find your 4-digit PIN'}</p>
                 </div>
               </div>
               <button
@@ -1115,7 +1135,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   type="email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="e.g. kwame@4life.org"
+                  placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org'}
                   className={inputClass}
                 />
               </div>
@@ -1138,7 +1158,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-pri hover:bg-pri-hover text-[#fff] text-xs font-bold shadow-xs"
                 >
-                  Find my PIN
+                  {isRemote ? 'Send the link' : 'Find my PIN'}
                 </button>
               </div>
             </form>

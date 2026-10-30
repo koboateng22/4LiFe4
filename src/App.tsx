@@ -381,6 +381,7 @@ export default function App() {
           onToggleTheme={toggleTheme}
           currentLanguage={profile.language || 'en'}
           onChangeLanguage={lang => setProfile(p => ({ ...p, language: lang }))}
+          initialError={session.linkError}
           onTherapistLogin={t => {
             setTherapist(t);
             window.scrollTo({ top: 0 });

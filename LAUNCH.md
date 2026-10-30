@@ -14,7 +14,8 @@ Work through this before you share the link with real users.
 - [ ] Node.js version: leave Project Settings on 24.x (Node 20 no longer deploys). `package.json` asks for 22 or newer, which Vercel maps to 24.
 - [ ] Framework preset shows **Vite** (set in `vercel.json`).
 - [ ] Optional: in **Firewall**, add a rate-limit rule for `/api/chat`. The app's own limit counts per server instance, so a firewall rule is the stronger brake.
-- [ ] Supabase: migrations applied, and the Supabase "Site URL" / redirect URLs include your Vercel domain (needed for password-reset emails).
+- [ ] Supabase: migrations applied, and the Supabase "Site URL" / redirect URLs include your Vercel domain (needed for confirmation and password-reset emails).
+- [ ] Supabase: custom SMTP set under Authentication → Emails (see SUPABASE.md, step 2), then sign up with a new address outside your team and confirm that the email arrives and its link opens the Vercel site.
 
 ## 3. Before each deploy
 
