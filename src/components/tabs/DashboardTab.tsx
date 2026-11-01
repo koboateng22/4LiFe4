@@ -7,11 +7,11 @@ import { listThoughtRecords } from '../../lib/cbtStore';
 import { trapLabel, type ThoughtRecord } from '../../lib/cbt';
 import { DEFAULT_CIRCLES, circleTiming, listCircles, type Circle } from '../../lib/village';
 import { Card, SectionHeader, Button, ButtonLink, Avatar, Notice, IconBadge, textareaClass, cx } from '../ui';
-import { PageHero, heroPrimary, heroSecondary } from '../PageHero';
+import { PageHero, heroSecondary } from '../PageHero';
 import { MoodFaces } from '../MoodFaces';
 import { celebrateFrom } from '../LivingBackground';
-import { GrowIllustration, VillageIllustration, HelpIllustration } from '../auth/AuthIllustrations';
-import { MessageCircle, ArrowRight, Check, Star, Wind, Users, Siren, Phone, Waves, NotebookPen, Moon, Sun } from 'lucide-react';
+import { GrowIllustration } from '../auth/AuthIllustrations';
+import { MessageCircle, ArrowRight, Check, Star, Wind, Users, Siren, Phone, Waves, NotebookPen } from 'lucide-react';
 import { RibbonLoader } from '../RibbonMark';
 import { useAction, requestAction } from '../../lib/actions';
 import { useCountUp, useMounted } from '../../lib/motion';
@@ -66,6 +66,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
   const [counsellorsLoading, setCounsellorsLoading] = useState(isRemote);
   const [records, setRecords] = useState<ThoughtRecord[]>([]);
   const [circles, setCircles] = useState<Circle[]>(DEFAULT_CIRCLES);
+  const [showAllCounsellors, setShowAllCounsellors] = useState(false);
 
   useEffect(() => {
     if (isRemote) {
@@ -113,6 +114,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
   const aiName = profile.aiName || '4Life';
   const lastRecord = records[0];
   const nextCircle = [...circles].map(c => ({ c, t: circleTiming(c) })).sort((a, b) => a.t.start.getTime() - b.t.start.getTime())[0];
+  // Past the last badge there is nothing left to count down to
+  const daysLeft = milestone - streak;
+  const milestoneText = daysLeft > 0 ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to your ${milestone}-day badge` : `You have reached your ${milestone}-day badge`;
+  const daysCleanLabel = streak === 1 ? 'day clean' : 'days clean';
+  // Bookable people first, so the short list on Home shows someone you can see today
+  const sortedCounsellors = [...counsellors].sort((a, b) => Number(b.availableNow) - Number(a.availableNow));
+  const fees = counsellors.map(c => c.feeGHS).filter(fee => fee > 0);
+  const lowestFee = fees.length ? Math.min(...fees) : null;
 
   const RING_R = 52;
   const RING_C = 2 * Math.PI * RING_R;
@@ -122,7 +131,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
       {/* 1. Welcome: a calm banner, like the sign-in story panel */}
       <PageHero
         id="home-h"
-        eyebrow={`Day ${streak} of your recovery`}
         title={
           <>
             {greetingFor()}, {firstName}
@@ -130,18 +138,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
         }
         text="One day at a time — you are doing it, and you are not alone."
         actions={
-          <>
-            <button type="button" className={heroPrimary} onClick={scrollToCheckin}>
-              Check in now
-            </button>
-            <button type="button" className={heroSecondary} onClick={() => onNavigate('chat')}>
-              <MessageCircle className="h-5 w-5" aria-hidden="true" /> Talk to {aiName}
-            </button>
-          </>
+          <button type="button" className={heroSecondary} onClick={() => onNavigate('chat')}>
+            <MessageCircle className="h-5 w-5" aria-hidden="true" /> Talk to {aiName}
+          </button>
         }
         aside={
           <div className="flex items-center gap-4">
-            <div className="relative h-[104px] w-[104px] shrink-0 sm:h-[128px] sm:w-[128px]" role="img" aria-label={`${streak} days clean. ${milestone - streak} days to your ${milestone}-day badge.`}>
+            <div className="relative h-[104px] w-[104px] shrink-0 sm:h-[128px] sm:w-[128px]" role="img" aria-label={`${streak} ${daysCleanLabel}. ${milestoneText}.`}>
               <svg viewBox="0 0 120 120" className="h-full w-full" aria-hidden="true">
                 <circle cx="60" cy="60" r={RING_R} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="10" />
                 <circle
@@ -159,130 +162,20 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[2rem] font-extrabold leading-none tabular-nums sm:text-[2.375rem]">{shownStreak}</span>
-                <span className="text-xs font-semibold text-[#a7f3d0] sm:text-sm">days clean</span>
+                <span className="text-xs font-semibold text-[#a7f3d0] sm:text-sm">{daysCleanLabel}</span>
               </div>
             </div>
             <p className="m-0 max-w-[10rem] text-[0.9375rem] leading-snug text-[#d1fae5] lg:hidden xl:block">
-              <strong className="block text-[#fff]">Next milestone</strong>
-              {milestone - streak} days to your {milestone}-day badge
+              {daysLeft > 0 && <strong className="block text-[#fff]">Next milestone</strong>}
+              {milestoneText}
             </p>
           </div>
         }
         art={<GrowIllustration />}
       />
 
-      {/* Right now: one suggestion that fits the time of day */}
-      {(() => {
-        const h = new Date().getHours();
-        const tip =
-          h >= 17 && h < 23
-            ? { text: 'Evenings are often the hardest time. Make a plan for tonight, or ride out a craving if one comes.', label: 'Plan tonight', icon: <Moon className="h-5 w-5" />, run: () => { onNavigate('chat'); requestAction('craving'); } }
-            : h >= 23 || h < 5
-              ? { text: 'Awake late? Slow breathing can quiet a busy mind and a strong urge.', label: 'Breathe for 2 minutes', icon: <Wind className="h-5 w-5" />, run: onOpenCalm }
-              : h < 12
-                ? { text: 'Good start: a quick check-in helps you see how today might go.', label: 'Check in', icon: <Sun className="h-5 w-5" />, run: scrollToCheckin }
-                : nextCircle
-                  ? { text: `Next group circle: ${nextCircle.c.title}, ${nextCircle.t.label.toLowerCase()}.`, label: 'See circles', icon: <Users className="h-5 w-5" />, run: () => { onNavigate('community'); requestAction('circles'); } }
-                  : null;
-        if (!tip) return null;
-        return (
-          <div className="-mt-2 flex flex-col gap-3 rounded-2xl border border-line bg-surface/80 px-4 py-3.5 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-            <p className="m-0 flex items-start gap-2.5 text-[0.9375rem] text-ink-2">
-              <span className="mt-0.5 shrink-0 text-pri-text" aria-hidden="true">{tip.icon}</span>
-              <span>
-                <strong className="text-ink">Right now: </strong>
-                {tip.text}
-              </span>
-            </p>
-            <Button size="sm" variant="soft" className="shrink-0 self-start sm:self-auto" onClick={tip.run}>
-              {tip.label}
-            </Button>
-          </div>
-        );
-      })()}
-
-      {/* 2. The three ways 4Life helps */}
-      <section aria-labelledby="support-h" className="flex flex-col gap-4">
-        <h2 id="support-h" className="m-0 text-xl font-bold text-ink sm:text-[1.375rem]">
-          Your support
-        </h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card as="article" className="lift flex flex-col gap-3">
-            <div className="-mx-1 -mt-1 hidden h-28 rounded-xl bg-gradient-to-br md:block from-[#064e3b] to-[#022c22] p-1" aria-hidden="true">
-              <GrowIllustration />
-            </div>
-            <div className="flex items-center gap-3">
-              <IconBadge tone="pri">
-                <MessageCircle className="h-5 w-5" />
-              </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">AI CBT therapy</h3>
-            </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Ride out a craving step by step, or test a thought that keeps pulling you back. Any time, day or night.</p>
-            <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
-              {lastRecord ? (
-                <>
-                  Last thought record: <strong className="text-ink">{lastRecord.emotion || 'feeling'} {lastRecord.intensityBefore} → {lastRecord.intensityAfter}</strong> · {trapLabel(lastRecord.trap)}
-                </>
-              ) : (
-                'No thought records yet. Try one — it takes about five minutes.'
-              )}
-            </p>
-            <div className="mt-auto flex flex-wrap gap-2 pt-1">
-              <Button onClick={() => onNavigate('chat')} icon={<Waves className="h-5 w-5" />}>
-                Talk to {aiName}
-              </Button>
-            </div>
-          </Card>
-
-          <Card as="article" className="lift flex flex-col gap-3">
-            <div className="-mx-1 -mt-1 hidden h-28 rounded-xl bg-gradient-to-br md:block from-[#064e3b] to-[#022c22] p-1" aria-hidden="true">
-              <VillageIllustration />
-            </div>
-            <div className="flex items-center gap-3">
-              <IconBadge tone="info">
-                <Users className="h-5 w-5" />
-              </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">Global Village</h3>
-            </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Read and share stories anonymously with people who get it, and join a weekly group circle.</p>
-            {nextCircle && (
-              <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
-                {nextCircle.t.live ? 'Live now: ' : 'Next circle: '}
-                <strong className="text-ink">{nextCircle.c.title}</strong> · {nextCircle.t.live ? nextCircle.t.label.replace('Live now · ', '') : nextCircle.t.label}
-              </p>
-            )}
-            <div className="mt-auto flex flex-wrap gap-2 pt-1">
-              <Button variant="secondary" onClick={() => onNavigate('community')} icon={<ArrowRight className="h-5 w-5" />}>
-                Open the Village
-              </Button>
-            </div>
-          </Card>
-
-          <Card as="article" tone="danger" className="lift flex flex-col gap-3">
-            <div className="-mx-1 -mt-1 hidden h-28 rounded-xl bg-gradient-to-br md:block from-[#064e3b] to-[#022c22] p-1" aria-hidden="true">
-              <HelpIllustration />
-            </div>
-            <div className="flex items-center gap-3">
-              <IconBadge tone="danger">
-                <Siren className="h-5 w-5" />
-              </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">Instant EMS</h3>
-            </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Call 112 in one tap, text your location to your support person, and find the nearest hospital.</p>
-            <div className="mt-auto flex flex-wrap gap-2 pt-1">
-              <ButtonLink href="tel:112" variant="danger" icon={<Phone className="h-5 w-5" />}>
-                Call 112
-              </ButtonLink>
-              <Button variant="secondary" onClick={() => onNavigate('emergency_map')}>
-                Open EMS
-              </Button>
-            </div>
-          </Card>
-        </div>
-      </section>
-
-      {/* 3. Check-in */}
-      <Card as="section" raised id="checkin" aria-labelledby="checkin-h" className="flex scroll-mt-24 flex-col gap-6">
+      {/* 2. Check-in: the one primary action on Home */}
+      <Card as="section" raised id="checkin" aria-labelledby="checkin-h" className="flex scroll-mt-24 flex-col gap-5">
         <SectionHeader
           id="checkin-h"
           title="How are you right now?"
@@ -318,7 +211,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
           </label>
           <textarea
             id="checkin-note"
-            rows={3}
+            rows={2}
             value={note}
             onChange={e => setNote(e.target.value)}
             placeholder="For example: I feel lonely tonight, or: I worked hard so one drink won't hurt…"
@@ -370,22 +263,119 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
           ))}
 
         <div className="flex justify-end">
-          <Button ref={saveRef as any} size="lg" onClick={handleSaveCheckin}>
+          <Button ref={saveRef as any} size="lg" block className="sm:w-auto" onClick={handleSaveCheckin}>
             Save check-in
           </Button>
         </div>
       </Card>
 
-      {/* 4. Counselors */}
-      <section aria-labelledby="couns-h" className="flex flex-col gap-5">
-        <SectionHeader id="couns-h" title="Talk to a counselor" subtitle="Trained professionals in Ghana. Subsidised sessions from GHS 15." />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {counsellorsLoading && <RibbonLoader text="Loading counsellors…" />}
+      {/* 3. The three ways 4Life helps: one action per card */}
+      <section aria-labelledby="support-h" className="flex flex-col gap-4">
+        <SectionHeader id="support-h" title="Your support" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card as="article" className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <IconBadge tone="pri">
+                <MessageCircle className="h-5 w-5" />
+              </IconBadge>
+              <h3 className="m-0 text-lg font-bold text-ink">AI CBT therapy</h3>
+            </div>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Ride out a craving step by step, or test a thought that keeps pulling you back. Any time, day or night.</p>
+            <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
+              {lastRecord ? (
+                <>
+                  Last thought record: <strong className="text-ink">{lastRecord.emotion || 'feeling'} {lastRecord.intensityBefore} → {lastRecord.intensityAfter}</strong> · {trapLabel(lastRecord.trap)}
+                </>
+              ) : (
+                'No thought records yet. Try one — it takes about five minutes.'
+              )}
+            </p>
+            <div className="mt-auto pt-1">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  onNavigate('chat');
+                  requestAction('craving');
+                }}
+                // the three cards are narrow from md to xl: drop the icon so the label stays on one line
+                icon={<Waves className="h-5 w-5 md:max-xl:hidden" />}
+              >
+                Ride out a craving
+              </Button>
+            </div>
+          </Card>
+
+          <Card as="article" className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <IconBadge tone="info">
+                <Users className="h-5 w-5" />
+              </IconBadge>
+              <h3 className="m-0 text-lg font-bold text-ink">Global Village</h3>
+            </div>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Read and share stories anonymously with people who get it, and join a weekly group circle.</p>
+            {nextCircle && (
+              <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
+                {nextCircle.t.live ? 'Live now: ' : 'Next circle: '}
+                <strong className="text-ink">{nextCircle.c.title}</strong> · {nextCircle.t.live ? nextCircle.t.label.replace('Live now · ', '') : nextCircle.t.label}
+              </p>
+            )}
+            <div className="mt-auto pt-1">
+              <Button variant="secondary" onClick={() => onNavigate('community')} icon={<ArrowRight className="h-5 w-5 md:max-xl:hidden" />}>
+                Open the Village
+              </Button>
+            </div>
+          </Card>
+
+          <Card as="article" tone="danger" className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <IconBadge tone="danger">
+                <Siren className="h-5 w-5" />
+              </IconBadge>
+              <h3 className="m-0 text-lg font-bold text-ink">Instant EMS</h3>
+            </div>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Call 112 in one tap. Instant EMS in the menu can text your location and find the nearest hospital.</p>
+            <div className="mt-auto pt-1">
+              <ButtonLink href="tel:112" variant="danger" icon={<Phone className="h-5 w-5" />}>
+                Call 112
+              </ButtonLink>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* 4. Counsellors: a short list (2 cards, 3 from xl up) with a toggle for the rest */}
+      <section aria-labelledby="couns-h" className="flex flex-col gap-4">
+        <SectionHeader
+          id="couns-h"
+          title="Talk to a counsellor"
+          subtitle={`Trained professionals in Ghana.${lowestFee !== null ? ` Subsidised sessions from GHS ${lowestFee}.` : ''}`}
+          action={
+            counsellors.length > 2 && (
+              <Button
+                variant="link"
+                aria-expanded={showAllCounsellors}
+                aria-controls="counsellor-list"
+                // exactly 3 people all fit from xl up, so there is nothing more to see there
+                className={counsellors.length === 3 ? 'xl:hidden' : undefined}
+                onClick={() => setShowAllCounsellors(open => !open)}
+              >
+                {showAllCounsellors ? 'Show fewer' : `See all ${counsellors.length}`}
+              </Button>
+            )
+          }
+        />
+        <div id="counsellor-list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {counsellorsLoading && <RibbonLoader text="Loading counsellors…" className="col-span-full" />}
           {!counsellorsLoading && counsellors.length === 0 && (
-            <p className="m-0 text-[0.9375rem] text-ink-2 sm:col-span-2">No counsellors are available to book right now. In an emergency, press SOS or call 112.</p>
+            <p className="col-span-full m-0 text-[0.9375rem] text-ink-2">No counsellors are available to book right now. In an emergency, press SOS or call 112.</p>
           )}
-          {counsellors.map(c => (
-            <Card as="article" key={c.id} padded={false} className="flex flex-col gap-3.5 p-5">
+          {sortedCounsellors.map((c, i) => (
+            <Card
+              as="article"
+              key={c.id}
+              padded={false}
+              className={cx('flex-col gap-3.5 p-5', showAllCounsellors || i < 2 ? 'flex' : i === 2 ? 'hidden xl:flex' : 'hidden')}
+            >
               <div className="flex items-center gap-3">
                 <Avatar src={c.avatar} name={c.name} size={52} />
                 <div className="min-w-0">
@@ -410,7 +400,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
                   <span className="block text-lg font-extrabold text-ink">GHS {c.feeGHS}</span>
                   <span className="block text-sm text-ink-3">per session</span>
                 </p>
-                <Button variant={c.availableNow ? 'primary' : 'secondary'} onClick={() => onOpenCounselor(c)}>
+                <Button variant={c.availableNow ? 'soft' : 'secondary'} onClick={() => onOpenCounselor(c)}>
                   {c.availableNow ? 'Book' : 'Book later'}
                 </Button>
               </div>
