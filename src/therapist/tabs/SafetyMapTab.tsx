@@ -11,6 +11,9 @@ import type { TherapistNav } from '../TherapistApp';
 import { ago, displayName, distanceKm, fmtTime, focusLabel, fmtDayInline, roughDriveMins } from '../data';
 import { RiskBadge } from '../parts';
 import { SafetyMap } from '../SafetyMap';
+import { IncidentAck } from '../IncidentAck';
+import { isRemote } from '../../lib/supabase';
+import * as api from '../../lib/db/therapistApi';
 
 interface Props {
   therapist: TherapistProfile;
@@ -124,6 +127,12 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
     if (!sel) return;
     if (outcome === CLOSE_OUTCOMES[0]) store.updateClient(sel.id, { risk: 'moderate' });
     store.logEscalation(sel.id, `Alert closed: ${outcome}`, closeNote.trim() || undefined);
+    if (isRemote) {
+      api
+        .loadOpenIncident(sel.id)
+        .then(i => i && api.resolveIncident(i.id))
+        .catch(e => console.warn('Could not close the client’s alert', e));
+    }
     setClosing(false);
     setCloseNote('');
   };
@@ -298,18 +307,21 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                   </Notice>
                 )}
 
+                {/* The client's open alert: the client sees this acknowledgement */}
+                <IncidentAck clientId={sel.id} />
+
                 {/* Steps */}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <a
                     href="tel:112"
-                    onClick={() => store.logEscalation(sel.id, 'Called 112')}
+                    onClick={() => store.logEscalation(sel.id, 'Opened the phone to call 112')}
                     className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-danger px-4 text-base font-bold text-[#fff] no-underline hover:bg-danger-hover"
                   >
                     <Phone className="h-5 w-5" aria-hidden="true" /> Call 112
                   </a>
                   <a
                     href="tel:193"
-                    onClick={() => store.logEscalation(sel.id, 'Called the ambulance service (193)')}
+                    onClick={() => store.logEscalation(sel.id, 'Opened the phone to call the ambulance service (193)')}
                     className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-danger bg-danger-soft px-4 text-base font-bold text-danger-text no-underline hover:brightness-95"
                   >
                     <Ambulance className="h-5 w-5" aria-hidden="true" /> Ambulance 193
@@ -317,12 +329,12 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                   <Button size="lg" variant="secondary" icon={copied ? <Check className="h-5 w-5" /> : <ClipboardCopy className="h-5 w-5" />} onClick={copyDetails}>
                     {copied ? 'Copied' : 'Copy details for EMS'}
                   </Button>
-                  <Button size="lg" variant="secondary" icon={<Check className="h-5 w-5" />} onClick={() => store.logEscalation(sel.id, 'Emergency services contacted and on their way')}>
-                    EMS is on the way
+                  <Button size="lg" variant="secondary" icon={<Check className="h-5 w-5" />} onClick={() => store.logEscalation(sel.id, 'Counsellor reports emergency services said they are coming')}>
+                    EMS told me they’re coming
                   </Button>
                 </div>
                 <p className="m-0 text-sm text-ink-3">
-                  The copied details include the location and a map link. Give EMS the client’s full name and phone number from your own records.
+                  4Life does not contact emergency services for you: only your call does. The copied details include the location and a map link. Give EMS the client’s full name and phone number from your own records.
                 </p>
 
                 {services.length > 0 && (

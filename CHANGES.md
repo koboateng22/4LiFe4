@@ -1,3 +1,19 @@
+# 4Life — Instant EMS: true status, real records (2 November 2026)
+
+Details, limits and the deployment steps are in [EMERGENCY.md](EMERGENCY.md). **4Life still can't send an ambulance, and the app now says so.**
+
+- **Alerts are real records.** New tables `emergency_incidents`, `emergency_notifications` and `emergency_incident_events`, changed only through checked database functions. Retries, double presses and second phones can't create a second alert.
+- **The SOS screen says only what is known.** It used to say "Your counsellor has been told" before anything was saved, even if saving failed or no counsellor was linked. It now separates saved, not sure, not saved, opened, "you said you sent it" and "your counsellor saw it".
+- **Counsellors can acknowledge.** "I've seen this" on the Safety map is shown on the client's phone.
+- **The 5-second countdown is gone.** One press starts the alert, and "Pressed by mistake" cancels it.
+- **Calling 112 from the SOS screen no longer alerts anyone else by itself.** Alerting is its own button.
+- **No more guessed locations.** The middle of the person's region (labelled 5 km accurate) was sent to counsellors when the phone couldn't find them. Positions now keep their true time and accuracy, and a person can write a landmark.
+- **A counsellor's location request is answered only while the person's alert is open**, which is what Settings promised.
+- Refreshing, losing connection or an expired session no longer loses track of an alert. Call and message buttons work in every state.
+- Wording corrected: Settings no longer promises a daily check-in text that doesn't exist, hotlines name their source instead of saying "checked", "EMS is on the way" is recorded as the counsellor's report, and the location note mentions OpenStreetMap.
+- Sign-in page: "Call 112" and "Ambulance 193" are easier to see and tap.
+- New tests: `npm run test:emergency` and `npm run test:emergency:e2e`.
+
 # 4Life — sign-in fixes (30 October 2026)
 
 - Passwords longer than 20 characters work on the sign-in form. It used to cut them off, although sign-up allows 72.

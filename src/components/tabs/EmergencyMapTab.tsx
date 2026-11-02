@@ -9,6 +9,7 @@ import { SafetyPlanCard } from '../ems/SafetyPlanCard';
 import { InstallShortcut } from '../ems/InstallShortcut';
 import { FirstAidSection } from '../ems/FirstAidSection';
 import { keep, remember } from '../../lib/coping';
+import { isFreshFix } from '../../lib/incident';
 import { drivingRoute, findNearbyPlaces, mergePlaces, osmDirectionsHref, placeName, type OsmPlace, type Route } from '../../lib/osm';
 import {
   CHECKED_HOTLINES,
@@ -165,6 +166,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
   }, [fix?.lat, fix?.lng, selected?.c.id, online]);
   const mapCentres = useMemo(() => ranked.map(r => r.c), [ranked]);
   const onSelectCentre = useCallback((c: EmergencyCenter) => setSelectedId(c.id), []);
+  // An old position is never sent as if it were current: the time is in the message, and "Update my location" is offered
   const message = locationMessage(myName, fix, undefined, near);
 
   const copyMessage = async () => {
@@ -189,7 +191,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
   /* Thumb-zone actions on phones */
   const textMyPerson = async () => {
     if (!contact || texting) return;
-    let f = fix;
+    let f = isFreshFix(fix) ? fix : null;
     if (!f) {
       setTexting(true);
       try {
@@ -226,7 +228,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
           <h1 id="urgent-h" className="m-0 text-[1.625rem] font-extrabold leading-tight text-ink">
             In danger right now?
           </h1>
-          <p className="m-0 mt-1.5 text-[1.0625rem] leading-relaxed text-ink-2">Call for help first. Free from any phone, 24 hours a day.</p>
+          <p className="m-0 mt-1.5 text-[1.0625rem] leading-relaxed text-ink-2">Call for help first. 4Life isn’t connected to emergency services and can’t send an ambulance: only your call reaches them.</p>
         </div>
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
           <ButtonLink href="tel:112" variant="danger" size="lg" icon={<Phone className="h-5 w-5" />} className="col-span-2 text-[1.0625rem] lg:col-span-1">
@@ -271,11 +273,12 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
                 ) : (
                   <>Found, accurate to about {fix.accuracyM} m.</>
                 )}
+                {!isFreshFix(fix) && ' This was a while ago: update it before you send.'}
               </>
             )}
             {locState === 'denied' && 'Location is switched off for this app. You can still send a message — add a landmark so they can find you.'}
             {locState === 'unavailable' && 'Your phone couldn’t find your location just now. Try again outside, or describe a landmark.'}
-            {locState === 'idle' && 'Your location is only used when you press a button here.'}
+            {locState === 'idle' && 'If you allow it, your location is used on this screen to find the nearest help.'}
           </p>
         </div>
 
@@ -314,7 +317,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
             )}
           </Notice>
         )}
-        <p className="m-0 text-sm text-ink-3">This opens your phone’s own messaging app with the message ready. Nothing is sent until you press send there.</p>
+        <p className="m-0 text-sm text-ink-3">This opens your phone’s own messaging app with the message ready. Nothing is sent until you press send there, and 4Life can’t see if it arrived. To find places and routes, your location goes to OpenStreetMap’s services. It isn’t saved to your account.</p>
       </Card>
 
       {/* 3. Nearest help */}
@@ -592,7 +595,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
 
       {/* 6. Hotlines — only numbers that have been checked */}
       <section aria-labelledby="hot-h" className="flex flex-col gap-4">
-        <SectionHeader id="hot-h" title="Hotlines" subtitle="Tap a number to call. We only list numbers that have been checked." />
+        <SectionHeader id="hot-h" title="Hotlines" subtitle="Tap a number to call. Each one comes from a published list, shown with its date." />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {hotlines.map(h => (
             <a key={h.id} href={telHref(h.number)} className="flex flex-col gap-1 rounded-2xl border border-line bg-surface px-5 py-4 no-underline transition-colors hover:border-pri-text">
@@ -600,7 +603,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
               <span className="text-[0.9375rem] font-bold text-ink">{h.label}</span>
               <span className="text-sm text-ink-2">{h.description}</span>
               <span className="text-xs text-ink-3">
-                Checked {new Date(h.verifiedAt).toLocaleDateString([], { month: 'long', year: 'numeric' })}
+                From {h.source.split(',')[0]}, {new Date(h.verifiedAt).toLocaleDateString([], { month: 'long', year: 'numeric' })}
               </span>
             </a>
           ))}

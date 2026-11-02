@@ -221,7 +221,7 @@ export async function loadTherapistData(therapistId: string): Promise<TherapistD
     const plan = plans.find(x => x.client_id === l.client_id);
     const loc = sos.find(e => e.client_id === l.client_id);
     const lastLocation: ClientLocation | undefined = loc
-      ? { lat: loc.lat, lng: loc.lng, area: loc.area || 'Shared location', at: loc.created_at, accuracyM: loc.accuracy_m || 50, source: loc.source, approximate: loc.approximate }
+      ? { lat: loc.lat, lng: loc.lng, area: loc.area || 'Shared location', at: loc.located_at || loc.created_at, accuracyM: loc.accuracy_m || 50, source: loc.source, approximate: loc.approximate }
       : undefined;
     const log: EscalationEntry[] = (escalations.data || [])
       .filter((e: any) => e.client_id === l.client_id)
@@ -412,6 +412,29 @@ export async function requestLocation(clientId: string) {
   check(await db().from('location_requests').insert({ client_id: clientId }));
 }
 
+/** The client's open alert, if there is one (Row Level Security limits this to linked clients). */
+export async function loadOpenIncident(clientId: string): Promise<{ id: string; status: string; created_at: string; location_status: string } | null> {
+  const { data, error } = await db()
+    .from('emergency_incidents')
+    .select('id,status,created_at,location_status')
+    .eq('client_id', clientId)
+    .in('status', ['initiated', 'contact_notified', 'acknowledged'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** Tell the client "I've seen this". It's the only acknowledgement 4Life can show them. */
+export async function acknowledgeIncident(incidentId: string) {
+  check(await db().rpc('emergency_acknowledge', { p_incident: incidentId }));
+}
+
+export async function resolveIncident(incidentId: string) {
+  check(await db().rpc('emergency_close', { p_incident: incidentId, p_outcome: 'resolved' }));
+}
+
 /** Reload when anything in the caseload changes (new request, SOS, check-in…). */
 export function subscribeToCaseload(therapistId: string, onChange: () => void) {
   let t: ReturnType<typeof setTimeout> | undefined;
@@ -424,7 +447,7 @@ export function subscribeToCaseload(therapistId: string, onChange: () => void) {
     ch.on('postgres_changes', { event: '*', schema: 'public', table, filter: `therapist_id=eq.${therapistId}` }, bump)
   );
   // These have no therapist column; Row Level Security only delivers linked clients' rows
-  ['sos_events', 'checkins'].forEach(table => ch.on('postgres_changes', { event: '*', schema: 'public', table }, bump));
+  ['sos_events', 'checkins', 'emergency_incidents'].forEach(table => ch.on('postgres_changes', { event: '*', schema: 'public', table }, bump));
   ch.subscribe();
   return () => {
     clearTimeout(t);

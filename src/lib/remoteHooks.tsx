@@ -99,7 +99,7 @@ export function useProfileSync(profile: UserProfile, enabled: boolean) {
   return { error, clearError: () => setError(null) };
 }
 
-/** During a crisis, a counsellor can ask for an updated location; answer only if the person agreed. */
+/** While an alert is open, a counsellor can ask for an updated location; answer only if the person agreed. */
 export function useLocationRequests(profile: UserProfile, enabled: boolean) {
   const latest = useRef(profile);
   latest.current = profile;

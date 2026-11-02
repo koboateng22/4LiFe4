@@ -31,6 +31,7 @@ npm run build
 
 - [ ] `https://<your-app>/api/health` returns `ok: true`, with `gemini: true` (and `youtube: true` if you added the key).
 - [ ] On a phone: sign in, send one AI message, open the Village, open Instant EMS, open a first aid topic, tap Call 112 (cancel before it dials).
+- [ ] Instant EMS: migration applied, clean-ups scheduled, and the manual checks in EMERGENCY.md done.
 - [ ] Turn on airplane mode and reopen the app: Instant EMS and first aid still open.
 - [ ] Vercel → **Logs**: no new errors. Crashes in people's browsers appear there as `[app error] …`.
 

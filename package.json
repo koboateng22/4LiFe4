@@ -13,6 +13,8 @@
     "ai:check": "node scripts/check-gemini.mjs",
     "test:unit": "tsx scripts/unit-test.ts",
     "test:integration": "tsx scripts/integration-test.ts",
+    "test:emergency": "tsx scripts/emergency-unit-test.ts && tsx scripts/emergency-db-test.ts",
+    "test:emergency:e2e": "tsx scripts/emergency-e2e.ts",
     "sync:functions": "node scripts/sync-functions.mjs",
     "functions:check": "node scripts/sync-functions.mjs --check"
   },
@@ -31,11 +33,13 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/three": "^0.180.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "playwright-core": "^1.64.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

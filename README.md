@@ -4,7 +4,7 @@ Recovery support for young people in Ghana, built around three features:
 
 - **AI CBT therapy** — ride out a craving, test an unhelpful thought with a six-step thought record, and get help straight away if you're in danger.
 - **Global Village** — an anonymous community: posts, replies, support, weekly group circles, with reporting and blocking.
-- **Instant EMS** — call 112 in one tap, text your location to your support person, and find the nearest hospital, even offline.
+- **Instant EMS** — call 112 in one tap, alert your counsellor, text your location to your support person, and find the nearest hospital, even offline. It can't send an ambulance: see [EMERGENCY.md](EMERGENCY.md).
 
 Counsellors use the same app (choose "I'm a therapist" when signing in).
 

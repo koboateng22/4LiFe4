@@ -30,6 +30,8 @@ import type { TherapistProfile } from './therapist/types';
 import { isRemote } from './lib/supabase';
 import { signOut } from './lib/db/clientApi';
 import { useRemoteSession, useProfileSync, useLocationRequests, PasswordRecoveryModal } from './lib/remoteHooks';
+import { useIncident } from './lib/useIncident';
+import { ActiveAlertBanner } from './components/ems/EmergencyPanel';
 import { STARTER_PROFILE } from './components/auth/AuthPage';
 import { RibbonMark } from './components/RibbonMark';
 import { BackToTop } from './components/BackToTop';
@@ -249,6 +251,7 @@ export default function App() {
   });
   const profileSync = useProfileSync(profile, isAuthenticated);
   useLocationRequests(profile, isAuthenticated);
+  const incident = useIncident(profile, isAuthenticated);
 
   const handleOnboardingComplete = (_selectedTriage?: TriageCategory, directAction?: string) => {
     setIsOnboarded(true);
@@ -458,6 +461,7 @@ export default function App() {
             <GoogleTranslateBar profile={profile} setProfile={setProfile} onOpenLanguageTab={() => setIsLangModalOpen(true)} />
 
             <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-28 pt-6 outline-none sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
+              <ActiveAlertBanner view={incident.view} onOpen={() => setIsSosOpen(true)} />
               {/* each page fades in gently when you open it */}
               <div key={activeTab} className="page-in">
               <AppErrorBoundary inline>
@@ -534,6 +538,8 @@ export default function App() {
       />
       <SosModal
         profile={profile}
+        controller={incident.controller}
+        view={incident.view}
         isOpen={isSosOpen}
         onClose={() => setIsSosOpen(false)}
         onOpenCalm={() => {

@@ -5,6 +5,7 @@
 import { db } from '../supabase';
 import type { CounselorMatch, UserContact, UserProfile } from '../../types';
 import type { ClientLocation, SessionFormat } from '../../therapist/types';
+import { hasOpenAlert } from '../incident';
 import { focusLabel } from '../../therapist/data';
 
 /* ---------- Profile mapping ---------- */
@@ -261,15 +262,18 @@ export async function sendSos(location?: ClientLocation, source: 'sos' | 'reques
       accuracy_m: location ? Math.round(location.accuracyM) : null,
       area: location?.area ?? null,
       approximate: !!location?.approximate,
+      located_at: location?.at ?? null,
     });
   if (error) throw error;
 }
 
-/** When a counsellor asks for an updated location during an alert, answer with the phone's position. */
+/** When a counsellor asks for an updated location during an open alert, answer with the phone's position. */
 export function listenForLocationRequests(userId: string, getLocation: () => Promise<ClientLocation | undefined>) {
   const channel = db()
     .channel('location-requests-' + userId)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'location_requests', filter: `client_id=eq.${userId}` }, async () => {
+      // The promise in Settings is "only when you press SOS": no open alert, no answer
+      if (!(await hasOpenAlert())) return;
       const loc = await getLocation();
       if (loc) sendSos({ ...loc, source: 'requested' }, 'requested').catch(e => console.warn('Could not send location', e));
     })

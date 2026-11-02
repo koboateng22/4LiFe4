@@ -44,13 +44,13 @@ const ThemeButton: React.FC<{ isDark: boolean; onToggleTheme: () => void; classN
 /** Privacy and emergency numbers */
 const FinePrint: React.FC = () => (
   <>
-    <span translate="no">4Life</span> · Private and confidential · Emergency{' '}
-    <a href="tel:112" className="font-bold text-ink">
-      112
+    <span translate="no">4Life</span> · Private and confidential · In danger? No account needed:{' '}
+    <a href="tel:112" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline">
+      Call 112
     </a>{' '}
-    · Ambulance{' '}
-    <a href="tel:193" className="font-bold text-ink">
-      193
+    ·{' '}
+    <a href="tel:193" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline">
+      Ambulance 193
     </a>
   </>
 );

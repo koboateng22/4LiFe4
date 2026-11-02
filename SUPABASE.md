@@ -75,7 +75,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 | Emergencies | `sos_events`, `location_requests`, `escalations` (append-only) |
 | AI therapy | `thought_records` (client-owned; a linked therapist sees only records marked shared). AI chat conversations are **not** stored — they stay on the phone. |
 | Global Village | `village_posts`, `village_replies`, `village_support`, `village_reports`, `village_blocks`, `village_circles`, `circle_messages` |
-| Instant EMS | `emergency_centers`, `emergency_hotlines` (only numbers with `verified_at` are shown) |
+| Instant EMS | `emergency_centers`, `emergency_hotlines` (only numbers with `verified_at` are shown), `emergency_incidents`, `emergency_notifications`, `emergency_incident_events` (see EMERGENCY.md) |
 | Oversight | `audit_log`: who changed sensitive records and when. It never copies the content. |
 
 ### Who can see what

@@ -397,7 +397,7 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
               <SectionHeader
                 id="s-con"
                 title="Support people"
-                subtitle="They get your SOS alerts and a gentle daily check-in text."
+                subtitle="When you press SOS, the app gets a message ready for them. You press send, on your own phone."
                 action={
                   !showAddContact && (
                     <Button variant="secondary" onClick={() => setShowAddContact(true)} icon={<Plus className="h-5 w-5" />}>
@@ -617,7 +617,7 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
                 checked={!!profile.shareLocationInCrisis}
                 onChange={v => applyNow({ shareLocationInCrisis: v }, v ? 'Location sharing in a crisis is on' : 'Location sharing is off')}
                 label="Share my location with my counsellor if I press SOS"
-                description="Only when you press SOS, and only with a counsellor you have booked. It helps them send emergency help to the right place. You can turn this off at any time."
+                description="Only while an SOS alert you started is open, and only with a counsellor you have booked. It helps them tell emergency services where you are. You can turn this off at any time."
               />
               <div className="flex flex-col gap-3 border-t border-line pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">

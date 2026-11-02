@@ -103,9 +103,10 @@ export function getPosition(timeoutMs = 10000): Promise<Fix> {
   return new Promise((resolve, reject) => {
     if (!('geolocation' in navigator)) return reject(new Error('unsupported'));
     navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracyM: Math.round(p.coords.accuracy), at: new Date().toISOString() }),
+      // The time the phone got this position, which can be older than now
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracyM: Math.round(p.coords.accuracy), at: new Date(p.timestamp).toISOString() }),
       err => reject(err),
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60000 }
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30000 }
     );
   });
 }
@@ -124,8 +125,10 @@ export const mapsLink = (f: { lat: number; lng: number }) => `https://maps.googl
 
 /** The text sent to a support person. Short enough for one SMS with the link. */
 export function locationMessage(name: string, fix: Fix | null, extra?: string, near?: string | null) {
+  const when = fix ? new Date(fix.at) : null;
+  const time = when && !isNaN(+when) ? ` at ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
   const where = fix
-    ? `I'm ${near ? `near ${near}` : 'here'}: ${mapsLink(fix)} (accurate to about ${fix.accuracyM} m).`
+    ? `I'm ${near ? `near ${near}` : 'here'}: ${mapsLink(fix)} (accurate to about ${fix.accuracyM} m${time}).`
     : `I couldn't share my exact location.`;
   return `${name} here. I need help now. ${where}${extra ? ` ${extra}` : ''} Please call me, or call 112 if you can't reach me.`;
 }
