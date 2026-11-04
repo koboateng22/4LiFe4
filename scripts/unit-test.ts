@@ -10,6 +10,7 @@ import { guessTrap } from '../src/lib/cbt';
 import { ghanaDigits, isOpenNow, locationMessage } from '../src/lib/ems';
 import { parseOverpass, mergePlaces, kmBetween, osmDirectionsHref } from '../src/lib/osm';
 import { circleTiming } from '../src/lib/village';
+import { MAX_AGE, MIN_AGE, ageDigits, ageError, parseAge } from '../src/lib/age';
 import { FIRST_AID, firstAidTopic, youtubeSearchHref } from '../src/lib/firstAid';
 import { execFileSync } from 'node:child_process';
 import { cleanName, replyLanguage } from '../server/core/text';
@@ -196,5 +197,14 @@ ok(auth.friendlyError(new Error('Error sending confirmation email')).includes('c
 ok(auth.emailLinkError('#error=access_denied&error_code=otp_expired&error_description=x').includes('expired'), 'expired link is recognised');
 ok(auth.emailLinkError('', '?error=server_error').includes('did not work'), 'other link errors are recognised');
 ok(auth.emailLinkError('#access_token=abc', '?go=sos') === '', 'a good link is not an error');
+
+// ---------- Age ----------
+ok(parseAge('22') === 22 && parseAge(' 22 ') === 22 && parseAge(19) === 19, 'a normal age is read, from text or a number');
+ok(parseAge(MIN_AGE) === MIN_AGE && parseAge(MAX_AGE) === MAX_AGE, 'the age limits themselves are allowed');
+ok([MIN_AGE - 1, MAX_AGE + 1, '', null, undefined, 'abc', '19.5', '-20', '1e2'].every(v => parseAge(v) === null), 'anything else is no age at all');
+ok(ageError('') !== '' && ageError('abc') !== '' && ageError('121') !== '', 'a missing or impossible age gets a message');
+ok(ageError('12').includes('call 112'), 'someone too young is told where to find help, not just turned away');
+ok(ageError('13') === '' && ageError('120') === '', 'no message for a good age');
+ok(ageDigits('2a2.5-') === '225' && ageDigits('1234') === '123', 'age boxes keep digits only');
 
 console.log(`All ${n} unit checks passed`);

@@ -5,7 +5,7 @@
  * with YOUTUBE_API_KEY set on the server, a few safe-search videos play inside the app
  * (they load only when tapped, to save data); without it, a button opens the search on YouTube.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Ban, ChevronRight, Droplet, ExternalLink, Flame, Hand, HeartPulse, Phone, PersonStanding, Pill, PlayCircle, Wine, Zap } from 'lucide-react';
 import { FIRST_AID, youtubeSearchHref, type FirstAidTopic } from '../../lib/firstAid';
 import { apiFetch } from '../../lib/apiFetch';
@@ -72,7 +72,7 @@ const VideoCard: React.FC<{ video: Video }> = ({ video }) => {
   const [playing, setPlaying] = useState(false);
   if (playing) {
     return (
-      <li className="overflow-hidden rounded-xl border border-line bg-bg sm:col-span-2">
+      <li className="min-w-0 overflow-hidden rounded-xl border border-line bg-bg sm:col-span-2">
         <div className="relative aspect-video w-full bg-[#000]">
           <iframe
             className="absolute inset-0 h-full w-full"
@@ -83,12 +83,12 @@ const VideoCard: React.FC<{ video: Video }> = ({ video }) => {
             referrerPolicy="strict-origin-when-cross-origin"
           />
         </div>
-        <p className="m-0 px-3 py-2.5 text-sm font-bold leading-snug text-ink">{video.title}</p>
+        <p className="m-0 px-3 py-2.5 text-sm font-bold leading-snug text-ink [overflow-wrap:anywhere]">{video.title}</p>
       </li>
     );
   }
   return (
-    <li>
+    <li className="min-w-0">
       <button
         type="button"
         onClick={() => setPlaying(true)}
@@ -101,7 +101,7 @@ const VideoCard: React.FC<{ video: Video }> = ({ video }) => {
           </span>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 block text-sm font-bold leading-snug text-ink">{video.title}</span>
+          <span className="line-clamp-2 block text-sm font-bold leading-snug text-ink [overflow-wrap:anywhere]">{video.title}</span>
           {video.channel && <span className="mt-0.5 block truncate text-xs text-ink-3">{video.channel}</span>}
           <span className="sr-only">Play video</span>
         </span>
@@ -110,13 +110,29 @@ const VideoCard: React.FC<{ video: Video }> = ({ video }) => {
   );
 };
 
+/** Taps this soon after opening are the same finger tapping twice, not a choice. */
+const SECOND_TAP_MS = 400;
+
 const TopicSheet: React.FC<{ topic: FirstAidTopic | null; onClose: () => void }> = ({ topic, onClose }) => {
   const videos = useVideos(topic);
+  const openedAt = useRef(0);
+  useEffect(() => {
+    if (topic) openedAt.current = performance.now();
+  }, [topic]);
   if (!topic) return null;
+
+  // The sheet opens under the finger: a quick second tap on the topic could otherwise land on
+  // "Call 112" or start a video. Scrolling and reading are not held up.
+  const ignoreSecondTap = (e: React.MouseEvent) => {
+    if (performance.now() - openedAt.current < SECOND_TAP_MS) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   return (
     <Modal isOpen={!!topic} onClose={onClose} title={topic.title} subtitle={topic.when} size="md">
-      <div className="flex flex-col gap-5">
+      <div className="flex min-w-0 flex-col gap-5" onClickCapture={ignoreSecondTap}>
         {topic.callFirst && (
           <div className="flex flex-col gap-3 rounded-xl bg-danger-soft p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="m-0 text-[0.9375rem] font-bold leading-snug text-ink">Call for help first, then do these steps.</p>
@@ -158,13 +174,13 @@ const TopicSheet: React.FC<{ topic: FirstAidTopic | null; onClose: () => void }>
             Watch how it’s done
           </h3>
           {videos.status === 'loading' && (
-            <div role="status" aria-label="Loading videos" className="grid gap-2 sm:grid-cols-2">
+            <div role="status" aria-label="Loading videos" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="h-[4.5rem] animate-pulse rounded-xl bg-muted" />
               <div className="h-[4.5rem] animate-pulse rounded-xl bg-muted" />
             </div>
           )}
           {videos.status === 'ready' && (
-            <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+            <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2">
               {videos.videos.map(v => (
                 <VideoCard key={v.id} video={v} />
               ))}

@@ -5,6 +5,7 @@ import { WORLD_RELIGIONS, WORLD_LANGUAGES } from '../data/religionsData';
 import { changeLanguage } from '../utils/translateUtils';
 import { t } from '../utils/translations';
 import { inputClass } from './ui';
+import { ageDigits, ageError } from '../lib/age';
 import { 
   Shield, Lock, Bell, Heart, Moon, AlertTriangle, Sparkles, Check, 
   ArrowRight, ArrowLeft, Activity, User, Phone, MapPin, Wind, 
@@ -52,6 +53,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [newContactEmail, setNewContactEmail] = useState('');
   const [newContactRel, setNewContactRel] = useState('Family');
   const [codeSent, setCodeSent] = useState(false);
+  const [showAgeError, setShowAgeError] = useState(false);
+  // Age can be left blank here (it can be added later in Settings), but not left wrong
+  const ageProblem = String(profile.age ?? '').trim() ? ageError(profile.age) : '';
 
   const handleAddContact = () => {
     if (!newContactName.trim()) return;
@@ -156,18 +160,24 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-ink mb-1.5">
+                    <label htmlFor="onboard-age" className="block text-sm font-bold text-ink mb-1.5">
                       Age
                     </label>
                     <input
-                      type="number"
-                      min={10}
-                      max={99}
-                      value={profile.age}
-                      onChange={e => setProfile({ ...profile, age: e.target.value })}
+                      id="onboard-age"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={3}
+                      value={profile.age ?? ''}
+                      onChange={e => setProfile({ ...profile, age: ageDigits(e.target.value) })}
+                      aria-invalid={showAgeError && !!ageProblem}
                       placeholder="e.g. 22"
                       className={inputClass}
                     />
+                    {showAgeError && ageProblem && (
+                      <p role="alert" className="m-0 mt-1.5 text-sm text-danger-text">{ageProblem}</p>
+                    )}
                   </div>
                 </div>
 
@@ -355,7 +365,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         key={av.id}
                         type="button"
                         onClick={() => setProfile({ ...profile, userAvatar: av.emoji })}
-                        className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${
+                        className={`w-11 h-11 rounded-xl text-xl flex items-center justify-center transition-all ${
                           profile.userAvatar === av.emoji
                             ? 'bg-pri text-[#fff] scale-110 shadow-md ring-2 ring-pri'
                             : 'bg-muted border border-line hover:scale-105'
@@ -799,7 +809,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           {step < 4 ? (
             <button
               type="button"
-              onClick={() => setStep(step + 1)}
+              onClick={() => {
+                if (step === 1 && ageProblem) {
+                  setShowAgeError(true);
+                  return;
+                }
+                setStep(step + 1);
+              }}
               className="flex min-h-12 items-center gap-1.5 px-6 rounded-xl bg-pri hover:bg-pri-hover text-[#fff] font-bold text-base transition-colors ml-auto cursor-pointer"
             >
               <span>Continue</span>

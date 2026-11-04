@@ -125,7 +125,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           type="button"
           onClick={onToggleTheme}
-          className="glass-btn inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-ink hover:bg-muted sm:h-11 sm:w-11 cursor-pointer"
+          className="glass-btn inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-ink hover:bg-muted max-[359px]:hidden sm:h-11 sm:w-11 cursor-pointer"
           aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
           title={isDark ? 'Light theme' : 'Dark theme'}
         >

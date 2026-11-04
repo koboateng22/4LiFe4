@@ -168,12 +168,35 @@
   --text-base--line-height: 1.6rem;
 }
 
+/* Corner radius scale ------------------------------------------------------
+   One step per job, so each kind of thing has its own, consistent shape.
+   Every rounded-* class in the app uses these, so changing a step changes it everywhere.
+     rounded-sm   6px   keyboard keys, tiny tags
+     rounded-md   8px   chat bubble tails, small thumbnails
+     rounded-lg  12px   small buttons, icon tiles
+     rounded-xl  14px   buttons, inputs, list rows, toggles
+     rounded-2xl 20px   cards, panels and choice tiles
+     rounded-3xl 28px   dialogs, hero panels, the sign-in card
+     rounded-full       chips, filters, badges and avatars only
+   A shape inside another should be one step smaller, so the curves stay parallel. */
+@theme {
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2.25rem;
+}
+
 /* Base -------------------------------------------------------------------- */
 @layer base {
   html {
     background: var(--bg);
     color: var(--ink);
     -webkit-text-size-adjust: 100%;
+    /* No double-tap zoom, which blows up the page around a quick second tap. Pinch zoom still works. */
+    touch-action: manipulation;
   }
   body {
     margin: 0;
@@ -193,6 +216,9 @@
   ::placeholder {
     color: var(--ink-3);
     opacity: 1;
+  }
+  input:placeholder-shown {
+    text-overflow: ellipsis;
   }
   input[type='range'],
   input[type='checkbox'],
@@ -317,7 +343,7 @@ button:not(:disabled):active { transform: scale(0.98); }
 @keyframes joy-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 .joy-hop { animation: joy-hop 1.8s ease-in-out infinite; }
 .calm-icon:focus-visible circle:first-child { opacity: 0.25; }
-@keyframes photo-zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+@keyframes photo-zoom { from { transform: scale(1.04); } to { transform: scale(1); } }
 .photo-zoom { animation: photo-zoom 9s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
 @keyframes story-fill { from { width: 0%; } to { width: 100%; } }
 .story-fill { width: 0%; animation-name: story-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
@@ -340,8 +366,18 @@ button:not(:disabled):active { transform: scale(0.98); }
 .leaflet-container {
   font-family: var(--font-sans);
   z-index: 10;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-2xl);
 }
+/* Map buttons and pop-ups on the same scale as the rest of the app */
+.leaflet-container .leaflet-control-container .leaflet-bar {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.leaflet-container .leaflet-control-container .leaflet-bar a:first-child,
+.leaflet-container .leaflet-control-container .leaflet-bar a:last-child {
+  border-radius: 0;
+}
+.leaflet-container .leaflet-popup-content-wrapper { border-radius: var(--radius-xl); }
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -451,7 +487,20 @@ p, li { text-wrap: pretty; }
 /* Dialogs rise like a sheet on phones and settle in on larger screens (iOS, Linear) */
 @keyframes sheet-in { from { opacity: 0; translate: 0 32px; } to { opacity: 1; translate: none; } }
 @keyframes dialog-in { from { opacity: 0; scale: 0.97; } to { opacity: 1; scale: none; } }
-.modal-panel { animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.modal-panel {
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* dvh follows the phone's browser bars; 100vh is taller than the screen while they show, which
+     would push the top of the sheet (and its Close button) off-screen. 100% keeps it inside the overlay. */
+  max-height: min(92vh, 100%);
+  max-height: min(92dvh, 100%);
+}
+@media (max-width: 639px) {
+  .modal-overlay {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
 @media (min-width: 640px) { .modal-panel { animation-name: dialog-in; animation-duration: 0.2s; } }
 
 /* Clear glass for the side menu.

@@ -1,3 +1,21 @@
+# 4Life — softer, more consistent corners (4 November 2026)
+
+- **One corner scale for the whole app**, set once in `src/index.css`: 12 px small buttons and icon tiles, 14 px buttons and inputs, 20 px cards and panels, 28 px dialogs, hero panels and the sign-in card; pills only for chips, filters, badges and avatars. Each step is a little rounder than before, and the gap between steps is bigger, so different kinds of things no longer look the same.
+- Seven one-off corner values were replaced by steps on the scale. The logo and avatar tiles keep their shape.
+- Map zoom buttons and map pop-ups now match the rest of the app.
+- Card outlines are a little softer, so cards separate from the page by light and shadow more than by a drawn box. No colours changed.
+- Bars that run edge to edge (top bar, bottom tab bar, side menu, the EMS action bar) stay square on purpose.
+
+# 4Life — phones, sign-up age, first-aid popup, welcome tour photos (3 November 2026)
+
+- **Sign-up now asks for your age** (step 1, whole years, 13 to 120, with clear messages). It used to be hard-coded to 20 on this device and never saved with Supabase. Only the age is collected, never a date of birth. **Apply the new migration `20261103000008_signup_age.sql`**, or the age won't be saved when email confirmation is on. Onboarding and Settings use the same limits.
+- **First-aid popup:** a long video channel name stretched the content up to 760 px wide on a 320 px phone, and it reappeared at once on reopening because the videos are remembered. It now fits at every size. The popup can no longer grow past the visible screen, so Close stays reachable while the phone's browser bars show. A quick second tap on a topic no longer presses "Call 112" or starts a video that opened under the finger.
+- **All pop-ups:** a re-render behind a pop-up no longer pulls focus out of what you are doing, tapping outside closes on the click rather than the press, and notches and home bars are respected.
+- **Sign-in on phones:** the Student/Therapist and Sign In/Create Account buttons fit their text at 320 px, long placeholders were shortened, and small controls are bigger.
+- **Welcome tour photos:** the same three photos, now in landscape frames that match them, so people aren't cropped and phones get sharper pictures. Labels no longer cover faces, and the browser is told each file's true width. Chips no longer overlap or push the page sideways at 320 px.
+- Double-tap zoom is off across the app; pinch zoom still works. At under 360 px wide the theme button moves out of the top bar (it is in Settings) so page titles fit.
+- New tests: `npm run test:mobile` and `npm run test:signup-age`.
+
 # 4Life — Instant EMS: true status, real records (2 November 2026)
 
 Details, limits and the deployment steps are in [EMERGENCY.md](EMERGENCY.md). **4Life still can't send an ambulance, and the app now says so.**

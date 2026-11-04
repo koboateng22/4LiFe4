@@ -181,7 +181,7 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
         role="dialog"
         aria-modal="true"
         aria-label="Search or jump to"
-        className="palette-panel relative flex max-h-[min(560px,78vh)] w-full max-w-[620px] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
+        className="palette-panel relative flex max-h-[min(560px,78vh)] w-full max-w-[620px] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-pop"
       >
         <div className="flex items-center gap-3 border-b border-line px-4">
           <Search className="h-5 w-5 shrink-0 text-ink-3" aria-hidden="true" />

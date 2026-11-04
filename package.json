@@ -15,6 +15,8 @@
     "test:integration": "tsx scripts/integration-test.ts",
     "test:emergency": "tsx scripts/emergency-unit-test.ts && tsx scripts/emergency-db-test.ts",
     "test:emergency:e2e": "tsx scripts/emergency-e2e.ts",
+    "test:mobile": "tsx scripts/mobile-e2e.ts",
+    "test:signup-age": "tsx scripts/signup-age-test.ts",
     "sync:functions": "node scripts/sync-functions.mjs",
     "functions:check": "node scripts/sync-functions.mjs --check"
   },

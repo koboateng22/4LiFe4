@@ -6,6 +6,7 @@ import { changeLanguage } from '../../utils/translateUtils';
 import { friendlyError, isRemote } from '../../lib/supabase';
 import { exportMyData } from '../../lib/db/clientApi';
 import { useMovingBackground } from '../../lib/motion';
+import { MAX_AGE, MIN_AGE, ageDigits, ageError } from '../../lib/age';
 import { LanguageSwitcherModal } from '../modals/LanguageSwitcherModal';
 import { Card, SectionHeader, Button, ChoiceCard, Chip, Field, Notice, Badge, Avatar, IconButton, Switch, inputClass, cx } from '../ui';
 import {
@@ -117,6 +118,8 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
   const [localProfile, setLocalProfile] = useState<UserProfile>({ ...profile });
   const draft = (patch: Partial<UserProfile>) => setLocalProfile(prev => ({ ...prev, ...patch }));
 
+  // Age can be blank, but a wrong one is not saved (the database would quietly drop it)
+  const ageProblem = String(localProfile.age ?? '').trim() ? ageError(localProfile.age) : '';
   const isDirty = useMemo(() => DRAFT_KEYS.some(k => JSON.stringify(localProfile[k]) !== JSON.stringify(profile[k])), [localProfile, profile]);
 
   const flash = (msg: string) => {
@@ -132,6 +135,10 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
   };
 
   const handleSave = () => {
+    if (ageProblem) {
+      setSection('profile');
+      return;
+    }
     const patch: Partial<UserProfile> = {};
     DRAFT_KEYS.forEach(k => ((patch as any)[k] = localProfile[k]));
     setProfile(prev => ({ ...prev, ...patch }));
@@ -256,8 +263,9 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
                 <Field label="Nickname" htmlFor="f-nick" hint="How you appear in the Village.">
                   <input id="f-nick" type="text" value={localProfile.nickname || ''} onChange={e => draft({ nickname: e.target.value })} className={inputClass} />
                 </Field>
-                <Field label="Age" htmlFor="f-age">
-                  <input id="f-age" type="number" min={13} value={localProfile.age || ''} onChange={e => draft({ age: e.target.value })} className={inputClass} />
+                <Field label="Age" htmlFor="f-age" hint={ageProblem ? undefined : `In years, from ${MIN_AGE} to ${MAX_AGE}.`}>
+                  <input id="f-age" type="text" inputMode="numeric" autoComplete="off" maxLength={3} aria-invalid={!!ageProblem} value={localProfile.age || ''} onChange={e => draft({ age: ageDigits(e.target.value) })} className={inputClass} />
+                  {ageProblem && <p role="alert" className="m-0 text-sm text-danger-text">{ageProblem}</p>}
                 </Field>
                 <Field label="Gender" htmlFor="f-gender">
                   <select id="f-gender" value={localProfile.gender || 'Prefer not to say'} onChange={e => draft({ gender: e.target.value })} className={inputClass}>

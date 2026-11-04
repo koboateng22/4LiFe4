@@ -19,7 +19,7 @@ export type AuthRole = 'client' | 'therapist';
 /** The 4Life logo and name, centred at the top of the form */
 const Brand: React.FC = () => (
   <div className="flex items-center justify-center gap-3">
-    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pri text-[#fff] shadow-[0_8px_20px_-10px_rgba(4,120,87,0.7)]" aria-hidden="true">
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pri text-[#fff] shadow-[0_8px_20px_-10px_rgba(4,120,87,0.7)]" aria-hidden="true">
       <Leaf className="h-6 w-6" />
     </span>
     <span className="text-[1.625rem] font-extrabold leading-none tracking-tight text-ink" translate="no">
@@ -57,7 +57,7 @@ const FinePrint: React.FC = () => (
 
 /** The side panel on a computer: the illustrations (no words), the theme button and the fine print */
 const SidePanel: React.FC<{ isDark: boolean; onToggleTheme: () => void }> = ({ isDark, onToggleTheme }) => (
-  <aside aria-label="Illustrations" className="relative order-2 hidden min-w-0 flex-col bg-pri-soft/35 lg:m-3 lg:flex lg:rounded-[22px] lg:px-7 lg:pb-5 lg:pt-6">
+  <aside aria-label="Illustrations" className="relative order-2 hidden min-w-0 flex-col bg-pri-soft/35 lg:m-3 lg:flex lg:rounded-2xl lg:px-7 lg:pb-5 lg:pt-6">
     <ThemeButton isDark={isDark} onToggleTheme={onToggleTheme} className="absolute right-4 top-4 z-10" />
     <div className="flex min-h-0 flex-1 items-center justify-center py-4">
       <LoginArt className="w-full max-w-[32rem]" />
@@ -88,10 +88,10 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
     {/* Living background: a 3D helix that follows the pointer; drag or tap it */}
     <LivingBackground isDark={isDark} />
 
-    <div className="pointer-events-none relative mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-8 lg:h-[100dvh] lg:min-h-0 lg:py-3">
-      <main className="pointer-events-auto grid flex-1 grid-cols-1 overflow-hidden lg:min-h-0 rounded-[28px] border border-line bg-surface lg:bg-surface/80 lg:backdrop-blur-2xl shadow-[0_30px_80px_-30px_rgba(2,44,34,0.45)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
+    <div className="pointer-events-none relative mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-3 py-3 min-[360px]:px-4 min-[360px]:py-4 sm:px-6 sm:py-8 lg:h-[100dvh] lg:min-h-0 lg:py-3">
+      <main className="pointer-events-auto grid flex-1 grid-cols-1 overflow-hidden lg:min-h-0 rounded-3xl border border-line bg-surface lg:bg-surface/80 lg:backdrop-blur-2xl shadow-[0_30px_80px_-30px_rgba(2,44,34,0.45)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
         {/* ---------- Form side ---------- */}
-        <section className="auth-form order-1 flex min-w-0 flex-col gap-6 p-5 sm:p-10 lg:min-h-0 lg:overflow-y-auto lg:gap-4 lg:px-10 lg:py-5" aria-labelledby="auth-title">
+        <section className="auth-form order-1 flex min-w-0 flex-col gap-6 p-4 min-[360px]:p-5 sm:p-10 lg:min-h-0 lg:overflow-y-auto lg:gap-4 lg:px-10 lg:py-5" aria-labelledby="auth-title">
           {/* The logo, centred */}
           <div className="pb-1 pt-1 lg:pb-2">
             <Brand />
@@ -121,11 +121,11 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
                     aria-checked={on}
                     onClick={() => onRoleChange(o.id)}
                     className={cx(
-                      'flex min-h-14 items-center justify-center gap-2.5 rounded-xl px-3 text-left transition-all lg:min-h-12 cursor-pointer',
+                      'flex min-h-14 min-w-0 flex-wrap items-center justify-center gap-1.5 rounded-xl px-1.5 py-1 text-left transition-all lg:min-h-12 cursor-pointer min-[390px]:gap-2.5 min-[390px]:px-3',
                       on ? 'bg-surface text-ink shadow-card ring-1 ring-line' : 'text-ink-2 hover:text-ink'
                     )}
                   >
-                    <span className={cx('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', on ? 'bg-pri text-[#fff]' : 'bg-surface text-ink-3')}>{o.icon}</span>
+                    <span className={cx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg min-[390px]:h-9 min-[390px]:w-9', on ? 'bg-pri text-[#fff]' : 'bg-surface text-ink-3')}>{o.icon}</span>
                     <span className="min-w-0">
                       <span className="block text-[0.9375rem] font-bold leading-tight">{o.label}</span>
                       <span className="hidden text-xs text-ink-3 sm:block">{o.sub}</span>
@@ -152,7 +152,7 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
       </main>
 
       <footer className="flex flex-col items-center gap-1 text-center text-sm text-ink-3 lg:hidden">
-        <span className="pointer-events-auto rounded-full bg-bg/70 px-3 py-1 backdrop-blur-sm">
+        <span className="pointer-events-auto rounded-2xl bg-bg/70 px-3 py-1 backdrop-blur-sm">
           <FinePrint />
         </span>
       </footer>

@@ -15,6 +15,7 @@ import { ResendConfirmation, needsNewLink } from './ResendConfirmation';
 import { db, friendlyError, isRemote } from '../../lib/supabase';
 import * as clientApi from '../../lib/db/clientApi';
 import { loadTherapistProfile } from '../../lib/db/therapistApi';
+import { MAX_AGE, MIN_AGE, ageDigits, ageError, parseAge } from '../../lib/age';
 
 /** Neutral starting values for a new or freshly loaded account. */
 export const STARTER_PROFILE: UserProfile = {
@@ -226,6 +227,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Signup Form States
   const [signupName, setSignupName] = useState('');
   const [signupNickname, setSignupNickname] = useState('');
+  const [signupAge, setSignupAge] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPin, setSignupPin] = useState('');
   const [signupConfirmPin, setSignupConfirmPin] = useState('');
@@ -405,7 +407,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const signupStepError = (step: 1 | 2 | 3 | 4): string => {
     if (step === 1) {
       if (!signupName.trim()) return 'Please enter your name, or a name you would like us to call you.';
-      return '';
+      return ageError(signupAge);
     }
     if (step === 2) {
       const emailClean = signupEmail.trim().toLowerCase();
@@ -460,6 +462,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     const emailClean = signupEmail.trim().toLowerCase();
     const pinClean = signupPin.trim();
     const existingAccounts = getSavedAccounts();
+    const age = parseAge(signupAge)!; // checked on step 1 above
 
     const newId = 'usr_' + Date.now();
     const finalNickname = signupNickname.trim() || signupName.trim().split(' ')[0] + '_Warrior';
@@ -471,7 +474,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       email: emailClean,
       pin: pinClean,
       pinCode: pinClean,
-      age: 20,
+      age,
       region: 'Greater Accra',
       belief: signupBelief,
       religionType: signupReligionType,
@@ -522,6 +525,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         const { userId, needsConfirmation } = await clientApi.signUpClient(emailClean, pinClean, {
           name: signupName.trim(),
           nickname: finalNickname,
+          age,
           currentTriage: signupTriage,
           belief: signupBelief,
           religionType: signupReligionType,
@@ -637,14 +641,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 setAuthMode('login');
                 setLoginError('');
               }}
-              className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              aria-pressed={authMode === 'login'}
+              className={`flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-center text-xs font-bold leading-tight transition-all min-[360px]:text-sm sm:gap-2 ${
                 authMode === 'login'
                   ? 'bg-pri  text-[#fff] shadow-xs'
                   : 'text-ink-2  hover:text-ink '
               }`}
             >
-              <KeyRound className="w-4 h-4" />
-              <span>Sign In</span>
+              <KeyRound className="hidden h-4 w-4 shrink-0 min-[390px]:block" aria-hidden="true" />
+              <span className="min-w-0">Sign In</span>
             </button>
             <button
               type="button"
@@ -652,14 +657,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 setAuthMode('signup');
                 setSignupError('');
               }}
-              className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              aria-pressed={authMode === 'signup'}
+              className={`flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-center text-xs font-bold leading-tight transition-all min-[360px]:text-sm sm:gap-2 ${
                 authMode === 'signup'
                   ? 'bg-pri  text-[#fff] shadow-xs'
                   : 'text-ink-2  hover:text-ink '
               }`}
             >
-              <User className="w-4 h-4" />
-              <span>Create Account</span>
+              <User className="hidden h-4 w-4 shrink-0 min-[390px]:block" aria-hidden="true" />
+              <span className="min-w-0">Create Account</span>
             </button>
           </div>
 
@@ -687,7 +693,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     autoComplete="username"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org or SoberWarrior_GH'}
+                    placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org'}
                     className={cx(inputClass, 'pl-11')}
                   />
                 </div>
@@ -695,7 +701,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               {/* Password / 4-Digit PIN */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3">
                   <label className="block text-sm font-bold text-ink">
                     {isRemote ? 'Password' : 'PIN or password'}
                   </label>
@@ -718,7 +724,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={loginPin}
                     onChange={(e) => setLoginPin(e.target.value)}
                     autoComplete="current-password"
-                    placeholder={isRemote ? 'Your password' : 'Enter your 4-digit PIN (Demo: 1234)'}
+                    placeholder={isRemote ? 'Your password' : 'Your PIN (demo: 1234)'}
                     maxLength={isRemote ? 72 : 20}
                     className={cx(inputClass, 'pl-11 pr-11')}
                   />
@@ -736,7 +742,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
               {/* Remember Me */}
               <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 text-xs text-ink-2 cursor-pointer">
+                <label className="flex min-h-11 items-center gap-2 text-sm text-ink-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={rememberMe}
@@ -792,7 +798,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 <button
                   type="button"
                   onClick={handleGuestLogin}
-                  className="text-xs font-semibold text-ink-3 hover:text-pri-text underline cursor-pointer"
+                  className="min-h-11 px-1 py-2 text-sm font-semibold leading-snug text-ink-3 hover:text-pri-text underline cursor-pointer"
                 >
                   Or continue as an anonymous guest (no account needed)
                 </button>
@@ -914,6 +920,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         placeholder="e.g. Asante_Warrior"
                         className={inputClass}
                       />
+                    </Field>
+                    <Field label="Your age" htmlFor="su-age" hint={`In years. It helps us suit your support to you. You need to be ${MIN_AGE} or older to use 4Life.`}>
+                      <input
+                        id="su-age"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={3}
+                        value={signupAge}
+                        onChange={e => setSignupAge(ageDigits(e.target.value))}
+                        aria-invalid={!!signupError && !!ageError(signupAge)}
+                        aria-describedby="su-age-limits"
+                        placeholder="e.g. 22"
+                        className={cx(inputClass, 'sm:max-w-40')}
+                      />
+                      <span id="su-age-limits" className="sr-only">
+                        A whole number from {MIN_AGE} to {MAX_AGE}.
+                      </span>
                     </Field>
                   </div>
                 )}
@@ -1066,12 +1090,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 )}
 
                 {/* Navigation */}
-                <div className="flex items-center gap-3 border-t border-line pt-5">
+                <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
                   {signupStep > 1 && (
                     <button
                       type="button"
                       onClick={() => goToSignupStep((signupStep - 1) as 1 | 2 | 3 | 4)}
-                      className="flex min-h-12 items-center gap-2 rounded-xl px-4 text-[0.9375rem] font-bold text-ink-2 hover:bg-muted cursor-pointer"
+                      className="flex min-h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-[0.9375rem] font-bold text-ink-2 hover:bg-muted cursor-pointer sm:px-4"
                     >
                       <ArrowLeft className="h-5 w-5" aria-hidden="true" />
                       Back
@@ -1080,7 +1104,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <button
                     type="submit"
                     disabled={authBusy}
-                    className="ml-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-pri px-6 text-[0.9375rem] font-bold text-[#fff] hover:bg-pri-hover disabled:opacity-60 cursor-pointer"
+                    className="ml-auto flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-pri px-4 py-2 text-center text-[0.9375rem] font-bold leading-tight text-[#fff] hover:bg-pri-hover disabled:opacity-60 cursor-pointer sm:flex-none sm:px-6"
                   >
                     {signupStep < 4 ? (
                       <>
@@ -1106,7 +1130,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       {/* Forgot PIN Recovery Modal */}
       {forgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.6)] backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn">
-          <div className="w-full max-w-md max-h-[85vh] my-auto overflow-y-auto bg-surface rounded-3xl p-6 sm:p-8 shadow-2xl border border-line space-y-4">
+          <div role="dialog" aria-modal="true" aria-label={isRemote ? 'Reset your password' : 'PIN Recovery'} className="my-auto max-h-[85vh] max-h-[85dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-3xl border border-line bg-surface p-5 shadow-2xl sm:p-8">
             
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
@@ -1119,8 +1143,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               </div>
               <button
+                type="button"
+                aria-label="Close"
                 onClick={() => setForgotModalOpen(false)}
-                className="text-ink-3 hover:text-ink-2 text-lg font-bold p-1"
+                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-lg font-bold text-ink-3 hover:bg-muted hover:text-ink-2"
               >
                 ✕
               </button>
@@ -1146,17 +1172,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-line">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-line">
                 <button
                   type="button"
                   onClick={() => setForgotModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-ink-2 hover:bg-muted"
+                  className="min-h-11 cursor-pointer rounded-xl px-4 text-sm font-bold text-ink-2 hover:bg-muted"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-pri hover:bg-pri-hover text-[#fff] text-xs font-bold shadow-xs"
+                  className="min-h-11 cursor-pointer rounded-xl bg-pri px-4 text-sm font-bold text-[#fff] shadow-xs hover:bg-pri-hover"
                 >
                   {isRemote ? 'Send the link' : 'Find my PIN'}
                 </button>

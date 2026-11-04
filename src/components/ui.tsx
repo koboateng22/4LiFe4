@@ -16,7 +16,7 @@ export const cx = (...parts: Array<string | false | null | undefined>) => parts.
 type CardTone = 'default' | 'soft' | 'danger' | 'warn' | 'night' | 'plain';
 
 const CARD_TONES: Record<CardTone, string> = {
-  default: 'bg-surface border border-line shadow-card',
+  default: 'bg-surface border border-line/70 shadow-card',
   soft: 'bg-pri-soft',
   danger: 'bg-danger-soft',
   warn: 'bg-warn-soft',
@@ -351,7 +351,7 @@ export const IconBadge: React.FC<{ tone?: Tone; size?: 'sm' | 'md' | 'lg'; class
   <span
     className={cx(
       'inline-flex shrink-0 items-center justify-center',
-      size === 'sm' ? 'h-8 w-8 rounded-lg' : size === 'md' ? 'h-10 w-10 rounded-xl' : 'h-12 w-12 rounded-2xl',
+      size === 'sm' ? 'h-8 w-8 rounded-lg' : size === 'md' ? 'h-10 w-10 rounded-lg' : 'h-12 w-12 rounded-xl',
       TONE_SOFT[tone],
       className
     )}
@@ -452,29 +452,39 @@ export const Modal: React.FC<{
 }> = ({ isOpen, onClose, title, subtitle, size = 'md', footer, hideTitle, children }) => {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const pressedBackdrop = useRef(false);
+  // Most callers pass a new onClose on every render. Reading it from a ref means a parent
+  // re-render doesn't release the page lock or pull focus back to the panel.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeRef.current();
     };
     document.addEventListener('keydown', onKey);
     const unlock = lockPage();
-    panelRef.current?.focus();
+    panelRef.current?.focus({ preventScroll: true });
     return () => {
       document.removeEventListener('keydown', onKey);
       unlock();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   // Rendered at the end of <body> so it always sits above the page and the mobile bottom bar
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-[rgba(2,20,14,0.5)] p-0 backdrop-blur-sm sm:items-center sm:p-6 animate-fadeIn"
-      onMouseDown={e => {
-        if (e.target === e.currentTarget) onClose();
+      className="modal-overlay fixed inset-0 z-[70] flex items-end justify-center bg-[rgba(2,20,14,0.5)] p-0 backdrop-blur-sm sm:items-center sm:p-6 animate-fadeIn"
+      onPointerDown={e => {
+        pressedBackdrop.current = e.target === e.currentTarget;
+      }}
+      // Closes on the click, not the press: closing on the press removes the backdrop mid-tap,
+      // and the rest of the tap lands on whatever is underneath it
+      onClick={e => {
+        if (e.target === e.currentTarget && pressedBackdrop.current) onClose();
       }}
     >
       <div
@@ -484,13 +494,13 @@ export const Modal: React.FC<{
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cx(
-          'modal-panel relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-line bg-surface text-ink shadow-pop outline-none sm:rounded-3xl',
+          'modal-panel relative flex w-full min-w-0 flex-col overflow-hidden rounded-t-3xl border border-line bg-surface text-ink shadow-pop outline-none sm:rounded-3xl',
           size === 'sm' ? 'sm:max-w-md' : size === 'md' ? 'sm:max-w-lg' : 'sm:max-w-3xl'
         )}
       >
         {/* grab handle on phones, like an iOS sheet */}
         <span className="mx-auto mt-2.5 block h-1.5 w-10 rounded-full bg-line sm:hidden" aria-hidden="true" />
-        <div className={cx('flex items-start justify-between gap-4 px-6 pt-5 sm:pt-6', hideTitle ? 'pb-0' : 'pb-4')}>
+        <div className={cx('flex shrink-0 items-start justify-between gap-4 px-6 pt-5 sm:pt-6', hideTitle ? 'pb-0' : 'pb-4')}>
           <div className={cx('min-w-0', hideTitle && 'sr-only')}>
             <h2 id={titleId} className="m-0 text-xl font-bold leading-snug text-ink">
               {title}
@@ -501,7 +511,7 @@ export const Modal: React.FC<{
             <X className="h-5 w-5" />
           </IconButton>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 pb-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</div>
         {footer && (
           <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>
         )}

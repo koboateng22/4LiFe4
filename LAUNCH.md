@@ -5,7 +5,7 @@ Work through this before you share the link with real users.
 ## 1. Decide before launch
 
 - [ ] **Gemini billing.** Google's terms say not to send sensitive or personal information to the free (unpaid) Gemini API, and that free-tier prompts may be read by human reviewers and used to improve Google's products. Recovery chats are sensitive. Turn on billing for the Google Cloud project that owns `GEMINI_API_KEY` (paid tier: prompts aren't used to improve products). Source: https://ai.google.dev/gemini-api/terms
-- [ ] **Age.** The same terms say API users must be 18+ and apps must not be aimed at, or likely to be used by, people under 18. Decide how 4Life handles this (for example an "I am 18 or older" step at sign-up) before inviting students.
+- [ ] **Age.** The same terms say API users must be 18+ and apps must not be aimed at, or likely to be used by, people under 18. Sign-up now asks for an age and accepts 13 and over, which matches the limit already in the database, so this is still open: people aged 13 to 17 can reach the AI. Decide how 4Life handles this before inviting students. If the answer is 18 and over, change `MIN_AGE` in `src/lib/age.ts`, and the limits in the database check and the sign-up trigger.
 - [ ] **Require sign-in.** Set `REQUIRE_SIGN_IN=true` in Vercel once everyone signs in through Supabase. Until then, anyone who finds the URL can call the AI routes.
 
 ## 2. Vercel settings

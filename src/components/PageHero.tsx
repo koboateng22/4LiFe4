@@ -19,7 +19,7 @@ export const PageHero: React.FC<{
   <section
     aria-labelledby={id}
     className={cx(
-      'relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[#064e3b] via-[#053d2e] to-[#022c22] p-5 text-[#fff] shadow-[0_24px_60px_-30px_rgba(2,44,34,0.6)] sm:p-8',
+      'relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#064e3b] via-[#053d2e] to-[#022c22] p-5 text-[#fff] shadow-[0_24px_60px_-30px_rgba(2,44,34,0.6)] sm:p-8',
       className
     )}
   >

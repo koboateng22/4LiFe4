@@ -60,28 +60,34 @@ export const clearWelcomePending = () => {
 const Chip: React.FC<{ icon: LucideIcon; label: string; className?: string; delay?: number; tilt?: number }> = ({ icon: Icon, label, className, delay = 0, tilt = 0 }) => (
   <span
     className={cx(
-      'welcome-float absolute inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-[rgba(255,255,255,0.22)] bg-[rgba(6,78,59,0.72)] py-2 pl-2 pr-3.5 text-sm font-bold text-[#ecfdf5] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)] backdrop-blur-md',
+      'welcome-float absolute inline-flex max-w-full items-center gap-2 rounded-2xl border border-[rgba(255,255,255,0.22)] bg-[rgba(6,78,59,0.72)] py-2 pl-2 pr-3.5 text-xs font-bold leading-tight text-[#ecfdf5] min-[360px]:text-sm shadow-[0_12px_30px_-10px_rgba(0,0,0,0.6)] backdrop-blur-md',
       className
     )}
     style={{ animationDelay: `${delay}s`, ['--r' as string]: `${tilt}deg` }}
   >
-    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#34d399] text-[#022c22]">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#34d399] text-[#022c22]">
       <Icon className="h-4 w-4" aria-hidden="true" />
     </span>
     {label}
   </span>
 );
 
-const Photo: React.FC<{ src: string; srcSm: string; pos: string; icon: LucideIcon; chips: Array<[LucideIcon, string]> }> = ({ src, srcSm, pos, icon: Icon, chips }) => (
-  <div className="relative mx-auto aspect-[4/5] w-[min(19rem,32dvh,100%)] sm:w-[min(20rem,30dvh)] lg:w-[min(25rem,50dvh)]">
-    <div className="absolute inset-0 overflow-hidden rounded-[2rem] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.65)] ring-1 ring-[rgba(255,255,255,0.15)]">
-      <img src={src} srcSet={`${srcSm} 640w, ${src} 1100w`} sizes="(min-width: 640px) 336px, 80vw" alt="" className="photo-zoom h-full w-full object-cover" style={{ objectPosition: pos }} draggable={false} />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(2,44,34,0.55))]" />
+/**
+ * The photos are landscape (about 4:3 to 3:2), so the frame is too: `cover` trims only a little from
+ * the sides and the people stay whole. `width` is the file's real width, which srcSet has to state.
+ * The frame stops growing before the smallest photo would be stretched past its real pixels on a
+ * normal screen. The chip and icon sit on the frame's edges, away from faces.
+ */
+const Photo: React.FC<{ src: string; srcSm: string; width: number; pos: string; icon: LucideIcon; chips: Array<[LucideIcon, string]> }> = ({ src, srcSm, width, pos, icon: Icon, chips }) => (
+  <div className="relative mx-auto aspect-[4/3] w-[min(22rem,44dvh,100%)] lg:w-[min(30rem,56dvh)]">
+    <div className="absolute inset-0 overflow-hidden rounded-3xl shadow-[0_30px_60px_-20px_rgba(0,0,0,0.65)] ring-1 ring-[rgba(255,255,255,0.15)]">
+      <img src={src} srcSet={`${srcSm} 640w, ${src} ${width}w`} sizes="(min-width: 1024px) 34rem, (min-width: 640px) 26rem, 90vw" alt="" className="photo-zoom h-full w-full object-cover" style={{ objectPosition: pos }} draggable={false} />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_72%,rgba(2,44,34,0.32))]" />
     </div>
-    <span className="welcome-float absolute -right-3 -top-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#fbbf24] text-[#022c22] shadow-xl" style={{ ['--r' as string]: '8deg' }}>
-      <Icon className="h-8 w-8" aria-hidden="true" />
+    <span className="welcome-float absolute -right-2 -top-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#fbbf24] text-[#022c22] shadow-xl lg:-right-3 lg:-top-4 lg:h-16 lg:w-16 lg:rounded-2xl" style={{ ['--r' as string]: '8deg' }}>
+      <Icon className="h-6 w-6 lg:h-8 lg:w-8" aria-hidden="true" />
     </span>
-    {chips[0] && <Chip icon={chips[0][0]} label={chips[0][1]} className="-left-4 top-[38%]" delay={0.6} tilt={-3} />}
+    {chips[0] && <Chip icon={chips[0][0]} label={chips[0][1]} className="-bottom-3 left-3" delay={0.6} tilt={-2} />}
   </div>
 );
 
@@ -114,20 +120,20 @@ const HelpVisual = () => (
       </span>
     </div>
     <Chip icon={Phone} label="Call 112" className="left-0 top-[4%]" delay={0} tilt={-3} />
-    <Chip icon={WifiOff} label="Works offline" className="right-0 top-[16%]" delay={0.7} tilt={3} />
+    <Chip icon={WifiOff} label="Works offline" className="right-0 top-[22%]" delay={0.7} tilt={3} />
     <Chip icon={MapPin} label="Share location" className="bottom-[2%] left-[6%]" delay={1.4} tilt={-2} />
   </div>
 );
 
 const PrivacyVisual = () => (
   <div className="relative mx-auto aspect-square w-[min(19rem,38dvh,100%)] sm:w-[min(20rem,36dvh)] lg:w-[min(30rem,58dvh)]">
-    <div className="absolute inset-[18%] rounded-[2.5rem] bg-[radial-gradient(circle_at_50%_40%,rgba(52,211,153,0.35),rgba(6,78,59,0.2)_70%)] ring-1 ring-[rgba(255,255,255,0.12)]" />
-    <span className="absolute left-1/2 top-1/2 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[2rem] bg-[#ecfdf5] text-[#047857] shadow-2xl">
-      <Lock className="h-14 w-14" aria-hidden="true" />
+    <div className="absolute inset-[18%] rounded-4xl bg-[radial-gradient(circle_at_50%_40%,rgba(52,211,153,0.35),rgba(6,78,59,0.2)_70%)] ring-1 ring-[rgba(255,255,255,0.12)]" />
+    <span className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-[#ecfdf5] text-[#047857] shadow-2xl min-[360px]:h-28 min-[360px]:w-28 min-[360px]:rounded-3xl">
+      <Lock className="h-10 w-10 min-[360px]:h-14 min-[360px]:w-14" aria-hidden="true" />
     </span>
     <Chip icon={Smartphone} label="Chats saved only on your phone" className="left-0 top-[6%]" delay={0} tilt={-2} />
-    <Chip icon={ShieldCheck} label="Shared only if you say so" className="right-0 top-[66%]" delay={0.8} tilt={2} />
-    <Chip icon={Bot} label="Always says it’s an AI" className="bottom-[2%] left-[4%]" delay={1.6} tilt={-2} />
+    <Chip icon={ShieldCheck} label="Shared only if you say so" className="right-0 top-[60%]" delay={0.8} tilt={2} />
+    <Chip icon={Bot} label="Always says it’s an AI" className="bottom-0 left-[4%]" delay={1.6} tilt={-2} />
   </div>
 );
 
@@ -155,7 +161,7 @@ const SLIDES: Slide[] = [
     eyebrow: 'AI CBT therapy',
     title: () => 'Talk it through, any hour',
     text: 'When a craving or a heavy thought hits, your AI coach uses CBT to help you ride it out, day or night.',
-    visual: <Photo src={outdoors} srcSm={outdoorsSm} pos="42% 28%" icon={MessageCircleHeart} chips={[[Wind, 'Ride the wave']]} />,
+    visual: <Photo src={outdoors} srcSm={outdoorsSm} width={732} pos="50% 50%" icon={MessageCircleHeart} chips={[[Wind, 'Ride the wave']]} />,
     glow: 'rgba(52,211,153,0.4)',
   },
   {
@@ -163,7 +169,7 @@ const SLIDES: Slide[] = [
     eyebrow: 'Global Village',
     title: () => 'You are not alone',
     text: 'Share your story without your name, cheer others on, and join a weekly circle with people who understand.',
-    visual: <Photo src={kitchen} srcSm={kitchenSm} pos="50% 30%" icon={Users} chips={[[Heart, 'Anonymous stories']]} />,
+    visual: <Photo src={kitchen} srcSm={kitchenSm} width={1100} pos="50% 50%" icon={Users} chips={[[Heart, 'Anonymous stories']]} />,
     glow: 'rgba(251,191,36,0.35)',
   },
   {
@@ -187,7 +193,7 @@ const SLIDES: Slide[] = [
     eyebrow: 'You’re all set',
     title: () => 'Enjoy the good days again',
     text: 'Start with a quick check-in on your home screen. Small steps add up, and we’ll be here for every one.',
-    visual: <Photo src={together} srcSm={togetherSm} pos="52% 30%" icon={Sprout} chips={[[Sparkles, 'Daily check-in']]} />,
+    visual: <Photo src={together} srcSm={togetherSm} width={990} pos="72% 50%" icon={Sprout} chips={[[Sparkles, 'Daily check-in']]} />,
     glow: 'rgba(16,185,129,0.45)',
   },
 ];
@@ -237,7 +243,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
       role="dialog"
       aria-modal="true"
       aria-labelledby="welcome-title"
-      className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-[#021f18] text-[#fff]"
+      className="fixed inset-0 z-[80] overflow-y-auto overflow-x-hidden overscroll-contain bg-[#021f18] text-[#fff]"
       onPointerDown={e => {
         if (e.target instanceof Element && e.target.closest('button, a, [role="menu"]')) return;
         startX.current = e.clientX;
@@ -269,7 +275,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
                 setDir(i > index ? 1 : -1);
                 setIndex(i);
               }}
-              className="flex h-6 flex-1 items-center cursor-pointer"
+              className="-my-1 flex h-8 flex-1 items-center cursor-pointer"
             >
               <span className={cx('block h-1 w-full rounded-full transition-colors duration-500', i <= index ? 'bg-[#34d399]' : 'bg-[rgba(255,255,255,0.2)]')} />
             </button>
@@ -294,7 +300,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
         {/* Body: stacked on phones; picture left and words right on a computer */}
         <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-center lg:gap-16 lg:py-6">
         {/* Visual */}
-        <div key={`v-${slide.id}`} className="welcome-pop flex flex-1 items-center justify-center py-5 sm:py-6 lg:py-0">
+        <div key={`v-${slide.id}`} className="welcome-pop flex flex-1 items-center justify-center py-5 [@media(max-height:620px)]:py-3 sm:py-6 lg:py-0">
           <div className="w-full px-4">{slide.visual}</div>
         </div>
 
@@ -302,14 +308,14 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
         {/* Words */}
         <div key={`t-${slide.id}`} className="auth-slide-in text-center lg:text-left">
           <p className="m-0 text-sm font-bold uppercase tracking-[0.18em] text-[#34d399]">{slide.eyebrow}</p>
-          <h2 id="welcome-title" ref={heading} tabIndex={-1} className="m-0 mt-2 text-[2rem] font-extrabold leading-[1.1] tracking-tight outline-none sm:text-[2.25rem] lg:mt-3 lg:text-[3rem] lg:leading-[1.05]">
+          <h2 id="welcome-title" ref={heading} tabIndex={-1} className="m-0 mt-2 text-[2rem] font-extrabold leading-[1.1] tracking-tight outline-none [@media(max-height:620px)]:mt-1 [@media(max-height:620px)]:text-[1.625rem] sm:text-[2.25rem] lg:mt-3 lg:text-[3rem] lg:leading-[1.05]">
             {slide.title(firstName)}
           </h2>
-          <p className="mx-auto mb-0 mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[#cdeee0] lg:mx-0 lg:mt-5 lg:max-w-md lg:text-[1.1875rem]">{slide.text}</p>
+          <p className="mx-auto mb-0 mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[#cdeee0] [@media(max-height:620px)]:mt-2 [@media(max-height:620px)]:text-base [@media(max-height:620px)]:leading-snug lg:mx-0 lg:mt-5 lg:max-w-md lg:text-[1.1875rem]">{slide.text}</p>
         </div>
 
         {/* Buttons */}
-        <div className="mt-7 flex items-center gap-3 lg:mt-10">
+        <div className="mt-7 flex items-center gap-3 [@media(max-height:620px)]:mt-4 lg:mt-10">
           {index > 0 && (
             <button
               type="button"

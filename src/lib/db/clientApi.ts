@@ -7,6 +7,7 @@ import type { CounselorMatch, UserContact, UserProfile } from '../../types';
 import type { ClientLocation, SessionFormat } from '../../therapist/types';
 import { hasOpenAlert } from '../incident';
 import { focusLabel } from '../../therapist/data';
+import { parseAge } from '../age';
 
 /* ---------- Profile mapping ---------- */
 
@@ -21,12 +22,11 @@ export function profileToRow(p: UserProfile) {
   Object.entries(p).forEach(([k, v]) => {
     if (!CORE_KEYS.has(k) && v !== undefined) settings[k] = v;
   });
-  const age = Number(p.age);
   return {
     display_name: (p.name || '').slice(0, 120),
     nickname: p.nickname,
     region: p.region || null,
-    age: Number.isFinite(age) && age >= 13 && age <= 120 ? age : null,
+    age: parseAge(p.age),
     language: p.language || 'en',
     theme: p.theme === 'dark' ? 'dark' : 'light',
     font_size: p.fontSize || 'md',
@@ -114,7 +114,7 @@ export async function signOut() {
 export async function signUpClient(
   email: string,
   password: string,
-  details: { name: string; nickname: string; currentTriage: string; belief: string; religionType?: string; language: string; theme: string; region?: string }
+  details: { name: string; nickname: string; age: number; currentTriage: string; belief: string; religionType?: string; language: string; theme: string; region?: string }
 ) {
   const { data, error } = await db().auth.signUp({
     email: email.trim().toLowerCase(),
@@ -125,6 +125,7 @@ export async function signUpClient(
         role: 'client',
         display_name: details.name,
         nickname: details.nickname,
+        age: details.age,
         current_triage: details.currentTriage,
         belief: details.belief,
         religion_type: details.religionType,
