@@ -2,6 +2,7 @@
  * Therapist data: option lists, the demo therapist, seed data and local storage helpers.
  * Everything is stored on this device (localStorage), like the rest of the prototype.
  */
+import { DEMO_ENABLED } from '../lib/demo';
 import type {
   ClientRecord,
   SosEvent,
@@ -13,6 +14,7 @@ import type {
   TherapySession,
   Weekday,
 } from './types';
+import { msg } from '../i18n';
 
 /* ---------- Option lists ---------- */
 
@@ -30,16 +32,16 @@ export const LICENSE_BODIES = [
   'Medical and Dental Council (Ghana)',
   'Nursing and Midwifery Council (Ghana)',
   'Ghana Association of Certified Counsellors',
-  'Other / outside Ghana',
+  msg('Other / outside Ghana'),
 ];
 
 export const FOCUS_OPTIONS = [
-  { id: 'substance', label: 'Drugs and alcohol' },
-  { id: 'porn', label: 'Adult content' },
-  { id: 'social_media', label: 'Screens and gaming' },
-  { id: 'anger', label: 'Anger and stress' },
-  { id: 'overeating', label: 'Food and eating' },
-  { id: 'general', label: 'General wellbeing' },
+  { id: 'substance', label: msg('Drugs and alcohol') },
+  { id: 'porn', label: msg('Adult content') },
+  { id: 'social_media', label: msg('Screens and gaming') },
+  { id: 'anger', label: msg('Anger and stress') },
+  { id: 'overeating', label: msg('Food and eating') },
+  { id: 'general', label: msg('General wellbeing') },
 ];
 
 export const focusLabel = (id: string) => FOCUS_OPTIONS.find(f => f.id === id)?.label || 'General wellbeing';
@@ -75,12 +77,12 @@ export const SESSION_TYPE_LABEL = {
 
 /** The parts of a session, in order. Used for the in-session checklist. */
 export const SESSION_AGENDA = [
-  'Check in on mood and cravings',
-  'Review last homework',
-  'Agree on today’s main topic',
-  'Work on the topic / practise a skill',
-  'Safety and risk check',
-  'Set homework and next steps',
+  msg('Check in on mood and cravings'),
+  msg('Review last homework'),
+  msg('Agree on today’s main topic'),
+  msg('Work on the topic / practise a skill'),
+  msg('Safety and risk check'),
+  msg('Set homework and next steps'),
 ];
 
 /* ---------- Dates ---------- */
@@ -147,7 +149,7 @@ export const toLocalInput = (iso: string) => {
 
 export const greeting = () => {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? msg('Good morning') : h < 17 ? msg('Good afternoon') : msg('Good evening');
 };
 
 export const displayName = (t: Pick<TherapistProfile, 'title' | 'name'>) => (t.title ? `${t.title} ${t.name}` : t.name);
@@ -408,6 +410,9 @@ function seedRequests(therapistId: string, example = false): SessionRequest[] {
 }
 
 export function seedData(therapist: TherapistProfile): TherapistData {
+  // Example clients, sessions and requests only in development and preview builds.
+  // (A plain early return, so a production build leaves the sample data out completely.)
+  if (!DEMO_ENABLED) return { clients: [], sessions: [], requests: [], handledShared: [] };
   const isDemo = therapist.id === DEMO_THERAPIST.id;
   return {
     clients: isDemo ? seedClients() : [],
@@ -441,6 +446,8 @@ const writeJSON = (key: string, value: unknown) => {
 
 export const getTherapistAccounts = (): TherapistProfile[] => {
   const saved = readJSON<TherapistProfile[]>(ACCOUNTS_KEY, []);
+  // The demo therapist exists in development and preview builds only (see lib/demo.ts)
+  if (!DEMO_ENABLED) return saved.filter(a => a.id !== DEMO_THERAPIST.id);
   return saved.some(a => a.id === DEMO_THERAPIST.id) ? saved : [DEMO_THERAPIST, ...saved];
 };
 

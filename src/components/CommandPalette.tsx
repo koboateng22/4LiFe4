@@ -10,6 +10,7 @@ import { CornerDownLeft, Search, Sparkles } from 'lucide-react';
 import { cx } from './ui';
 import { lockPage } from '../lib/motion';
 
+import { t, T, msg } from '../i18n';
 export interface PaletteItem {
   id: string;
   label: string;
@@ -24,7 +25,7 @@ export interface PaletteItem {
 }
 
 const isMac = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-export const shortcutLabel = () => (isMac() ? '⌘ K' : 'Ctrl K');
+export const shortcutLabel = () => (isMac() ? '⌘ K' : msg('Ctrl K'));
 
 const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[’']/g, '');
 
@@ -52,7 +53,7 @@ export const PaletteTrigger: React.FC<{ onClick: () => void; className?: string;
   <button
     type="button"
     onClick={onClick}
-    aria-label={`Search or jump to (${shortcutLabel()})`}
+    aria-label={t("Search or jump to ({v0})", { v0: shortcutLabel() })}
     aria-keyshortcuts="Control+K Meta+K"
     className={cx(
       'group inline-flex min-h-11 items-center gap-2.5 rounded-xl border border-line bg-surface/70 text-[0.9375rem] font-semibold text-ink-3 transition-colors hover:border-pri hover:text-ink cursor-pointer',
@@ -63,7 +64,7 @@ export const PaletteTrigger: React.FC<{ onClick: () => void; className?: string;
     <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
     {!compact && (
       <>
-        <span className="flex-1 text-left">Search</span>
+        <T text="<0>Search</0>" parts={[<span className="flex-1 text-left" />]} />
         <kbd className="hidden rounded-md border border-line bg-muted px-1.5 py-0.5 font-sans text-xs font-bold text-ink-3 sm:inline">{shortcutLabel()}</kbd>
       </>
     )}
@@ -83,7 +84,7 @@ interface PaletteProps {
 /** Mounted fresh each time it opens, so it always starts empty */
 export const CommandPalette: React.FC<PaletteProps> = props => (props.open ? <PalettePanel {...props} /> : null);
 
-const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'Search or jump to…', onAsk, footer }) => {
+const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = msg('Search or jump to…'), onAsk, footer }) => {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,12 +107,13 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
   const results = useMemo(() => {
     // little words like "I", "my" or "to" don't help find anything
     const STOP = new Set(['i', 'im', 'a', 'an', 'the', 'to', 'my', 'me', 'is', 'am', 'and', 'of', 'in', 'on', 'it', 'so', 'do', 'go', 'be', 'at', 'for', 'want']);
-    const words = norm(query).split(/[^a-z0-9]+/).filter(w => w.length > 1 && !STOP.has(w));
+    const words = norm(query).split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 1 && !STOP.has(w));
     const rank = (needAll: boolean) =>
       items
         .map((it, order) => {
-          const label = norm(it.label);
-          const hay = `${label} ${norm(it.keywords || '')} ${norm(it.group)}`;
+          // Search the words on screen and the English ones, so both find it
+          const label = norm(t(it.label));
+          const hay = `${label} ${norm(it.label)} ${norm(it.keywords || '')} ${norm(t(it.group))} ${norm(it.group)}`;
           const hits = words.filter(w => hay.includes(w)).length;
           if (words.length && (needAll ? hits < words.length : hits === 0)) return null;
           const score = (words.length - hits) * 3 + (words.length === 0 ? 0 : label.startsWith(words[0]) ? 0 : label.includes(words[0]) ? 1 : 2);
@@ -130,8 +132,8 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
       // when nothing fits exactly, the person is probably describing how they feel: offer the AI first
       list[partial || !words.length ? 'unshift' : 'push']({
         id: '__ask',
-        label: `Ask 4Life: “${query.trim()}”`,
-        group: 'Talk it through',
+        label: t('Ask 4Life: “{query}”', { query: query.trim() }),
+        group: msg('Talk it through'),
         icon: <Sparkles className="h-5 w-5" />,
         run: () => onAsk(query.trim()),
       });
@@ -180,7 +182,7 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search or jump to"
+        aria-label={t("Search or jump to")}
         className="palette-panel relative flex max-h-[min(560px,78vh)] w-full max-w-[620px] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-pop"
       >
         <div className="flex items-center gap-3 border-b border-line px-4">
@@ -199,12 +201,12 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
             className="min-h-14 flex-1 bg-transparent text-[1.0625rem] text-ink outline-none placeholder:text-ink-3"
             style={{ outline: 'none' }}
           />
-          <kbd className="rounded-md border border-line bg-muted px-1.5 py-0.5 font-sans text-xs font-bold text-ink-3">Esc</kbd>
+          <T text="<0>Esc</0>" parts={[<kbd className="rounded-md border border-line bg-muted px-1.5 py-0.5 font-sans text-xs font-bold text-ink-3" />]} />
         </div>
 
-        <div ref={listRef} id={`${uid}-list`} role="listbox" aria-label="Results" className="flex-1 overflow-y-auto overscroll-contain p-2">
+        <div ref={listRef} id={`${uid}-list`} role="listbox" aria-label={t("Results")} className="flex-1 overflow-y-auto overscroll-contain p-2">
           {results.length === 0 && (
-            <p className="m-0 px-3 py-6 text-center text-base text-ink-3">Nothing matches “{query}”. Try a simpler word.</p>
+            <p className="m-0 px-3 py-6 text-center text-base text-ink-3">{t("Nothing matches “{query}”. Try a simpler word.", { query })}</p>
           )}
           {results.map((it, i) => {
             const header = it.group !== lastGroup ? it.group : null;
@@ -212,7 +214,7 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
             const on = i === active;
             return (
               <React.Fragment key={it.id}>
-                {header && <p className="m-0 px-3 pb-1.5 pt-3 text-xs font-bold text-ink-3 first:pt-1">{header}</p>}
+                {header && <p className="m-0 px-3 pb-1.5 pt-3 text-xs font-bold text-ink-3 first:pt-1">{t(header)}</p>}
                 <div
                   id={`${uid}-${i}`}
                   data-index={i}
@@ -235,9 +237,9 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
                     {it.icon}
                   </span>
                   <span className={cx('min-w-0 flex-1 truncate text-[0.9375rem] font-semibold', it.tone === 'danger' ? 'text-danger-text' : on ? 'text-pri-ink' : 'text-ink')}>
-                    {it.label}
+                    {t(it.label)}
                   </span>
-                  {it.hint && <span className="hidden shrink-0 text-sm text-ink-3 sm:inline">{it.hint}</span>}
+                  {it.hint && <span className="hidden shrink-0 text-sm text-ink-3 sm:inline">{t(it.hint)}</span>}
                   {on && <CornerDownLeft className="h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />}
                 </div>
               </React.Fragment>
@@ -247,8 +249,7 @@ const PalettePanel: React.FC<PaletteProps> = ({ onClose, items, placeholder = 'S
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line bg-muted/60 px-4 py-2.5 text-xs text-ink-3">
           <span className="hidden sm:inline">
-            <kbd className="font-sans font-bold">↑</kbd> <kbd className="font-sans font-bold">↓</kbd> to move · <kbd className="font-sans font-bold">Enter</kbd> to open ·{' '}
-            <kbd className="font-sans font-bold">Esc</kbd> to close
+            <T text="<0>↑</0> <1>↓</1> to move · <2>Enter</2> to open · <3>Esc</3> to close" parts={[<kbd className="font-sans font-bold" />, <kbd className="font-sans font-bold" />, <kbd className="font-sans font-bold" />, <kbd className="font-sans font-bold" />]} />
           </span>
           {footer}
         </div>

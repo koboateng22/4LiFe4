@@ -1,3 +1,53 @@
+# 4Life — honest data, theme in Settings, Learn videos, no demo in production, Google and phone sign-in (6 November 2026)
+
+**Fixed: made-up health data**
+- The breathing exercise showed an invented heart rate that fell as you breathed, and labelled the craving "Easing". Each round also lowered the person's own craving score, which is sent to their counsellor with a session request, and added 3 "mindful minutes" for a 19-second round. Now it records only the real time spent, and never changes anything the person rated. It also stops after 4 rounds; it used to count on ("Round 5 of 4").
+- Guests, and every account loaded from Supabase, started with invented details: Christian faith, Greater Accra, age 20 (guests), craving 3. The AI then used faith-based encouragement nobody asked for. Nothing is assumed now, and the AI is told "craving not rated yet" instead of a number.
+- Adding a support person without a number during setup saved `+233 24 000 0000`, which SOS would then text. A real number is now required.
+
+**AI CBT: text no longer cut off**
+- Long words and web addresses in a reply ran out of the message bubble and were clipped, at every screen size. They now wrap.
+- AI replies showed raw `**stars**` and list markers. Bold, numbered and bullet lists now display properly. The text is never treated as HTML.
+- The message box was fixed at one line, so its hint was cut off on phones and longer messages were hidden. It now grows to fit, then scrolls.
+- The AI is asked for plain text with at most one bold phrase.
+
+**Theme: only in Settings → Appearance**
+- The theme buttons were removed from the top bar, the account menu, the sign-in pages and the therapist top bar. Quick search "Appearance" opens the setting.
+- There are now three choices: Light, Dark and **System default** (follows the device, and changes when the device does). New accounts start on System default.
+- The choice is saved on the device, applied before the app loads (no flash), and saved on the account so it follows the person to other devices. Therapists choose it on their Profile page. **Apply migration `20261106000009_theme_system.sql`.**
+
+**Demo accounts never reach production**
+- The demo client, demo therapist, sample clients, the example session request and sample Village posts are now built into the app only in development, or when `VITE_ENABLE_DEMO=true` is set (for previews). A production build contains none of it; `npm run test:demo-build` checks the built files.
+- In device mode, "Forgot PIN" no longer shows the PIN to anyone who types the email (except with demo accounts), and wrong-email and wrong-PIN messages are the same, so the form doesn't reveal which accounts exist.
+- `scripts/seed-demo.mjs` refuses to run unless asked explicitly. The new `npm run db:remove-demo` deletes the demo accounts from a Supabase project.
+
+**New: Learn (videos)**
+- A new section with short educational videos from YouTube in nine topics. It includes search (kept inside the topic), "Show more", and a topic suggested from what the person is working on.
+- Each video shows its title, channel, description, length and topic, with a link to YouTube. Videos play in YouTube's privacy-enhanced player only after a tap.
+- The server uses the YouTube Data API v3 with the key kept server-side and strict safe search. It drops videos that are deleted, private, age-restricted, blocked in Ghana or not embeddable. Results are cached for 12 hours, and a daily quota budget applies (`VIDEO_DAILY_UNITS`). There is also a Supabase Edge Function, `library-videos`.
+- The page has loading placeholders, a timeout, error, empty and no-key states, and a note that videos don't replace a counsellor.
+
+**New: sign in with Google or a phone number (needs set-up)**
+- Both go through Supabase Auth, with Twilio Verify as Supabase's SMS provider; Twilio keys live only in Supabase. They are shown only with `VITE_AUTH_GOOGLE=true` / `VITE_AUTH_PHONE=true`, after the steps in SUPABASE.md, section 6.
+- Phone sign-in has a country list, number checks, a 6-digit code, resend after 60 seconds, and plain messages for wrong, expired and undelivered codes.
+- A first sign-in this way asks for a community name and an age (13 or older) before the app opens.
+
+**Loading:** if the app hasn't started after 10 seconds, the opening screen says so, offers "Try again", and shows 112 and 193. This works even when the app's code never arrives.
+
+**Tests:** new `test:theme`, `test:learn`, `test:account-db` and `test:demo-build`, plus more unit checks (formatting, prompt, videos, phone and Google sign-in). All new texts are translated into the 26 other languages.
+
+# 4Life — the whole app in 27 languages (6 November 2026)
+
+- **The language menu now changes the whole app.** It used to hand the page to the Google Translate website widget, which Google no longer offers to new sites. It loaded from translate.google.com, so it did nothing offline, behind ad blockers or when Google's script failed. It rewrote React's text behind its back and stopped partway or missed new screens. A separate 8-entry dictionary covered only a few menu labels. Both are gone (`GoogleTranslateBar.tsx`, `utils/translations.ts`, the script in `index.html`).
+- **Every word ships with the app:** English plus 26 languages (French, Spanish, Portuguese, German, Italian, Dutch, Polish, Russian, Ukrainian, Turkish, Arabic, Urdu, Hindi, Bengali, Simplified Chinese, Japanese, Korean, Indonesian, Vietnamese, Filipino, Swahili, Yoruba, Igbo, Amharic, Somali, Zulu). That covers 1,761 texts in each language, including the therapist workspace, Village rules and moderation messages, and the offline AI replies. Arabic and Urdu read right to left. Plurals follow each language's rules, and numbers and dates are written the local way.
+- **The choice is saved on the device**, applies at once without a reload, and comes back on the next visit. A language downloads the first time it is picked and then works offline.
+- **The AI replies in the chosen language** for the whole conversation (chat, circle guide and thought-record suggestions), unless the person asks for another one.
+- **Emergency and first-aid steps stay in English**, with "Call 112" always shown, so nothing important is lost in translation. Phone numbers stay as digits.
+- **Only complete languages are offered.** Twi, Fante, Ga, Ewe, Hausa and Dagbani are hidden until native speakers have checked them.
+- The translations were made with AI and **have not been checked by native speakers yet**. The app says so in Settings. Yoruba, Igbo, Amharic, Somali and Zulu need review most.
+- How it works: English text in the code is its own key (`t('Welcome back')`, `<T text="Call <0>112</0>">`). The words are in `src/locales/<language>/<area>.json`, and the code is in `src/i18n/index.tsx`. Builds keep only the English entries that differ from their key, so the first download is no bigger than before.
+- New commands: `npm run i18n:extract` (collect English texts), `npm run test:i18n` (every language has every text, with the same `{slots}`, tags and plural forms), `npm run test:i18n:e2e` (each language in Chrome at 360 px: nothing cut off, RTL correct, no missing text; and switching, reload and the AI language).
+
 # 4Life — softer, more consistent corners (4 November 2026)
 
 - **One corner scale for the whole app**, set once in `src/index.css`: 12 px small buttons and icon tiles, 14 px buttons and inputs, 20 px cards and panels, 28 px dialogs, hero panels and the sign-in card; pills only for chips, filters, badges and avatars. Each step is a little rounder than before, and the gap between steps is bigger, so different kinds of things no longer look the same.

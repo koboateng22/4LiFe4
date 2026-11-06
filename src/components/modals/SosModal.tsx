@@ -5,6 +5,7 @@ import type { IncidentController, IncidentView } from '../../lib/incident';
 import { EmergencyPanel } from '../ems/EmergencyPanel';
 import { Modal, cx } from '../ui';
 import { Phone, Wind, MessageCircle, MapPin, ShieldCheck } from 'lucide-react';
+import { EnglishSafetyNote } from '../ems/EnglishSafetyNote';
 
 interface SosModalProps {
   profile: UserProfile;
@@ -34,8 +35,9 @@ export const SosModal: React.FC<SosModalProps> = ({ profile, controller, view, i
   const helplines = CHECKED_HOTLINES.filter(h => h.id === 'gh-193' || h.id === 'gh-yonkodo');
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="You are not alone" subtitle="Choose what you need right now." size="sm">
-      <div className="flex flex-col gap-3">
+    <Modal isOpen={isOpen} onClose={onClose} title={<span lang="en">You are not alone</span>} subtitle={<span lang="en">Choose what you need right now.</span>} size="sm">
+      <div lang="en" className="flex flex-col gap-3">
+        <EnglishSafetyNote />
         <a href="tel:112" onClick={() => noteCall('112')} className={cx(bigOption, 'bg-danger text-[#fff] hover:bg-danger-hover')}>
           <Phone className="h-7 w-7 shrink-0" aria-hidden="true" />
           <span>

@@ -36,6 +36,7 @@ import kitchenSm from '../assets/photos/kitchen-640.webp';
 import together from '../assets/photos/together.webp';
 import togetherSm from '../assets/photos/together-640.webp';
 
+import { t, T, msg } from '../i18n';
 /* ---------- "show it once" flag ---------- */
 const KEY = '4life_welcome_pending';
 export const markWelcomePending = () => {
@@ -68,7 +69,7 @@ const Chip: React.FC<{ icon: LucideIcon; label: string; className?: string; dela
     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#34d399] text-[#022c22]">
       <Icon className="h-4 w-4" aria-hidden="true" />
     </span>
-    {label}
+    {t(label)}
   </span>
 );
 
@@ -116,12 +117,12 @@ const HelpVisual = () => (
       <span className="auth-ring absolute inset-0 rounded-full bg-[#e11d48] [animation-delay:1.1s]" />
       <span className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-[#e11d48] text-[#fff] shadow-[0_20px_50px_-10px_rgba(225,29,72,0.7)]">
         <Phone className="h-8 w-8" aria-hidden="true" />
-        <span className="mt-0.5 text-xl font-extrabold tracking-wider">SOS</span>
+        <T text="<0>SOS</0>" parts={[<span className="mt-0.5 text-xl font-extrabold tracking-wider" />]} />
       </span>
     </div>
-    <Chip icon={Phone} label="Call 112" className="left-0 top-[4%]" delay={0} tilt={-3} />
-    <Chip icon={WifiOff} label="Works offline" className="right-0 top-[22%]" delay={0.7} tilt={3} />
-    <Chip icon={MapPin} label="Share location" className="bottom-[2%] left-[6%]" delay={1.4} tilt={-2} />
+    <Chip icon={Phone} label={t("Call 112")} className="left-0 top-[4%]" delay={0} tilt={-3} />
+    <Chip icon={WifiOff} label={t("Works offline")} className="right-0 top-[22%]" delay={0.7} tilt={3} />
+    <Chip icon={MapPin} label={t("Share location")} className="bottom-[2%] left-[6%]" delay={1.4} tilt={-2} />
   </div>
 );
 
@@ -131,9 +132,9 @@ const PrivacyVisual = () => (
     <span className="absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-[#ecfdf5] text-[#047857] shadow-2xl min-[360px]:h-28 min-[360px]:w-28 min-[360px]:rounded-3xl">
       <Lock className="h-10 w-10 min-[360px]:h-14 min-[360px]:w-14" aria-hidden="true" />
     </span>
-    <Chip icon={Smartphone} label="Chats saved only on your phone" className="left-0 top-[6%]" delay={0} tilt={-2} />
-    <Chip icon={ShieldCheck} label="Shared only if you say so" className="right-0 top-[60%]" delay={0.8} tilt={2} />
-    <Chip icon={Bot} label="Always says it’s an AI" className="bottom-0 left-[4%]" delay={1.6} tilt={-2} />
+    <Chip icon={Smartphone} label={t("Chats saved only on your phone")} className="left-0 top-[6%]" delay={0} tilt={-2} />
+    <Chip icon={ShieldCheck} label={t("Shared only if you say so")} className="right-0 top-[60%]" delay={0.8} tilt={2} />
+    <Chip icon={Bot} label={t("Always says it’s an AI")} className="bottom-0 left-[4%]" delay={1.6} tilt={-2} />
   </div>
 );
 
@@ -150,50 +151,50 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     id: 'hello',
-    eyebrow: 'Welcome',
-    title: name => (name ? `Akwaaba, ${name}` : 'Akwaaba'),
-    text: 'Help that’s there at 2 a.m. 4Life is your private space to recover from substance use, one day at a time. Here’s a quick look around.',
+    eyebrow: msg('Welcome'),
+    title: name => (name ? t('Akwaaba, {name}', { name }) : t('Akwaaba')),
+    text: msg('Help that’s there at 2 a.m. 4Life is your private space to recover from substance use, one day at a time. Here’s a quick look around.'),
     visual: <HelloVisual />,
     glow: 'rgba(16,185,129,0.45)',
   },
   {
     id: 'ai',
-    eyebrow: 'AI CBT therapy',
-    title: () => 'Talk it through, any hour',
-    text: 'When a craving or a heavy thought hits, your AI coach uses CBT to help you ride it out, day or night.',
-    visual: <Photo src={outdoors} srcSm={outdoorsSm} width={732} pos="50% 50%" icon={MessageCircleHeart} chips={[[Wind, 'Ride the wave']]} />,
+    eyebrow: msg('AI CBT therapy'),
+    title: () => t('Talk it through, any hour'),
+    text: msg('When a craving or a heavy thought hits, your AI coach uses CBT to help you ride it out, day or night.'),
+    visual: <Photo src={outdoors} srcSm={outdoorsSm} width={732} pos="50% 50%" icon={MessageCircleHeart} chips={[[Wind, msg('Ride the wave')]]} />,
     glow: 'rgba(52,211,153,0.4)',
   },
   {
     id: 'village',
-    eyebrow: 'Global Village',
-    title: () => 'You are not alone',
-    text: 'Share your story without your name, cheer others on, and join a weekly circle with people who understand.',
-    visual: <Photo src={kitchen} srcSm={kitchenSm} width={1100} pos="50% 50%" icon={Users} chips={[[Heart, 'Anonymous stories']]} />,
+    eyebrow: msg('Global Village'),
+    title: () => t('You are not alone'),
+    text: msg('Share your story without your name, cheer others on, and join a weekly circle with people who understand.'),
+    visual: <Photo src={kitchen} srcSm={kitchenSm} width={1100} pos="50% 50%" icon={Users} chips={[[Heart, msg('Anonymous stories')]]} />,
     glow: 'rgba(251,191,36,0.35)',
   },
   {
     id: 'help',
-    eyebrow: 'Instant EMS',
-    title: () => 'Help in one tap',
-    text: 'SOS calls 112, texts your location to someone you trust and finds the nearest hospital, even without internet.',
+    eyebrow: msg('Instant EMS'),
+    title: () => t('Help in one tap'),
+    text: msg('SOS calls 112, texts your location to someone you trust and finds the nearest hospital, even without internet.'),
     visual: <HelpVisual />,
     glow: 'rgba(225,29,72,0.4)',
   },
   {
     id: 'private',
-    eyebrow: 'Private by design',
-    title: () => 'Your story stays yours',
-    text: 'Your AI chats are saved only on your phone. Nothing goes to a counsellor unless you choose to share it.',
+    eyebrow: msg('Private by design'),
+    title: () => t('Your story stays yours'),
+    text: msg('Your AI chats are saved only on your phone. Nothing goes to a counsellor unless you choose to share it.'),
     visual: <PrivacyVisual />,
     glow: 'rgba(56,189,248,0.35)',
   },
   {
     id: 'ready',
-    eyebrow: 'You’re all set',
-    title: () => 'Enjoy the good days again',
-    text: 'Start with a quick check-in on your home screen. Small steps add up, and we’ll be here for every one.',
-    visual: <Photo src={together} srcSm={togetherSm} width={990} pos="72% 50%" icon={Sprout} chips={[[Sparkles, 'Daily check-in']]} />,
+    eyebrow: msg('You’re all set'),
+    title: () => t('Enjoy the good days again'),
+    text: msg('Start with a quick check-in on your home screen. Small steps add up, and we’ll be here for every one.'),
+    visual: <Photo src={together} srcSm={togetherSm} width={990} pos="72% 50%" icon={Sprout} chips={[[Sparkles, msg('Daily check-in')]]} />,
     glow: 'rgba(16,185,129,0.45)',
   },
 ];
@@ -263,14 +264,14 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
 
       <div className="relative mx-auto flex min-h-full w-full max-w-lg touch-pan-y select-none flex-col px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:py-8 lg:max-w-6xl lg:px-14 lg:py-10">
         {/* Progress */}
-        <div className="flex gap-1.5" role="tablist" aria-label="Welcome steps">
+        <div className="flex gap-1.5" role="tablist" aria-label={t("Welcome steps")}>
           {SLIDES.map((s, i) => (
             <button
               key={s.id}
               type="button"
               role="tab"
               aria-selected={i === index}
-              aria-label={`Step ${i + 1} of ${SLIDES.length}: ${s.eyebrow}`}
+              aria-label={t("Step {v0} of {length}: {eyebrow}", { v0: i + 1, length: SLIDES.length, eyebrow: s.eyebrow })}
               onClick={() => {
                 setDir(i > index ? 1 : -1);
                 setIndex(i);
@@ -291,7 +292,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
             <LanguageMenu value={language} onChange={onChangeLanguage} tone="glass" showName={false} />
             {!last && (
               <button type="button" onClick={onDone} className="min-h-10 rounded-xl px-3 text-sm font-bold text-[#d1fae5] hover:bg-[rgba(255,255,255,0.08)] cursor-pointer">
-                Skip
+                {t("Skip")}
               </button>
             )}
           </div>
@@ -307,11 +308,11 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
         <div className="lg:max-w-md">
         {/* Words */}
         <div key={`t-${slide.id}`} className="auth-slide-in text-center lg:text-left">
-          <p className="m-0 text-sm font-bold uppercase tracking-[0.18em] text-[#34d399]">{slide.eyebrow}</p>
+          <p className="m-0 text-sm font-bold uppercase tracking-[0.18em] text-[#34d399]">{t(slide.eyebrow)}</p>
           <h2 id="welcome-title" ref={heading} tabIndex={-1} className="m-0 mt-2 text-[2rem] font-extrabold leading-[1.1] tracking-tight outline-none [@media(max-height:620px)]:mt-1 [@media(max-height:620px)]:text-[1.625rem] sm:text-[2.25rem] lg:mt-3 lg:text-[3rem] lg:leading-[1.05]">
             {slide.title(firstName)}
           </h2>
-          <p className="mx-auto mb-0 mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[#cdeee0] [@media(max-height:620px)]:mt-2 [@media(max-height:620px)]:text-base [@media(max-height:620px)]:leading-snug lg:mx-0 lg:mt-5 lg:max-w-md lg:text-[1.1875rem]">{slide.text}</p>
+          <p className="mx-auto mb-0 mt-3 max-w-sm text-[1.0625rem] leading-relaxed text-[#cdeee0] [@media(max-height:620px)]:mt-2 [@media(max-height:620px)]:text-base [@media(max-height:620px)]:leading-snug lg:mx-0 lg:mt-5 lg:max-w-md lg:text-[1.1875rem]">{t(slide.text)}</p>
         </div>
 
         {/* Buttons */}
@@ -320,7 +321,7 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
             <button
               type="button"
               onClick={() => go(-1)}
-              aria-label="Back"
+              aria-label={t("Back")}
               className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] text-[#fff] hover:bg-[rgba(255,255,255,0.08)] cursor-pointer"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -331,12 +332,12 @@ export const WelcomeTour: React.FC<WelcomeTourProps> = ({ name = '', language, o
             onClick={() => go(1)}
             className="flex h-14 flex-1 items-center justify-center gap-2 rounded-full bg-[#fff] text-[1.0625rem] font-extrabold text-[#022c22] shadow-[0_16px_40px_-12px_rgba(52,211,153,0.6)] transition-transform hover:-translate-y-0.5 cursor-pointer"
           >
-            {index === 0 ? 'Show me around' : last ? 'Start my journey' : 'Continue'}
+            {index === 0 ? t("Show me around") : last ? t("Start my journey") : t("Continue")}
             <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <p className="m-0 mt-3 text-center text-xs text-[#9fbdb0] lg:text-left lg:text-sm">
-          In danger right now? Call <a href="tel:112" className="font-bold text-[#fff]">112</a>, free, 24 hours.
+          <T text="In danger right now? Call <0>112</0>, free, 24 hours." parts={[<a href="tel:112" className="font-bold text-[#fff]" />]} />
         </p>
         </div>
         </div>

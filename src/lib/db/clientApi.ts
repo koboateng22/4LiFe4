@@ -2,12 +2,14 @@
  * Everything the client (person in recovery) app reads and writes in Supabase.
  * Only used when isRemote is true.
  */
+import { asThemePref } from '../theme';
 import { db } from '../supabase';
 import type { CounselorMatch, UserContact, UserProfile } from '../../types';
 import type { ClientLocation, SessionFormat } from '../../therapist/types';
 import { hasOpenAlert } from '../incident';
 import { focusLabel } from '../../therapist/data';
 import { parseAge } from '../age';
+import { msg } from '../../i18n';
 
 /* ---------- Profile mapping ---------- */
 
@@ -28,7 +30,7 @@ export function profileToRow(p: UserProfile) {
     region: p.region || null,
     age: parseAge(p.age),
     language: p.language || 'en',
-    theme: p.theme === 'dark' ? 'dark' : 'light',
+    theme: asThemePref(p.theme),
     font_size: p.fontSize || 'md',
     current_triage: p.currentTriage || 'general',
     belief: p.belief || null,
@@ -49,7 +51,7 @@ export function rowToProfile(row: any, contacts: any[], base: UserProfile): User
     region: row.region || base.region,
     age: row.age ?? base.age,
     language: row.language,
-    theme: row.theme,
+    theme: asThemePref(row.theme),
     fontSize: row.font_size,
     currentTriage: row.current_triage,
     belief: row.belief || base.belief,
@@ -91,12 +93,48 @@ export async function signIn(email: string, password: string) {
   if (!row) {
     // Created before the sign-up trigger existed. Don't stay half signed in.
     await db().auth.signOut();
-    throw new Error('Your password is right, but this account has no profile yet. Please contact the 4Life team.');
+    throw new Error(msg('Your password is right, but this account has no profile yet. Please contact the 4Life team.'));
   }
   return { id: data.user.id, role: row.role as 'client' | 'therapist' | 'admin' };
 }
 
 /** Send the sign-up confirmation link again. */
+/**
+ * Other ways to sign in, all through Supabase Auth (one account system, one kind of session):
+ *  - Google: Supabase's Google provider. Back on the app, supabase-js finishes the sign-in and the
+ *    usual session restore picks it up. Supabase links a Google sign-in to an existing account with
+ *    the same confirmed email instead of making a second account.
+ *  - Phone: a 6-digit code by text message. Supabase sends it through Twilio Verify (set as the SMS
+ *    provider in the Supabase dashboard) and checks it on the server; the app never sees Twilio keys.
+ * New people signing in this way get a client profile from the sign-up trigger, then finish
+ * setting up (community name, age) before using the app.
+ */
+export async function signInWithGoogle() {
+  const { error } = await db().auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/`, queryParams: { prompt: 'select_account' } },
+  });
+  if (error) throw error;
+}
+
+export async function sendPhoneCode(e164: string) {
+  const { error } = await db().auth.signInWithOtp({ phone: e164, options: { channel: 'sms', shouldCreateUser: true } });
+  if (error) throw error;
+}
+
+export async function verifyPhoneCode(e164: string, code: string) {
+  const { data, error } = await db().auth.verifyOtp({ phone: e164, token: code, type: 'sms' });
+  if (error) throw error;
+  if (!data.user) throw new Error('That code is not right. Check the text message and try again.');
+  const { data: row, error: e2 } = await db().from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+  if (e2) throw e2;
+  if (!row) {
+    await db().auth.signOut();
+    throw new Error(msg('Your password is right, but this account has no profile yet. Please contact the 4Life team.'));
+  }
+  return { id: data.user.id, role: row.role as 'client' | 'therapist' | 'admin' };
+}
+
 export async function resendConfirmation(email: string) {
   const { error } = await db().auth.resend({
     type: 'signup',
@@ -137,7 +175,7 @@ export async function signUpClient(
   });
   if (error) throw error;
   // With email confirmation on, Supabase hides taken emails: no error, no identities, no email sent
-  if (data.user?.identities?.length === 0) throw new Error('User already registered');
+  if (data.user?.identities?.length === 0) throw new Error(msg('User already registered'));
   return { userId: data.user?.id || null, needsConfirmation: !data.session };
 }
 
@@ -245,7 +283,7 @@ export async function requestSession(args: {
     focus: args.focus,
   });
   if (error) {
-    if (/session_requests_one_open/.test(error.message)) throw new Error('You already have a request waiting with this counsellor.');
+    if (/session_requests_one_open/.test(error.message)) throw new Error(msg('You already have a request waiting with this counsellor.'));
     throw error;
   }
 }

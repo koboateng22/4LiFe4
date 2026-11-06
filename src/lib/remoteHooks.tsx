@@ -13,6 +13,7 @@ import { loadTherapistProfile } from './db/therapistApi';
 import { getCrisisLocation } from './location';
 import { Button, Field, Modal, Notice, inputClass } from '../components/ui';
 
+import { t as tr, msg } from '../i18n';
 const isUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 const RESTORE_WAIT_MS = 8000;
@@ -117,14 +118,14 @@ export const PasswordRecoveryModal: React.FC<{ isOpen: boolean; onClose: () => v
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
-    if (pw.trim().length < 8) return setMsg({ ok: false, text: 'Please use at least 8 characters.' });
-    if (pw !== pw2) return setMsg({ ok: false, text: 'The two passwords do not match.' });
+    if (pw.trim().length < 8) return setMsg({ ok: false, text: msg('Please use at least 8 characters.') });
+    if (pw !== pw2) return setMsg({ ok: false, text: msg('The two passwords do not match.') });
     setBusy(true);
     // Trimmed, because sign-up and sign-in trim the password too
     const { error } = await db().auth.updateUser({ password: pw.trim() });
     setBusy(false);
     if (error) return setMsg({ ok: false, text: friendlyError(error) });
-    setMsg({ ok: true, text: 'Your new password is saved.' });
+    setMsg({ ok: true, text: msg('Your new password is saved.') });
     setTimeout(onClose, 1500);
   };
 
@@ -132,22 +133,22 @@ export const PasswordRecoveryModal: React.FC<{ isOpen: boolean; onClose: () => v
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Set a new password"
+      title={tr("Set a new password")}
       size="sm"
       footer={
         <div className="flex justify-end">
           <Button onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : 'Save password'}
+            {busy ? tr("Saving…") : tr("Save password")}
           </Button>
         </div>
       }
     >
       <div className="flex flex-col gap-4">
-        {msg && <Notice tone={msg.ok ? 'pri' : 'warn'}>{msg.text}</Notice>}
-        <Field label="New password" htmlFor="rp-1" hint="At least 8 characters.">
+        {msg && <Notice tone={msg.ok ? 'pri' : 'warn'}>{tr(msg.text)}</Notice>}
+        <Field label={tr("New password")} htmlFor="rp-1" hint={tr("At least 8 characters.")}>
           <input id="rp-1" type="password" autoComplete="new-password" value={pw} onChange={e => setPw(e.target.value)} className={inputClass} />
         </Field>
-        <Field label="Type it again" htmlFor="rp-2">
+        <Field label={tr("Type it again")} htmlFor="rp-2">
           <input id="rp-2" type="password" autoComplete="new-password" value={pw2} onChange={e => setPw2(e.target.value)} className={inputClass} />
         </Field>
       </div>

@@ -40,6 +40,7 @@ interface Props {
 }
 
 import { PIN_COLOUR } from './pinColours';
+import { t, msg } from '../../i18n';
 export { PIN_COLOUR };
 const PIN_GLYPH: Record<EmergencyCenter['type'], string> = {
   hospital: '+',
@@ -85,7 +86,8 @@ export const EmsMap: React.FC<Props> = ({ you, centres, selectedId, onSelect, ro
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, { zoomControl: true }).setView([5.6037, -0.187], 11);
+    const map = L.map(elRef.current, { zoomControl: false }).setView([5.6037, -0.187], 11);
+    L.control.zoom({ zoomInTitle: t('Zoom in'), zoomOutTitle: t('Zoom out') }).addTo(map);
 
     // 1. The simple built-in map (always there, under the tiles)
     map.createPane('base').style.zIndex = '150';
@@ -143,7 +145,7 @@ export const EmsMap: React.FC<Props> = ({ you, centres, selectedId, onSelect, ro
     const sel = centres.find(c => c.id === selectedId);
     if (you) {
       if (you.accuracyM) L.circle([you.lat, you.lng], { radius: Math.max(you.accuracyM, 25), color: '#0f172a', weight: 1, fillOpacity: 0.08 }).addTo(layer);
-      L.marker([you.lat, you.lng], { icon: youIcon, title: 'You', zIndexOffset: 2000, keyboard: false }).bindTooltip('You are here', { direction: 'top', offset: [0, -12] }).addTo(layer);
+      L.marker([you.lat, you.lng], { icon: youIcon, title: msg('You'), zIndexOffset: 2000, keyboard: false }).bindTooltip(t('You are here'), { direction: 'top', offset: [0, -12] }).addTo(layer);
       if (sel) {
         if (route && route.length > 1) {
           // The real road route: a white casing under a green line
@@ -198,11 +200,11 @@ export const EmsMap: React.FC<Props> = ({ you, centres, selectedId, onSelect, ro
         ref={elRef}
         className="ems-map h-[320px] w-full overflow-hidden rounded-2xl border border-line sm:h-[400px]"
         role="region"
-        aria-label="Map of emergency places. The list has the same information."
+        aria-label={t("Map of emergency places. The list has the same information.")}
       />
       {tiles === 'simple' && (
         <p className="pointer-events-none absolute right-3 top-3 z-[500] m-0 max-w-[calc(100%-5rem)] rounded-lg bg-surface/90 px-2.5 py-1.5 text-xs font-semibold text-ink-2 shadow-sm">
-          Simple map: the detailed street map needs internet.
+          {t("Simple map: the detailed street map needs internet.")}
         </p>
       )}
     </div>

@@ -8,6 +8,7 @@
  */
 import React from 'react';
 
+import { t, T } from '../i18n';
 const CHUNK_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i;
 const RELOAD_KEY = '4life_chunk_reload';
 
@@ -68,8 +69,8 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     return (
       <div role="alert" className={this.props.inline ? 'flex justify-center px-2 py-16 text-ink' : 'flex min-h-[100dvh] items-center justify-center bg-bg p-6 text-ink'}>
         <div className="w-full max-w-sm text-center">
-          <h1 className="m-0 text-xl font-bold">{this.props.inline ? 'This page didn’t load' : 'Something went wrong'}</h1>
-          <p className="mt-2 text-base leading-relaxed text-ink-2">Your saved information is safe. Reload the app to carry on.</p>
+          <h1 className="m-0 text-xl font-bold">{this.props.inline ? t("This page didn’t load") : t("Something went wrong")}</h1>
+          <p className="mt-2 text-base leading-relaxed text-ink-2">{t("Your saved information is safe. Reload the app to carry on.")}</p>
           <button
             type="button"
             onClick={() => {
@@ -82,18 +83,10 @@ export class AppErrorBoundary extends React.Component<Props, State> {
             }}
             className="mt-5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-pri px-5 text-base font-bold text-[#fff]"
           >
-            Reload
+            {t("Reload")}
           </button>
           <p className="mt-6 text-sm text-ink-3">
-            In danger right now? Call{' '}
-            <a href="tel:112" className="font-bold text-danger-text">
-              112
-            </a>{' '}
-            or{' '}
-            <a href="tel:193" className="font-bold text-danger-text">
-              193
-            </a>{' '}
-            (ambulance).
+            <T text="In danger right now? Call <0>112</0> or <1>193</1> (ambulance)." parts={[<a href="tel:112" className="font-bold text-danger-text" />, <a href="tel:193" className="font-bold text-danger-text" />]} />
           </p>
         </div>
       </div>

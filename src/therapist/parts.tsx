@@ -4,10 +4,11 @@ import { Avatar, Badge, cx } from '../components/ui';
 import type { ClientRecord, ClientRisk, SessionFormat, TherapySession } from './types';
 import { FORMAT_LABEL, SESSION_TYPE_LABEL, fmtDay, fmtTime, focusLabel } from './data';
 
+import { t, T, msg } from '../i18n';
 export const RISK_INFO: Record<ClientRisk, { label: string; tone: 'pri' | 'warn' | 'danger' }> = {
-  low: { label: 'Low risk', tone: 'pri' },
-  moderate: { label: 'Watch closely', tone: 'warn' },
-  high: { label: 'High risk', tone: 'danger' },
+  low: { label: msg('Low risk'), tone: 'pri' },
+  moderate: { label: msg('Watch closely'), tone: 'warn' },
+  high: { label: msg('High risk'), tone: 'danger' },
 };
 
 /** Risk is always shown as a word plus an icon, never colour alone. */
@@ -16,7 +17,7 @@ export const RiskBadge: React.FC<{ risk: ClientRisk }> = ({ risk }) => {
   return (
     <Badge tone={info.tone}>
       {risk === 'low' ? <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> : <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />}
-      {info.label}
+      {t(info.label)}
     </Badge>
   );
 };
@@ -29,13 +30,13 @@ export const FormatIcon: React.FC<{ format: SessionFormat; className?: string }>
 /** What state a session is in, in plain words. */
 export function sessionState(s: TherapySession): { label: string; tone: 'pri' | 'warn' | 'danger' | 'info' | 'muted' } {
   const end = new Date(s.start).getTime() + s.durationMin * 60000;
-  if (s.status === 'in_progress') return { label: 'In progress', tone: 'info' };
-  if (s.status === 'completed') return s.note?.signedAt ? { label: 'Done', tone: 'muted' } : { label: 'Note to finish', tone: 'warn' };
-  if (s.status === 'cancelled') return { label: 'Cancelled', tone: 'muted' };
-  if (s.status === 'no_show') return { label: 'Did not attend', tone: 'muted' };
-  if (Date.now() > end) return { label: 'Not started', tone: 'warn' };
-  if (Date.now() > new Date(s.start).getTime() - 15 * 60000) return { label: 'Starting soon', tone: 'pri' };
-  return { label: 'Booked', tone: 'muted' };
+  if (s.status === 'in_progress') return { label: msg('In progress'), tone: 'info' };
+  if (s.status === 'completed') return s.note?.signedAt ? { label: msg('Done'), tone: 'muted' } : { label: msg('Note to finish'), tone: 'warn' };
+  if (s.status === 'cancelled') return { label: msg('Cancelled'), tone: 'muted' };
+  if (s.status === 'no_show') return { label: msg('Did not attend'), tone: 'muted' };
+  if (Date.now() > end) return { label: msg('Not started'), tone: 'warn' };
+  if (Date.now() > new Date(s.start).getTime() - 15 * 60000) return { label: msg('Starting soon'), tone: 'pri' };
+  return { label: msg('Booked'), tone: 'muted' };
 }
 
 export const needsNote = (s: TherapySession) => s.status === 'completed' && !s.note?.signedAt;
@@ -57,11 +58,11 @@ export const SessionRow: React.FC<{
       <span className="w-[5.25rem] shrink-0 whitespace-nowrap leading-tight">
         {showDay && <span className="block text-sm font-semibold text-ink-3">{fmtDay(session.start)}</span>}
         <span className="block text-base font-bold text-ink">{fmtTime(session.start)}</span>
-        <span className="block text-sm text-ink-3">{session.durationMin} min</span>
+        <T text="<0>{durationMin} min</0>" parts={[<span className="block text-sm text-ink-3" />]} vars={{ durationMin: session.durationMin }} />
       </span>
       <Avatar tone="muted" name={client?.nickname} size={40} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-base font-bold text-ink">{client?.nickname || 'Client'}</span>
+        <span className="block truncate text-base font-bold text-ink">{client?.nickname || t("Client")}</span>
         <span className="flex flex-wrap items-center gap-x-2 text-sm text-ink-3">
           <span>{SESSION_TYPE_LABEL[session.type]}</span>
           <span aria-hidden="true">·</span>
@@ -78,7 +79,7 @@ export const SessionRow: React.FC<{
         </span>
       </span>
       <span className="hidden sm:block">
-        <Badge tone={st.tone}>{st.label}</Badge>
+        <Badge tone={st.tone}>{t(st.label)}</Badge>
       </span>
       <ChevronRight className="h-5 w-5 shrink-0 text-ink-3" aria-hidden="true" />
     </button>
@@ -88,7 +89,7 @@ export const SessionRow: React.FC<{
 /** Short client line used in lists. */
 export const ClientLine: React.FC<{ client: ClientRecord }> = ({ client }) => (
   <span className="text-sm text-ink-3">
-    {focusLabel(client.focus)} · {client.streakDays} {client.streakDays === 1 ? 'day' : 'days'} clean
+    {focusLabel(client.focus)} · {client.streakDays} {client.streakDays === 1 ? 'day' : 'days'} {t("clean")}
   </span>
 );
 
@@ -96,7 +97,7 @@ export const ClientLine: React.FC<{ client: ClientRecord }> = ({ client }) => (
 export const SharingNote: React.FC<{ shares: boolean; className?: string }> = ({ shares, className }) => (
   <span className={cx('inline-flex items-center gap-1.5 text-sm', shares ? 'text-ink-3' : 'text-warn', className)}>
     <Eye className="h-4 w-4" aria-hidden="true" />
-    {shares ? 'Shares daily check-ins with you' : 'Has not shared check-ins'}
+    {shares ? t("Shares daily check-ins with you") : t("Has not shared check-ins")}
   </span>
 );
 

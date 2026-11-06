@@ -6,6 +6,7 @@ import { requestSession } from '../../lib/db/clientApi';
 import { Modal, Button, Avatar, Notice, cx } from '../ui';
 import { Phone, Video, Check } from 'lucide-react';
 
+import { t, T } from '../../i18n';
 interface CounselorModalProps {
   counselor: CounselorMatch | null;
   isOpen: boolean;
@@ -86,7 +87,7 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
       status: 'new',
       snapshot:
         shareCheckins && profile
-          ? { streakDays: profile.sobrietyStreakDays, mood: [], craving: [profile.currentCraving] }
+          ? { streakDays: profile.sobrietyStreakDays, mood: [], craving: profile.currentCraving >= 1 ? [profile.currentCraving] : [] }
           : undefined,
     });
     setIsBooked(true);
@@ -106,11 +107,11 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Book a session"
+      title={t("Book a session")}
       size="sm"
       footer={
         <Button block size="lg" onClick={handleConfirmBooking} disabled={isBooked || sending} icon={isBooked ? <Check className="h-5 w-5" /> : undefined} className="disabled:opacity-100">
-          {isBooked ? 'Request sent' : `Request ${selectedSlot}`}
+          {isBooked ? t("Request sent") : t("Request {selectedSlot}", { selectedSlot })}
         </Button>
       }
     >
@@ -125,39 +126,39 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
         </div>
 
         <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-          <legend className="mb-2.5 text-sm font-bold text-ink">Choose a time</legend>
+          <legend className="mb-2.5 text-sm font-bold text-ink">{t("Choose a time")}</legend>
           <div className="grid grid-cols-2 gap-2.5">
             {slots.map(({ label }) => (
               <button key={label} type="button" aria-pressed={selectedSlot === label} onClick={() => setSelectedSlot(label)} className={option(selectedSlot === label)}>
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
         </fieldset>
 
         <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-          <legend className="mb-2.5 text-sm font-bold text-ink">How would you like to talk?</legend>
+          <legend className="mb-2.5 text-sm font-bold text-ink">{t("How would you like to talk?")}</legend>
           <div className="grid grid-cols-2 gap-2.5">
             <button type="button" aria-pressed={sessionType === 'voice'} onClick={() => setSessionType('voice')} className={option(sessionType === 'voice')}>
-              <Phone className="h-5 w-5" aria-hidden="true" /> Voice call
+              <Phone className="h-5 w-5" aria-hidden="true" /> {t("Voice call")}
             </button>
             <button type="button" aria-pressed={sessionType === 'video'} onClick={() => setSessionType('video')} className={option(sessionType === 'video')}>
-              <Video className="h-5 w-5" aria-hidden="true" /> Video call
+              <Video className="h-5 w-5" aria-hidden="true" /> {t("Video call")}
             </button>
           </div>
-          <p className="m-0 text-sm text-ink-3">Voice calls work better on slow connections.</p>
+          <p className="m-0 text-sm text-ink-3">{t("Voice calls work better on slow connections.")}</p>
         </fieldset>
 
         <div className="flex flex-col gap-2">
           <label htmlFor="bk-msg" className="text-sm font-bold text-ink">
-            Anything you would like them to know? <span className="font-medium text-ink-3">(optional)</span>
+            <T text="Anything you would like them to know? <0>(optional)</0>" parts={[<span className="font-medium text-ink-3" />]} />
           </label>
           <textarea
             id="bk-msg"
             rows={3}
             value={message}
             onChange={e => setMessage(e.target.value)}
-            placeholder="e.g. I want help planning for weekends."
+            placeholder={t("e.g. I want help planning for weekends.")}
             className="w-full rounded-xl border border-line bg-bg px-4 py-3 text-base text-ink focus:border-pri-text focus:outline-none"
           />
         </div>
@@ -165,26 +166,26 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg p-4 text-[0.9375rem] leading-relaxed text-ink-2">
           <input type="checkbox" checked={shareCheckins} onChange={e => setShareCheckins(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 cursor-pointer" />
           <span>
-            <strong className="text-ink">Share my check-ins with this counsellor</strong>
+            <T text="<0>Share my check-ins with this counsellor</0>" parts={[<strong className="text-ink" />]} />
             <br />
-            Your streak, mood and craving scores help them prepare. Your chats with the AI companion are never shared. You can stop sharing any time.
+            {t("Your streak, mood and craving scores help them prepare. Your chats with the AI companion are never shared. You can stop sharing any time.")}
           </span>
         </label>
 
         <div className="flex items-center justify-between rounded-2xl border border-line px-4 py-3.5">
           <div>
-            <p className="m-0 text-sm text-ink-3">Subsidised price</p>
+            <p className="m-0 text-sm text-ink-3">{t("Subsidised price")}</p>
             <p className="m-0 text-xl font-extrabold text-ink">
-              GHS {counselor.feeGHS} <span className="text-sm font-medium text-ink-3">(about ${counselor.feeUSD})</span>
+              <T text="GHS {feeGHS} <0>(about ${feeUSD})</0>" parts={[<span className="text-sm font-medium text-ink-3" />]} vars={{ feeGHS: counselor.feeGHS, feeUSD: counselor.feeUSD }} />
             </p>
           </div>
-          <span className="text-sm text-ink-3">per session</span>
+          <T text="<0>per session</0>" parts={[<span className="text-sm text-ink-3" />]} />
         </div>
 
-        {bookError && <Notice tone="warn">{bookError}</Notice>}
+        {bookError && <Notice tone="warn">{t(bookError)}</Notice>}
         {isBooked && (
           <Notice icon={<Check className="h-5 w-5" />}>
-            Your request has been sent to {counselor.name.split(',')[0]} for {selectedSlot}.
+            {t("Your request has been sent to {v1} for {selectedSlot}.", { v1: counselor.name.split(',')[0], selectedSlot })}
           </Notice>
         )}
       </div>

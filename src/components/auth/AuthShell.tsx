@@ -3,17 +3,17 @@
  *  - a softly moving colour background,
  *  - one split card: the form (with the 4Life logo centred at the top) and, on a computer,
  *    a side panel of flat illustrations with no words,
- *  - the light / dark theme button in the top-right corner of the illustrations,
  *  - no visible page title (it stays for screen readers), so the form fits the screen,
  *  - the emergency numbers (112, ambulance 193) in the fine print.
  * Everything uses the Universal Color System.
  */
 import React from 'react';
-import { GraduationCap, Leaf, Moon, Stethoscope, Sun } from 'lucide-react';
+import { GraduationCap, Leaf, Stethoscope } from 'lucide-react';
 import { cx } from '../ui';
 import { LivingBackground } from '../LivingBackground';
 import { LoginArt } from './LoginArt';
 
+import { t, T, msg } from '../../i18n';
 export type AuthRole = 'client' | 'therapist';
 
 /** The 4Life logo and name, centred at the top of the form */
@@ -28,37 +28,16 @@ const Brand: React.FC = () => (
   </div>
 );
 
-/** Light / dark theme button (sits in the top-right corner of the illustrations) */
-const ThemeButton: React.FC<{ isDark: boolean; onToggleTheme: () => void; className?: string }> = ({ isDark, onToggleTheme, className }) => (
-  <button
-    type="button"
-    onClick={onToggleTheme}
-    aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-    title={isDark ? 'Light theme' : 'Dark theme'}
-    className={cx('glass-btn flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-pri-text cursor-pointer', className)}
-  >
-    {isDark ? <Sun className="h-5 w-5 text-[#f59e0b]" /> : <Moon className="h-5 w-5" />}
-  </button>
-);
-
 /** Privacy and emergency numbers */
 const FinePrint: React.FC = () => (
   <>
-    <span translate="no">4Life</span> · Private and confidential · In danger? No account needed:{' '}
-    <a href="tel:112" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline">
-      Call 112
-    </a>{' '}
-    ·{' '}
-    <a href="tel:193" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline">
-      Ambulance 193
-    </a>
+    <span translate="no">4Life</span> <T text="· Private and confidential · In danger? No account needed: <0>Call 112</0> · <1>Ambulance 193</1>" parts={[<a href="tel:112" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />, <a href="tel:193" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />]} />
   </>
 );
 
-/** The side panel on a computer: the illustrations (no words), the theme button and the fine print */
-const SidePanel: React.FC<{ isDark: boolean; onToggleTheme: () => void }> = ({ isDark, onToggleTheme }) => (
-  <aside aria-label="Illustrations" className="relative order-2 hidden min-w-0 flex-col bg-pri-soft/35 lg:m-3 lg:flex lg:rounded-2xl lg:px-7 lg:pb-5 lg:pt-6">
-    <ThemeButton isDark={isDark} onToggleTheme={onToggleTheme} className="absolute right-4 top-4 z-10" />
+/** The side panel on a computer: the illustrations (no words) and the fine print */
+const SidePanel: React.FC = () => (
+  <aside aria-label={t("Illustrations")} className="relative order-2 hidden min-w-0 flex-col bg-pri-soft/35 lg:m-3 lg:flex lg:rounded-2xl lg:px-7 lg:pb-5 lg:pt-6">
     <div className="flex min-h-0 flex-1 items-center justify-center py-4">
       <LoginArt className="w-full max-w-[32rem]" />
     </div>
@@ -74,7 +53,6 @@ interface AuthShellProps {
   role: AuthRole;
   onRoleChange?: (r: AuthRole) => void;
   isDark: boolean;
-  onToggleTheme: () => void;
   language: string;
   onChangeLanguage: (code: string) => void;
   title: string;
@@ -82,7 +60,7 @@ interface AuthShellProps {
   children: React.ReactNode;
 }
 
-export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark, onToggleTheme, language, onChangeLanguage, title, subtitle, children }) => {
+export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark, language, onChangeLanguage, title, subtitle, children }) => {
   return (
   <div className="relative min-h-screen overflow-hidden bg-bg">
     {/* Living background: a 3D helix that follows the pointer; drag or tap it */}
@@ -97,9 +75,8 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
             <Brand />
           </div>
 
-          {/* On phones and tablets the illustrations sit under the logo, with the theme button in their corner */}
+          {/* On phones and tablets the illustrations sit under the logo */}
           <div className="relative -mb-2 lg:hidden">
-            <ThemeButton isDark={isDark} onToggleTheme={onToggleTheme} className="absolute right-0 top-0 z-10" />
             <div className="mx-auto w-full max-w-[17rem] sm:max-w-[21rem]">
               <LoginArt compact />
             </div>
@@ -107,10 +84,10 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
 
           {/* Who is signing in */}
           {onRoleChange && (
-            <div role="radiogroup" aria-label="I am a" className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1.5">
+            <div role="radiogroup" aria-label={t("I am a")} className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1.5">
               {[
-                { id: 'client' as const, label: 'Student', sub: 'I want support', icon: <GraduationCap className="h-5 w-5" aria-hidden="true" /> },
-                { id: 'therapist' as const, label: 'Therapist', sub: 'I give support', icon: <Stethoscope className="h-5 w-5" aria-hidden="true" /> },
+                { id: 'client' as const, label: msg('Student'), sub: msg('I want support'), icon: <GraduationCap className="h-5 w-5" aria-hidden="true" /> },
+                { id: 'therapist' as const, label: msg('Therapist'), sub: msg('I give support'), icon: <Stethoscope className="h-5 w-5" aria-hidden="true" /> },
               ].map(o => {
                 const on = role === o.id;
                 return (
@@ -127,8 +104,8 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
                   >
                     <span className={cx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg min-[390px]:h-9 min-[390px]:w-9', on ? 'bg-pri text-[#fff]' : 'bg-surface text-ink-3')}>{o.icon}</span>
                     <span className="min-w-0">
-                      <span className="block text-[0.9375rem] font-bold leading-tight">{o.label}</span>
-                      <span className="hidden text-xs text-ink-3 sm:block">{o.sub}</span>
+                      <span className="block text-[0.9375rem] font-bold leading-tight">{t(o.label)}</span>
+                      <span className="hidden text-xs text-ink-3 sm:block">{t(o.sub)}</span>
                     </span>
                   </button>
                 );
@@ -138,8 +115,8 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
 
           {/* The page title stays for screen readers only, so the form starts higher up */}
           <div className="sr-only">
-            <h1 id="auth-title">{title}</h1>
-            <p>{subtitle}</p>
+            <h1 id="auth-title">{t(title)}</h1>
+            <p>{t(subtitle)}</p>
           </div>
 
           <div key={role} className="animate-fadeIn">
@@ -148,7 +125,7 @@ export const AuthShell: React.FC<AuthShellProps> = ({ role, onRoleChange, isDark
         </section>
 
         {/* ---------- Illustrations (no words) ---------- */}
-        <SidePanel isDark={isDark} onToggleTheme={onToggleTheme} />
+        <SidePanel />
       </main>
 
       <footer className="flex flex-col items-center gap-1 text-center text-sm text-ink-3 lg:hidden">

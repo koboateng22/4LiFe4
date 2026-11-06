@@ -9,6 +9,10 @@
  *   (or put them in .env.local and run: npm run db:seed-demo)
  *
  * Safe to run more than once: existing demo accounts are reused.
+ *
+ * It refuses to run unless ALLOW_DEMO_SEED=yes is set as well, so it can't create demo
+ * accounts by accident (for example from a deploy script). Remove them again before a launch:
+ *   npm run db:remove-demo
  */
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync, existsSync } from 'node:fs';
@@ -25,6 +29,11 @@ for (const file of ['.env.local', '.env']) {
 const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const password = process.env.DEMO_PASSWORD || 'Demo-4Life-2026';
+if (process.env.ALLOW_DEMO_SEED !== 'yes') {
+  console.error('This creates demo accounts with a known password. Only for a development project.');
+  console.error('If that is what you want, run it again with ALLOW_DEMO_SEED=yes.');
+  process.exit(1);
+}
 if (!url || !serviceKey) {
   console.error('Set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY first (see .env.example).');
   process.exit(1);

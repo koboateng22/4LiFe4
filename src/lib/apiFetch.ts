@@ -22,6 +22,7 @@ const FUNCTION_FOR: Record<string, string> = {
   '/api/moderate': 'moderate',
   '/api/village/guide': 'village-guide',
   '/api/first-aid/videos': 'first-aid-videos',
+  '/api/videos': 'library-videos',
   '/api/health': 'health',
   '/api/client-error': 'client-error',
 };

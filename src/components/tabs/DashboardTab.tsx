@@ -16,6 +16,7 @@ import { RibbonLoader } from '../RibbonMark';
 import { useAction, requestAction } from '../../lib/actions';
 import { useCountUp, useMounted } from '../../lib/motion';
 
+import { t, T, msg } from '../../i18n';
 interface DashboardTabProps {
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -28,14 +29,14 @@ interface DashboardTabProps {
 /* ---------- Helpers ---------- */
 
 const MOODS = [
-  { id: 'struggling', label: 'Struggling' },
-  { id: 'low', label: 'Low' },
-  { id: 'okay', label: 'Okay' },
-  { id: 'good', label: 'Good' },
-  { id: 'great', label: 'Great' },
+  { id: 'struggling', label: msg('Struggling') },
+  { id: 'low', label: msg('Low') },
+  { id: 'okay', label: msg('Okay') },
+  { id: 'good', label: msg('Good') },
+  { id: 'great', label: msg('Great') },
 ];
 
-const CRAVING_WORDS = ['', 'Very mild', 'Very mild', 'Mild', 'Mild', 'Noticeable', 'Noticeable', 'Strong', 'Strong', 'Overwhelming', 'Overwhelming'];
+const CRAVING_WORDS = ['', msg('Very mild'), msg('Very mild'), msg('Mild'), msg('Mild'), msg('Noticeable'), msg('Noticeable'), msg('Strong'), msg('Strong'), msg('Overwhelming'), msg('Overwhelming')];
 
 export const FOCUS_LABEL: Record<TriageCategory, string> = {
   substance: 'Drug and alcohol recovery',
@@ -49,7 +50,7 @@ export const FOCUS_LABEL: Record<TriageCategory, string> = {
 
 const greetingFor = (d = new Date()) => {
   const h = d.getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? msg('Good morning') : h < 17 ? msg('Good afternoon') : msg('Good evening');
 };
 
 /* ---------- Component ---------- */
@@ -93,7 +94,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
     }));
     if (isRemote && profile.id) {
       setCheckinError('');
-      recordCheckin(profile.id, mood || undefined, craving).catch(() => setCheckinError('Your check-in is shown here but could not be saved. Check your connection.'));
+      recordCheckin(profile.id, mood || undefined, craving).catch(() => setCheckinError(t('Your check-in is shown here but could not be saved. Check your connection.')));
     }
     setSaved({ mood, craving, note: note.trim() });
     // a small celebration for showing up (not when someone is struggling)
@@ -116,8 +117,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
   const nextCircle = [...circles].map(c => ({ c, t: circleTiming(c) })).sort((a, b) => a.t.start.getTime() - b.t.start.getTime())[0];
   // Past the last badge there is nothing left to count down to
   const daysLeft = milestone - streak;
-  const milestoneText = daysLeft > 0 ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to your ${milestone}-day badge` : `You have reached your ${milestone}-day badge`;
-  const daysCleanLabel = streak === 1 ? 'day clean' : 'days clean';
+  const milestoneText = daysLeft > 0 ? t('{count} days to your {milestone}-day badge', { count: daysLeft, milestone }) : t('You have reached your {milestone}-day badge', { milestone });
+  const daysCleanLabel = t('days clean', { count: streak });
   // Bookable people first, so the short list on Home shows someone you can see today
   const sortedCounsellors = [...counsellors].sort((a, b) => Number(b.availableNow) - Number(a.availableNow));
   const fees = counsellors.map(c => c.feeGHS).filter(fee => fee > 0);
@@ -133,13 +134,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
         id="home-h"
         title={
           <>
-            {greetingFor()}, {firstName}
+            {t('{greeting}, {name}', { greeting: t(greetingFor()), name: firstName })}
           </>
         }
-        text="One day at a time — you are doing it, and you are not alone."
+        text={t('One day at a time — you are doing it, and you are not alone.')}
         actions={
           <button type="button" className={heroSecondary} onClick={() => onNavigate('chat')}>
-            <MessageCircle className="h-5 w-5" aria-hidden="true" /> Talk to {aiName}
+            <MessageCircle className="h-5 w-5" aria-hidden="true" /> {t("Talk to {aiName}", { aiName })}
           </button>
         }
         aside={
@@ -162,11 +163,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-[2rem] font-extrabold leading-none tabular-nums sm:text-[2.375rem]">{shownStreak}</span>
-                <span className="text-xs font-semibold text-[#a7f3d0] sm:text-sm">{daysCleanLabel}</span>
+                <span className="text-xs font-semibold text-[#a7f3d0] sm:text-sm">{t(daysCleanLabel)}</span>
               </div>
             </div>
             <p className="m-0 max-w-[10rem] text-[0.9375rem] leading-snug text-[#d1fae5] lg:hidden xl:block">
-              {daysLeft > 0 && <strong className="block text-[#fff]">Next milestone</strong>}
+              {daysLeft > 0 && <strong className="block text-[#fff]">{t("Next milestone")}</strong>}
               {milestoneText}
             </p>
           </div>
@@ -178,13 +179,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
       <Card as="section" raised id="checkin" aria-labelledby="checkin-h" className="flex scroll-mt-24 flex-col gap-5">
         <SectionHeader
           id="checkin-h"
-          title="How are you right now?"
-          subtitle={`A quick check-in takes under a minute. It points you to the right kind of help${isRemote ? ', and your counsellor sees it if you share check-ins' : ''}.`}
+          title={t("How are you right now?")}
+          subtitle={isRemote ? t('A quick check-in takes under a minute. It points you to the right kind of help, and your counsellor sees it if you share check-ins.') : t('A quick check-in takes under a minute. It points you to the right kind of help.')}
         />
 
         <div className="flex flex-col gap-3">
           <p className="m-0 text-base font-bold text-ink" id="mood-label">
-            Your mood
+            {t("Your mood")}
           </p>
           <MoodFaces value={mood} onChange={setMood} labelledBy="mood-label" />
         </div>
@@ -192,71 +193,70 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <label htmlFor="craving" className="text-base font-bold text-ink">
-              How strong is your craving?
+              {t("How strong is your craving?")}
             </label>
             <span className="text-base font-bold text-pri-text" aria-live="polite">
-              {craving} of 10 · {CRAVING_WORDS[craving]}
+              {t('{craving} of 10 · {word}', { craving, word: t(CRAVING_WORDS[craving]) })}
             </span>
           </div>
           <input id="craving" type="range" min={1} max={10} value={craving} onChange={e => setCraving(Number(e.target.value))} className="h-7 w-full cursor-pointer" />
           <div className="flex justify-between text-sm text-ink-3">
-            <span>1 · No urge</span>
-            <span>10 · Overwhelming</span>
+            <T text="<0>1 · No urge</0><1>10 · Overwhelming</1>" parts={[<span />, <span />]} />
           </div>
         </div>
 
         <div className="flex flex-col gap-2.5">
           <label htmlFor="checkin-note" className="text-base font-bold text-ink">
-            What is on your mind? <span className="font-medium text-ink-3">(optional)</span>
+            <T text="What is on your mind? <0>(optional)</0>" parts={[<span className="font-medium text-ink-3" />]} />
           </label>
           <textarea
             id="checkin-note"
             rows={2}
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="For example: I feel lonely tonight, or: I worked hard so one drink won't hurt…"
+            placeholder={t("For example: I feel lonely tonight, or: I worked hard so one drink won't hurt…")}
             className={textareaClass}
           />
         </div>
 
-        {checkinError && <Notice tone="warn">{checkinError}</Notice>}
+        {checkinError && <Notice tone="warn">{t(checkinError)}</Notice>}
 
         {/* After saving: point to the help that fits */}
         {saved &&
           (saved.craving >= 7 ? (
             <Notice tone="warn" icon={<Waves className="h-5 w-5" />}>
-              <p className="m-0 font-bold">Saved. That’s a strong craving — let’s ride it out now.</p>
-              <p className="m-0 mt-0.5">Urges peak and pass, usually within 20 to 30 minutes if you don’t act on them.</p>
+              <p className="m-0 font-bold">{t("Saved. That’s a strong craving — let’s ride it out now.")}</p>
+              <p className="m-0 mt-0.5">{t("Urges peak and pass, usually within 20 to 30 minutes if you don’t act on them.")}</p>
               <div className="mt-2.5 flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => onNavigate('chat')}>
-                  Ride it out with {aiName}
+                  {t("Ride it out with {aiName}", { aiName })}
                 </Button>
                 <Button size="sm" variant="secondary" onClick={onOpenCalm} icon={<Wind className="h-4 w-4" />}>
-                  Breathe first
+                  {t("Breathe first")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={onOpenSos}>
-                  I need a person
+                  {t("I need a person")}
                 </Button>
               </div>
             </Notice>
           ) : saved.mood === 'struggling' || saved.mood === 'low' ? (
             <Notice icon={<Check className="h-5 w-5" />}>
-              <p className="m-0 font-bold">Saved. Thank you for being honest about a hard day.</p>
+              <p className="m-0 font-bold">{t("Saved. Thank you for being honest about a hard day.")}</p>
               <div className="mt-2.5 flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => onNavigate('chat')}>
-                  Talk it through
+                  {t("Talk it through")}
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => onNavigate('community')}>
-                  Read the Village
+                  {t("Read the Village")}
                 </Button>
               </div>
             </Notice>
           ) : (
             <Notice icon={<Check className="h-5 w-5" />}>
-              <p className="m-0 font-bold">Check-in saved. Well done for showing up today.</p>
+              <p className="m-0 font-bold">{t("Check-in saved. Well done for showing up today.")}</p>
               {saved.note && (
                 <Button variant="link" onClick={() => onNavigate('chat')} icon={<NotebookPen className="h-4 w-4" />}>
-                  Work through that thought with {aiName}
+                  {t("Work through that thought with {aiName}", { aiName })}
                 </Button>
               )}
             </Notice>
@@ -264,30 +264,30 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
 
         <div className="flex justify-end">
           <Button ref={saveRef as any} size="lg" block className="sm:w-auto" onClick={handleSaveCheckin}>
-            Save check-in
+            {t("Save check-in")}
           </Button>
         </div>
       </Card>
 
       {/* 3. The three ways 4Life helps: one action per card */}
       <section aria-labelledby="support-h" className="flex flex-col gap-4">
-        <SectionHeader id="support-h" title="Your support" />
+        <SectionHeader id="support-h" title={t("Your support")} />
         <div className="grid gap-4 md:grid-cols-3">
           <Card as="article" className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <IconBadge tone="pri">
                 <MessageCircle className="h-5 w-5" />
               </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">AI CBT therapy</h3>
+              <h3 className="m-0 text-lg font-bold text-ink">{t("AI CBT therapy")}</h3>
             </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Ride out a craving step by step, or test a thought that keeps pulling you back. Any time, day or night.</p>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">{t("Ride out a craving step by step, or test a thought that keeps pulling you back. Any time, day or night.")}</p>
             <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
               {lastRecord ? (
                 <>
-                  Last thought record: <strong className="text-ink">{lastRecord.emotion || 'feeling'} {lastRecord.intensityBefore} → {lastRecord.intensityAfter}</strong> · {trapLabel(lastRecord.trap)}
+                  {t("Last thought record:")} <strong className="text-ink">{lastRecord.emotion || 'feeling'} {lastRecord.intensityBefore} → {lastRecord.intensityAfter}</strong> · {trapLabel(lastRecord.trap)}
                 </>
               ) : (
-                'No thought records yet. Try one — it takes about five minutes.'
+                t("No thought records yet. Try one — it takes about five minutes.")
               )}
             </p>
             <div className="mt-auto pt-1">
@@ -300,7 +300,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
                 // the three cards are narrow from md to xl: drop the icon so the label stays on one line
                 icon={<Waves className="h-5 w-5 md:max-xl:hidden" />}
               >
-                Ride out a craving
+                {t("Ride out a craving")}
               </Button>
             </div>
           </Card>
@@ -310,18 +310,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
               <IconBadge tone="info">
                 <Users className="h-5 w-5" />
               </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">Global Village</h3>
+              <h3 className="m-0 text-lg font-bold text-ink">{t("Global Village")}</h3>
             </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Read and share stories anonymously with people who get it, and join a weekly group circle.</p>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">{t("Read and share stories anonymously with people who get it, and join a weekly group circle.")}</p>
             {nextCircle && (
               <p className="m-0 rounded-xl bg-bg px-3.5 py-2.5 text-sm text-ink-2">
-                {nextCircle.t.live ? 'Live now: ' : 'Next circle: '}
-                <strong className="text-ink">{nextCircle.c.title}</strong> · {nextCircle.t.live ? nextCircle.t.label.replace('Live now · ', '') : nextCircle.t.label}
+                {nextCircle.t.live ? t("Live now: ") : t("Next circle: ")}
+                <strong className="text-ink">{t(nextCircle.c.title)}</strong> · {nextCircle.t.live ? nextCircle.t.until : nextCircle.t.label}
               </p>
             )}
             <div className="mt-auto pt-1">
               <Button variant="secondary" onClick={() => onNavigate('community')} icon={<ArrowRight className="h-5 w-5 md:max-xl:hidden" />}>
-                Open the Village
+                {t("Open the Village")}
               </Button>
             </div>
           </Card>
@@ -331,12 +331,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
               <IconBadge tone="danger">
                 <Siren className="h-5 w-5" />
               </IconBadge>
-              <h3 className="m-0 text-lg font-bold text-ink">Instant EMS</h3>
+              <h3 className="m-0 text-lg font-bold text-ink">{t("Instant EMS")}</h3>
             </div>
-            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">Call 112 in one tap. Instant EMS in the menu can text your location and find the nearest hospital.</p>
+            <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">{t("Call 112 in one tap. Instant EMS in the menu can text your location and find the nearest hospital.")}</p>
             <div className="mt-auto pt-1">
               <ButtonLink href="tel:112" variant="danger" icon={<Phone className="h-5 w-5" />}>
-                Call 112
+                {t("Call 112")}
               </ButtonLink>
             </div>
           </Card>
@@ -347,8 +347,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
       <section aria-labelledby="couns-h" className="flex flex-col gap-4">
         <SectionHeader
           id="couns-h"
-          title="Talk to a counsellor"
-          subtitle={`Trained professionals in Ghana.${lowestFee !== null ? ` Subsidised sessions from GHS ${lowestFee}.` : ''}`}
+          title={t("Talk to a counsellor")}
+          subtitle={lowestFee !== null ? t('Trained professionals in Ghana. Subsidised sessions from GHS {fee}.', { fee: lowestFee }) : t('Trained professionals in Ghana.')}
           action={
             counsellors.length > 2 && (
               <Button
@@ -359,15 +359,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
                 className={counsellors.length === 3 ? 'xl:hidden' : undefined}
                 onClick={() => setShowAllCounsellors(open => !open)}
               >
-                {showAllCounsellors ? 'Show fewer' : `See all ${counsellors.length}`}
+                {showAllCounsellors ? t("Show fewer") : t("See all {length}", { length: counsellors.length })}
               </Button>
             )
           }
         />
         <div id="counsellor-list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {counsellorsLoading && <RibbonLoader text="Loading counsellors…" className="col-span-full" />}
+          {counsellorsLoading && <RibbonLoader text={t('Loading counsellors…')} className="col-span-full" />}
           {!counsellorsLoading && counsellors.length === 0 && (
-            <p className="col-span-full m-0 text-[0.9375rem] text-ink-2">No counsellors are available to book right now. In an emergency, press SOS or call 112.</p>
+            <p className="col-span-full m-0 text-[0.9375rem] text-ink-2">{t("No counsellors are available to book right now. In an emergency, press SOS or call 112.")}</p>
           )}
           {sortedCounsellors.map((c, i) => (
             <Card
@@ -380,7 +380,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
                 <Avatar src={c.avatar} name={c.name} size={52} />
                 <div className="min-w-0">
                   <h3 className="m-0 text-base font-bold leading-snug text-ink">{c.name}</h3>
-                  <p className="m-0 text-sm text-ink-3">{c.title}</p>
+                  <p className="m-0 text-sm text-ink-3">{t(c.title)}</p>
                 </div>
               </div>
               <p className="m-0 text-[0.9375rem] leading-relaxed text-ink-2">
@@ -389,19 +389,18 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({ profile, setProfile,
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                 <span className={cx('inline-flex items-center gap-1.5 font-semibold', c.availableNow ? 'text-pri-text' : 'text-ink-3')}>
                   <span className={cx('h-2 w-2 rounded-full', c.availableNow ? 'bg-pri' : 'bg-ink-3')} aria-hidden="true" />
-                  {c.availableNow ? 'Available now' : 'Not available today'}
+                  {c.availableNow ? t("Available now") : t("Not available today")}
                 </span>
                 <span className="inline-flex items-center gap-1 text-ink-2">
-                  <Star className="h-4 w-4 text-warn" aria-hidden="true" /> {c.rating > 0 ? c.rating : 'New'}
+                  <Star className="h-4 w-4 text-warn" aria-hidden="true" /> {c.rating > 0 ? c.rating : t("New")}
                 </span>
               </div>
               <div className="mt-auto flex items-center justify-between gap-2 border-t border-line pt-3.5">
                 <p className="m-0 leading-tight">
-                  <span className="block text-lg font-extrabold text-ink">GHS {c.feeGHS}</span>
-                  <span className="block text-sm text-ink-3">per session</span>
+                  <T text="<0>GHS {feeGHS}</0><1>per session</1>" parts={[<span className="block text-lg font-extrabold text-ink" />, <span className="block text-sm text-ink-3" />]} vars={{ feeGHS: c.feeGHS }} />
                 </p>
                 <Button variant={c.availableNow ? 'soft' : 'secondary'} onClick={() => onOpenCounselor(c)}>
-                  {c.availableNow ? 'Book' : 'Book later'}
+                  {c.availableNow ? t("Book") : t("Book later")}
                 </Button>
               </div>
             </Card>

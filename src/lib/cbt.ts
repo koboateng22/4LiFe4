@@ -4,6 +4,10 @@
  * thinking trap a thought shows (used when Gemini is not available).
  */
 
+
+/** Marks English text for the translation files (see src/i18n). Kept local: this file also runs on the server. */
+const msg = <S extends string>(text: S): S => text;
+
 export type TherapyMode = 'cbt' | 'urge_surfing' | 'mindfulness' | 'accountability';
 
 export type TrapId =
@@ -17,14 +21,14 @@ export type TrapId =
   | 'should_statements';
 
 export const THINKING_TRAPS: Array<{ id: TrapId; label: string; example: string }> = [
-  { id: 'permission_giving', label: 'Permission-giving', example: '“Just once won’t hurt.” “I deserve it after today.”' },
-  { id: 'all_or_nothing', label: 'All-or-nothing', example: '“I slipped, so I’ve ruined everything.”' },
-  { id: 'expecting_worst', label: 'Expecting the worst', example: '“I’ll never get through tonight.”' },
-  { id: 'feelings_as_facts', label: 'Feelings as facts', example: '“I feel guilty, so I must be a bad person.”' },
-  { id: 'mind_reading', label: 'Mind reading', example: '“They all think I’m weak.”' },
-  { id: 'ignoring_positive', label: 'Ignoring the positive', example: '“Twelve days clean doesn’t count for anything.”' },
-  { id: 'overgeneralising', label: 'Overgeneralising', example: '“I always fail. Nothing ever works for me.”' },
-  { id: 'should_statements', label: '“Should” statements', example: '“I should be over this by now.”' },
+  { id: 'permission_giving', label: msg('Permission-giving'), example: msg('“Just once won’t hurt.” “I deserve it after today.”') },
+  { id: 'all_or_nothing', label: msg('All-or-nothing'), example: msg('“I slipped, so I’ve ruined everything.”') },
+  { id: 'expecting_worst', label: msg('Expecting the worst'), example: msg('“I’ll never get through tonight.”') },
+  { id: 'feelings_as_facts', label: msg('Feelings as facts'), example: msg('“I feel guilty, so I must be a bad person.”') },
+  { id: 'mind_reading', label: msg('Mind reading'), example: msg('“They all think I’m weak.”') },
+  { id: 'ignoring_positive', label: msg('Ignoring the positive'), example: msg('“Twelve days clean doesn’t count for anything.”') },
+  { id: 'overgeneralising', label: msg('Overgeneralising'), example: msg('“I always fail. Nothing ever works for me.”') },
+  { id: 'should_statements', label: msg('“Should” statements'), example: msg('“I should be over this by now.”') },
 ];
 
 export const trapLabel = (id?: string) => THINKING_TRAPS.find(t => t.id === id)?.label || '';
@@ -32,9 +36,9 @@ export const isTrapId = (v: unknown): v is TrapId => THINKING_TRAPS.some(t => t.
 
 /** Questions that help test a thought, whatever the trap. */
 export const TESTING_QUESTIONS = [
-  'What would I say to a friend who had this thought?',
-  'What has happened the other times I felt this way?',
-  'Will this matter in a week? In a year?',
+  msg('What would I say to a friend who had this thought?'),
+  msg('What has happened the other times I felt this way?'),
+  msg('Will this matter in a week? In a year?'),
 ];
 
 /** A rough offline guess at the thinking trap in a thought. */

@@ -191,6 +191,7 @@ The same backend runs in two places, from one copy of the code:
 | Village house-rules check | `POST /api/moderate` | `moderate` | needed |
 | Circle guide | `POST /api/village/guide` | `village-guide` | needed |
 | First aid videos | `GET /api/first-aid/videos?topic=` | `first-aid-videos` | open |
+| Learn videos | `GET /api/videos?category=&q=&page=` | `library-videos` | open (rate-limited) |
 | Health check | `GET /api/health` | `health` | open |
 | Crash reports | `POST /api/client-error` | `client-error` | open |
 
@@ -231,7 +232,39 @@ curl http://127.0.0.1:54321/functions/v1/health
 
 The rate limit lives in each function instance's memory, so treat it as a brake, not a quota.
 
-## 6. Not included yet
+## 6. Signing in with Google or a phone number (optional)
+
+Both go through Supabase Auth, so there is still one account system and one kind of session. The
+buttons appear only when switched on, because without this set-up they would just fail.
+
+**Google**
+1. Google Cloud console → APIs & Services → OAuth consent screen: app name 4Life, your support email,
+   scopes `email`, `profile`, `openid`. Publish it when you launch.
+2. Credentials → Create OAuth client ID → Web application.
+   - Authorised JavaScript origins: your site, e.g. `https://4life.app` (and `http://localhost:3000` for development).
+   - Authorised redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (shown in step 3).
+3. Supabase → Authentication → Providers → Google: turn on, paste the client ID and secret.
+4. Supabase → Authentication → URL Configuration: Site URL = your site; add it (and any preview URLs) to Redirect URLs.
+5. In the app's settings (Vercel): `VITE_AUTH_GOOGLE=true`, then redeploy.
+
+A Google sign-in with the same confirmed email as an existing account signs in to that account
+(Supabase links them) instead of making a second one. Therapists keep signing in with email and
+password: their account needs a licence, which Google can't provide.
+
+**Phone (text message code, Twilio Verify)**
+1. Twilio console → Verify → create a Service (code length 6). Note the Account SID, Auth Token and the Verify Service SID.
+   Turn on Geo permissions for the countries you need (Ghana at least).
+2. Supabase → Authentication → Providers → Phone: turn on, SMS provider **Twilio Verify**, paste the three values.
+   Twilio keys live only in Supabase, never in the app or in Vercel.
+3. Supabase → Authentication → Rate Limits: keep a limit on SMS per hour (texts cost money).
+4. In the app's settings (Vercel): `VITE_AUTH_PHONE=true`, then redeploy.
+
+Supabase makes, sends, expires and checks the code on its server, and allows a new code only after
+60 seconds; the app shows a countdown. A first sign-in this way asks for a community name and an
+age (13 or older) before the app opens, like the sign-up form. A phone account is separate from an
+email account: linking the two is not built yet.
+
+## 7. Not included yet
 
 - **Push notifications.** Live updates arrive only while the app is open. To alert a therapist whose app is closed, add an Edge Function that sends a push or SMS when a row is added to `sos_events`.
 - **Guest mode** stays on the device. AI chat history is not stored on the server, by design.

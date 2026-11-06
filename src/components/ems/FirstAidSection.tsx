@@ -11,6 +11,7 @@ import { FIRST_AID, youtubeSearchHref, type FirstAidTopic } from '../../lib/firs
 import { apiFetch } from '../../lib/apiFetch';
 import { useAction } from '../../lib/actions';
 import { ButtonLink, Modal, SectionHeader, cx } from '../ui';
+import { EnglishSafetyNote } from './EnglishSafetyNote';
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   overdose: Pill,
@@ -132,7 +133,8 @@ const TopicSheet: React.FC<{ topic: FirstAidTopic | null; onClose: () => void }>
 
   return (
     <Modal isOpen={!!topic} onClose={onClose} title={topic.title} subtitle={topic.when} size="md">
-      <div className="flex min-w-0 flex-col gap-5" onClickCapture={ignoreSecondTap}>
+      <div lang="en" className="flex min-w-0 flex-col gap-5" onClickCapture={ignoreSecondTap}>
+        <EnglishSafetyNote />
         {topic.callFirst && (
           <div className="flex flex-col gap-3 rounded-xl bg-danger-soft p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="m-0 text-[0.9375rem] font-bold leading-snug text-ink">Call for help first, then do these steps.</p>
@@ -212,8 +214,9 @@ export const FirstAidSection: React.FC = () => {
   useAction('first-aid', () => document.getElementById('first-aid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 
   return (
-    <section id="first-aid" aria-labelledby="fa-h" className="flex scroll-mt-24 flex-col gap-4">
+    <section id="first-aid" lang="en" aria-labelledby="fa-h" className="flex scroll-mt-24 flex-col gap-4">
       <SectionHeader id="fa-h" title="First aid while you wait" subtitle="Simple steps that work offline. Tap one to open it." />
+      <EnglishSafetyNote />
       <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0 min-[380px]:grid-cols-2 lg:grid-cols-4">
         {FIRST_AID.map(t => {
           const Icon = ICONS[t.id] || HeartPulse;

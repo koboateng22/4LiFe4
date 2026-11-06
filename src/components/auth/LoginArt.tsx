@@ -14,6 +14,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cx } from '../ui';
 import { CalmIllustration, MeditatingPerson } from './CalmIllustration';
 
+import { t as tr, msg } from '../../i18n';
 /* ------------------------------------------------------------------ */
 /* A simple standing person (feet at 0,0; about 230 units tall)        */
 /* ------------------------------------------------------------------ */
@@ -285,10 +286,10 @@ const CareScene = () => (
 );
 
 const SCENES: Array<{ id: string; label: string; art: React.ReactNode }> = [
-  { id: 'calm', label: 'A young person meditating calmly, with floating icons for chat, friends, help, time and health', art: null },
-  { id: 'friends', label: 'Four friends holding up a clock, a chat bubble, a heart and a growing plant', art: <FriendsScene /> },
-  { id: 'joy', label: 'Friends having a healthy, joyful day around a big heart: jumping, meditating and exercising', art: <JoyScene /> },
-  { id: 'care', label: 'A caring team holding a heart and a health card, one with a stethoscope', art: <CareScene /> },
+  { id: 'calm', label: msg('A young person meditating calmly, with floating icons for chat, friends, help, time and health'), art: null },
+  { id: 'friends', label: msg('Four friends holding up a clock, a chat bubble, a heart and a growing plant'), art: <FriendsScene /> },
+  { id: 'joy', label: msg('Friends having a healthy, joyful day around a big heart: jumping, meditating and exercising'), art: <JoyScene /> },
+  { id: 'care', label: msg('A caring team holding a heart and a health card, one with a stethoscope'), art: <CareScene /> },
 ];
 
 const SLIDE_MS = 5000;
@@ -321,8 +322,8 @@ export const LoginArt: React.FC<{ className?: string; compact?: boolean }> = ({ 
   return (
     <div
       className={cx('relative select-none touch-pan-y', className)}
-      aria-roledescription="carousel"
-      aria-label="Illustrations"
+      aria-roledescription={tr("carousel")}
+      aria-label={tr("Illustrations")}
       onMouseLeave={() => {
         if (drift.current) drift.current.style.transform = '';
       }}
@@ -369,7 +370,7 @@ export const LoginArt: React.FC<{ className?: string; compact?: boolean }> = ({ 
               {sc.id === 'calm' ? (
                 <CalmIllustration />
               ) : (
-                <svg viewBox="0 0 480 400" className="block h-auto w-full overflow-visible" role="img" aria-label={sc.label}>
+                <svg viewBox="0 0 480 400" className="block h-auto w-full overflow-visible" role="img" aria-label={tr(sc.label)}>
                   {sc.art}
                 </svg>
               )}
@@ -379,14 +380,14 @@ export const LoginArt: React.FC<{ className?: string; compact?: boolean }> = ({ 
       </div>
 
       {/* Dots (no words) */}
-      <div className={cx('flex justify-center gap-0.5', compact ? 'mt-1' : 'mt-6')} role="tablist" aria-label="Choose an illustration">
+      <div className={cx('flex justify-center gap-0.5', compact ? 'mt-1' : 'mt-6')} role="tablist" aria-label={tr("Choose an illustration")}>
         {SCENES.map((sc, i) => (
           <button
             key={sc.id}
             type="button"
             role="tab"
             aria-selected={i === index}
-            aria-label={sc.label}
+            aria-label={tr(sc.label)}
             onClick={() => setIndex(i)}
             className="flex h-7 min-w-7 items-center justify-center px-1.5 cursor-pointer"
           >

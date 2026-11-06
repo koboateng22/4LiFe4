@@ -11,6 +11,10 @@
  * everything, so they never replace a person reviewing reports.
  */
 
+
+/** Marks English text for the translation files (see src/i18n). Kept local: this file also runs on the server. */
+const msg = <S extends string>(text: S): S => text;
+
 export type RiskLevel = 'none' | 'concern' | 'crisis';
 
 export interface RiskResult {
@@ -86,12 +90,12 @@ const HANDLE = /\b(add|follow|dm|text|call|whatsapp|snap|message) me (on|at)\b/i
 const SOURCING = /\b(where (can|do|could) (i|we|you) (buy|get|cop|find) (some )?(weed|wee|tramadol|pills|coke|cocaine|heroin|meth|drugs|stuff|lean|codeine)|who (sells|has|can get)( some)? (weed|wee|tramadol|pills|coke|drugs|stuff)|(selling|for sale|got some) (weed|wee|tramadol|pills|coke|codeine)|dm me for|hit me up for|my plug)\b/i;
 
 const RULE_TEXT: Record<ModerationCategory, string> = {
-  slur: 'Slurs are not allowed in the Village. Please rewrite this without them.',
-  profanity: 'Please rewrite this without strong swearing or explicit words, so the Village stays safe for everyone.',
-  insult: 'Please keep it kind — talk about the words or the situation, not the person.',
-  harassment: 'Telling anyone to hurt or kill themselves is never allowed here.',
-  contact_details: 'Please don’t share phone numbers, emails or social handles. Staying anonymous keeps everyone safe.',
-  drug_sourcing: 'Posts about buying, selling or finding drugs are not allowed in the Village.',
+  slur: msg('Slurs are not allowed in the Village. Please rewrite this without them.'),
+  profanity: msg('Please rewrite this without strong swearing or explicit words, so the Village stays safe for everyone.'),
+  insult: msg('Please keep it kind — talk about the words or the situation, not the person.'),
+  harassment: msg('Telling anyone to hurt or kill themselves is never allowed here.'),
+  contact_details: msg('Please don’t share phone numbers, emails or social handles. Staying anonymous keeps everyone safe.'),
+  drug_sourcing: msg('Posts about buying, selling or finding drugs are not allowed in the Village.'),
 };
 
 /** Check text against the Village house rules. */

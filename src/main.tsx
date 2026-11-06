@@ -2,11 +2,8 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { installTranslateDomGuards } from './utils/translateUtils';
 import { AppErrorBoundary, reportClientError } from './components/AppErrorBoundary';
-
-// Lets Google Translate rewrite text without breaking React's updates
-installTranslateDomGuards();
+import { savedLanguage, setLanguage } from './i18n';
 
 // Keep the app on the phone so emergency help still opens without internet (production builds only)
 if ((import.meta as any).env?.PROD && 'serviceWorker' in navigator) {
@@ -29,10 +26,13 @@ if ((import.meta as any).env?.PROD) {
   }, 15000);
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>
-  </StrictMode>,
+// Start in the language chosen last time (its words load first, so nothing flashes in English)
+setLanguage(savedLanguage()).finally(() =>
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    </StrictMode>,
+  )
 );

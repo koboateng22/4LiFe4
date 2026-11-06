@@ -27,6 +27,7 @@ const SOURCES = [
   'src/lib/cbt.ts',
   'src/lib/firstAid.ts',
   'src/lib/safety.ts',
+  'src/lib/videoLibrary.ts',
 ];
 
 function convert(src) {

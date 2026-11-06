@@ -15,6 +15,7 @@ import { IncidentAck } from '../IncidentAck';
 import { isRemote } from '../../lib/supabase';
 import * as api from '../../lib/db/therapistApi';
 
+import { t as tr, T, msg } from '../../i18n';
 interface Props {
   therapist: TherapistProfile;
   store: TherapistStore;
@@ -36,10 +37,10 @@ const servicesByDistance = (c: ClientRecord) =>
 const fmtKm = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(km < 10 ? 1 : 0)} km`);
 
 const CLOSE_OUTCOMES = [
-  'Client is safe — lower to “watch closely”',
-  'Handed over to EMS or hospital',
-  'Support person is with the client',
-  'Other (add a note)',
+  msg('Client is safe — lower to “watch closely”'),
+  msg('Handed over to EMS or hospital'),
+  msg('Support person is with the client'),
+  msg('Other (add a note)'),
 ];
 
 /**
@@ -140,29 +141,27 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
   return (
     <div className="flex flex-col gap-6 animate-fadeIn">
       <Notice tone="info" icon={<ShieldCheck className="h-5 w-5" />}>
-        <p className="m-0 font-bold">For emergencies only</p>
+        <p className="m-0 font-bold">{tr("For emergencies only")}</p>
         <p className="m-0 mt-1">
-          Locations appear only for clients at high risk who agreed to share them in a crisis. Use them only to get the person help. Every step you take is
-          recorded.
+          {tr("Locations appear only for clients at high risk who agreed to share them in a crisis. Use them only to get the person help. Every step you take is recorded.")}
         </p>
       </Notice>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="m-0 text-base text-ink-2">
-          <strong className="text-ink">{highCount}</strong> {highCount === 1 ? 'client' : 'clients'} at high risk ·{' '}
-          <strong className="text-ink">{located.length}</strong> sharing location
+          <strong className="text-ink">{highCount}</strong> {highCount === 1 ? 'client' : 'clients'} <T text="at high risk · <0>{length}</0> sharing location" parts={[<strong className="text-ink" />]} vars={{ length: located.length }} />
         </p>
         <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[0.9375rem] font-semibold text-ink">
           <input type="checkbox" checked={includeWatch} onChange={e => setIncludeWatch(e.target.checked)} className="h-5 w-5 cursor-pointer" />
-          Also show clients to watch closely
+          {tr("Also show clients to watch closely")}
         </label>
       </div>
 
       {atRisk.length === 0 ? (
         <Card className="flex flex-col items-start gap-2">
           <ShieldCheck className="h-6 w-6 text-pri-text" aria-hidden="true" />
-          <p className="m-0 text-base font-bold text-ink">No clients at high risk right now.</p>
-          <p className="m-0 text-[0.9375rem] text-ink-2">If a client presses SOS or you mark them high risk, they will appear here.</p>
+          <p className="m-0 text-base font-bold text-ink">{tr("No clients at high risk right now.")}</p>
+          <p className="m-0 text-[0.9375rem] text-ink-2">{tr("If a client presses SOS or you mark them high risk, they will appear here.")}</p>
         </Card>
       ) : (
         <>
@@ -173,29 +172,26 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                 <SafetyMap clients={located} centres={SERVICES} selectedId={sel?.id || null} nearest={nearest} onSelect={select} />
               ) : (
                 <Card className="flex h-[260px] items-center justify-center text-center">
-                  <p className="m-0 max-w-sm text-[0.9375rem] text-ink-2">None of these clients is sharing a location. Use the phone numbers in their safety plan.</p>
+                  <p className="m-0 max-w-sm text-[0.9375rem] text-ink-2">{tr("None of these clients is sharing a location. Use the phone numbers in their safety plan.")}</p>
                 </Card>
               )}
-              <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-1 p-0 text-sm text-ink-2" aria-label="Map key">
+              <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-1 p-0 text-sm text-ink-2" aria-label={tr("Map key")}>
                 <li className="inline-flex items-center gap-2">
-                  <span className="h-3.5 w-3.5 rounded-full border-2 border-[#fff] bg-danger shadow" aria-hidden="true" /> Client at high risk
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-[#fff] bg-danger shadow" aria-hidden="true" /> {tr("Client at high risk")}
                 </li>
                 {includeWatch && (
                   <li className="inline-flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 rounded-full border-2 border-[#fff] bg-warn-bar shadow" aria-hidden="true" /> Watch closely
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-[#fff] bg-warn-bar shadow" aria-hidden="true" /> {tr("Watch closely")}
                   </li>
                 )}
                 <li className="inline-flex items-center gap-2">
-                  <span className="flex h-4 w-4 items-center justify-center rounded border-2 border-[#0284c7] text-[0.625rem] font-extrabold text-info" aria-hidden="true">
-                    +
-                  </span>
-                  Emergency service
+                  <T text="<0>+</0>Emergency service" parts={[<span className="flex h-4 w-4 items-center justify-center rounded border-2 border-[#0284c7] text-[0.625rem] font-extrabold text-info" aria-hidden="true" />]} />
                 </li>
                 <li className="inline-flex items-center gap-2">
-                  <span className="w-6 border-t-2 border-dashed border-[#0284c7]" aria-hidden="true" /> Nearest service
+                  <span className="w-6 border-t-2 border-dashed border-[#0284c7]" aria-hidden="true" /> {tr("Nearest service")}
                 </li>
                 <li className="inline-flex items-center gap-2">
-                  <span className="h-3.5 w-3.5 rounded-full border border-danger bg-danger-soft" aria-hidden="true" /> How precise the location is
+                  <span className="h-3.5 w-3.5 rounded-full border border-danger bg-danger-soft" aria-hidden="true" /> {tr("How precise the location is")}
                 </li>
               </ul>
             </div>
@@ -203,7 +199,7 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
             {/* Alert list */}
             <section aria-labelledby="sm-list" className="flex flex-col gap-3">
               <h2 id="sm-list" className="sr-only">
-                Clients at risk
+                {tr("Clients at risk")}
               </h2>
               {atRisk.map(c => {
                 const near = servicesByDistance(c)[0];
@@ -246,7 +242,7 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                     ) : (
                       <span className="inline-flex items-center gap-2 text-[0.9375rem] text-warn">
                         <EyeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        {c.locationConsent ? 'No location shared yet' : 'Has not agreed to share location'}
+                        {c.locationConsent ? tr("No location shared yet") : tr("Has not agreed to share location")}
                       </span>
                     )}
                   </button>
@@ -261,11 +257,11 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
               <Card as="section" aria-labelledby="sm-resp" raised className="flex flex-col gap-5">
                 <SectionHeader
                   id="sm-resp"
-                  title={`Respond: ${sel.nickname}`}
+                  title={tr("Respond: {nickname}", { nickname: sel.nickname })}
                   size="md"
                   action={
                     <Button variant="link" onClick={() => nav.openClient(sel.id)}>
-                      Open client record
+                      {tr("Open client record")}
                     </Button>
                   }
                 />
@@ -276,18 +272,18 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                       <MapPin className="h-5 w-5 text-danger-text" aria-hidden="true" />
                       <strong>{loc.area}</strong>
                       <span className="text-[0.9375rem] text-ink-3">
-                        {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)} · within about {loc.accuracyM} m
+                        {loc.lat.toFixed(5)}, {loc.lng.toFixed(5)} {tr("· within about {accuracyM} m", { accuracyM: loc.accuracyM })}
                       </span>
                     </p>
                     <p className={cx('m-0 text-[0.9375rem]', minsOld > STALE_MIN ? 'font-bold text-warn' : 'text-ink-2')}>
                       {minsOld > STALE_MIN && <AlertTriangle className="mr-1.5 inline h-4 w-4 align-[-2px]" aria-hidden="true" />}
-                      Shared {ago(loc.at)} ({fmtDayInline(loc.at)} at {fmtTime(loc.at)}){loc.source === 'sos' ? ' when they pressed SOS' : ''}
-                      {loc.approximate ? ' · approximate (from their region)' : ''}
-                      {minsOld > STALE_MIN ? ' — this may be out of date' : ''}
+                      {tr("Shared")} {ago(loc.at)} ({fmtDayInline(loc.at)} {tr("at")} {fmtTime(loc.at)}){loc.source === 'sos' ? tr(" when they pressed SOS") : ''}
+                      {loc.approximate ? tr(" · approximate (from their region)") : ''}
+                      {minsOld > STALE_MIN ? tr(" — this may be out of date") : ''}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="secondary" size="sm" icon={<LocateFixed className="h-4 w-4" />} onClick={requestLocation} disabled={locating}>
-                        {locating ? 'Asking…' : 'Ask for updated location'}
+                        {locating ? tr("Asking…") : tr("Ask for updated location")}
                       </Button>
                       <a
                         href={mapsUrl}
@@ -295,15 +291,15 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                         rel="noreferrer"
                         className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 text-sm font-bold text-ink no-underline hover:bg-muted"
                       >
-                        <ExternalLink className="h-4 w-4" aria-hidden="true" /> Open in Google Maps
+                        <ExternalLink className="h-4 w-4" aria-hidden="true" /> {tr("Open in Google Maps")}
                       </a>
                     </div>
                   </div>
                 ) : (
                   <Notice tone="warn" icon={<EyeOff className="h-5 w-5" />}>
                     {sel.locationConsent
-                      ? 'They agreed to share their location, but none has been received. Call them, or ask their support person where they are.'
-                      : 'They have not agreed to share their location. Call them, or contact the support person on their safety plan.'}
+                      ? tr("They agreed to share their location, but none has been received. Call them, or ask their support person where they are.")
+                      : tr("They have not agreed to share their location. Call them, or contact the support person on their safety plan.")}
                   </Notice>
                 )}
 
@@ -317,36 +313,36 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                     onClick={() => store.logEscalation(sel.id, 'Opened the phone to call 112')}
                     className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-danger px-4 text-base font-bold text-[#fff] no-underline hover:bg-danger-hover"
                   >
-                    <Phone className="h-5 w-5" aria-hidden="true" /> Call 112
+                    <Phone className="h-5 w-5" aria-hidden="true" /> {tr("Call 112")}
                   </a>
                   <a
                     href="tel:193"
                     onClick={() => store.logEscalation(sel.id, 'Opened the phone to call the ambulance service (193)')}
                     className="flex min-h-14 items-center justify-center gap-2 rounded-xl border-2 border-danger bg-danger-soft px-4 text-base font-bold text-danger-text no-underline hover:brightness-95"
                   >
-                    <Ambulance className="h-5 w-5" aria-hidden="true" /> Ambulance 193
+                    <Ambulance className="h-5 w-5" aria-hidden="true" /> {tr("Ambulance 193")}
                   </a>
                   <Button size="lg" variant="secondary" icon={copied ? <Check className="h-5 w-5" /> : <ClipboardCopy className="h-5 w-5" />} onClick={copyDetails}>
-                    {copied ? 'Copied' : 'Copy details for EMS'}
+                    {copied ? tr("Copied") : tr("Copy details for EMS")}
                   </Button>
                   <Button size="lg" variant="secondary" icon={<Check className="h-5 w-5" />} onClick={() => store.logEscalation(sel.id, 'Counsellor reports emergency services said they are coming')}>
-                    EMS told me they’re coming
+                    {tr("EMS told me they’re coming")}
                   </Button>
                 </div>
                 <p className="m-0 text-sm text-ink-3">
-                  4Life does not contact emergency services for you: only your call does. The copied details include the location and a map link. Give EMS the client’s full name and phone number from your own records.
+                  {tr("4Life does not contact emergency services for you: only your call does. The copied details include the location and a map link. Give EMS the client’s full name and phone number from your own records.")}
                 </p>
 
                 {services.length > 0 && (
                   <div className="flex flex-col gap-2">
-                    <h3 className="m-0 text-sm font-bold text-ink">Nearest emergency services</h3>
+                    <h3 className="m-0 text-sm font-bold text-ink">{tr("Nearest emergency services")}</h3>
                     <ol className="m-0 flex list-none flex-col gap-2 p-0">
                       {services.map(({ s, km }, i) => (
                         <li key={s.id} className={cx('flex flex-col gap-1 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:gap-3', i === 0 ? 'border-[#0284c7] bg-info-soft' : 'border-line')}>
                           <span className="min-w-0 flex-1">
                             <span className="block text-[0.9375rem] font-bold text-ink">{s.name}</span>
                             <span className="block text-sm text-ink-2">
-                              {fmtKm(km)} away · about {roughDriveMins(km)} min by road (rough estimate) · {s.hours}
+                              {fmtKm(km)} {tr("away · about")} {roughDriveMins(km)} {tr("min by road (rough estimate) · {hours}", { hours: s.hours })}
                             </span>
                           </span>
                           <a href={`tel:${s.phone.split('/')[0].replace(/\s+/g, '')}`} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 self-start rounded-lg text-sm font-bold text-pri-text no-underline hover:underline sm:self-center sm:px-2">
@@ -360,7 +356,7 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
 
                 <div className="flex flex-wrap gap-3 border-t border-line pt-4">
                   <Button variant="ghost" onClick={() => setClosing(true)}>
-                    Close this alert
+                    {tr("Close this alert")}
                   </Button>
                 </div>
               </Card>
@@ -369,16 +365,16 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                 {(sel.safetyPlan.supportPeople || sel.safetyPlan.copingSteps) && (
                   <Card as="section" tone="warn" aria-labelledby="sm-plan" className="flex flex-col gap-2">
                     <h2 id="sm-plan" className="m-0 text-base font-bold text-warn">
-                      Safety plan
+                      {tr("Safety plan")}
                     </h2>
                     {sel.safetyPlan.supportPeople && (
                       <p className="m-0 text-[0.9375rem] text-ink-2">
-                        <strong className="text-ink">People who can help:</strong> {sel.safetyPlan.supportPeople}
+                        <T text="<0>People who can help:</0> {supportPeople}" parts={[<strong className="text-ink" />]} vars={{ supportPeople: sel.safetyPlan.supportPeople }} />
                       </p>
                     )}
                     {sel.safetyPlan.copingSteps && (
                       <p className="m-0 text-[0.9375rem] text-ink-2">
-                        <strong className="text-ink">What helps:</strong> {sel.safetyPlan.copingSteps}
+                        <T text="<0>What helps:</0> {copingSteps}" parts={[<strong className="text-ink" />]} vars={{ copingSteps: sel.safetyPlan.copingSteps }} />
                       </p>
                     )}
                   </Card>
@@ -386,10 +382,10 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
 
                 <Card as="section" aria-labelledby="sm-log" className="flex flex-col gap-3">
                   <h2 id="sm-log" className="m-0 flex items-center gap-2 text-lg font-bold text-ink">
-                    <History className="h-5 w-5 text-ink-3" aria-hidden="true" /> What has happened
+                    <History className="h-5 w-5 text-ink-3" aria-hidden="true" /> {tr("What has happened")}
                   </h2>
                   {(sel.escalations || []).length === 0 ? (
-                    <p className="m-0 text-[0.9375rem] text-ink-3">No steps recorded yet.</p>
+                    <p className="m-0 text-[0.9375rem] text-ink-3">{tr("No steps recorded yet.")}</p>
                   ) : (
                     <ol className="m-0 flex list-none flex-col gap-0 p-0">
                       {[...(sel.escalations || [])].reverse().map((e, i, arr) => (
@@ -401,7 +397,7 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
                             <span className="block text-sm text-ink-3">
                               {fmtTime(e.at)} · {ago(e.at)}
                             </span>
-                            {e.note && <span className="mt-1 block text-[0.9375rem] text-ink-2">{e.note}</span>}
+                            {e.note && <span className="mt-1 block text-[0.9375rem] text-ink-2">{tr(e.note)}</span>}
                           </span>
                         </li>
                       ))}
@@ -417,22 +413,22 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
       <Modal
         isOpen={closing}
         onClose={() => setClosing(false)}
-        title={`Close the alert for ${sel?.nickname || ''}?`}
+        title={tr("Close the alert for {v0}?", { v0: sel?.nickname || '' })}
         size="sm"
         footer={
           <div className="flex justify-end gap-3">
             <Button variant="ghost" onClick={() => setClosing(false)}>
-              Keep open
+              {tr("Keep open")}
             </Button>
             <Button onClick={closeAlert} disabled={outcome === CLOSE_OUTCOMES[3] && !closeNote.trim()}>
-              Close alert
+              {tr("Close alert")}
             </Button>
           </div>
         }
       >
         <div className="flex flex-col gap-4">
           <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-            <legend className="mb-2 p-0 text-sm font-bold text-ink">What happened?</legend>
+            <legend className="mb-2 p-0 text-sm font-bold text-ink">{tr("What happened?")}</legend>
             {CLOSE_OUTCOMES.map(o => (
               <label key={o} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-line px-4 py-2 text-[0.9375rem] text-ink">
                 <input type="radio" name="close-outcome" checked={outcome === o} onChange={() => setOutcome(o)} className="h-5 w-5" />
@@ -440,11 +436,11 @@ export const SafetyMapTab: React.FC<Props> = ({ therapist, store, nav, focusId, 
               </label>
             ))}
           </fieldset>
-          <Field label="Note" htmlFor="sm-note" optional={outcome !== CLOSE_OUTCOMES[3]}>
+          <Field label={tr("Note")} htmlFor="sm-note" optional={outcome !== CLOSE_OUTCOMES[3]}>
             <textarea id="sm-note" rows={3} value={closeNote} onChange={e => setCloseNote(e.target.value)} className={textareaClass} />
           </Field>
           <p className="m-0 text-sm text-ink-3">
-            Only the first choice lowers their risk level. Remember to write a session note and book a check-in within 24–48 hours.
+            {tr("Only the first choice lowers their risk level. Remember to write a session note and book a check-in within 24–48 hours.")}
           </p>
         </div>
       </Modal>

@@ -1,3 +1,4 @@
+import { msg } from '../i18n';
 /**
  * What helped, remembered on this device:
  *  - "What helped today" summaries saved at the end of an AI therapy chat.
@@ -14,15 +15,15 @@ export interface CopingStep {
 }
 
 export const COPING_STEPS: CopingStep[] = [
-  { id: 'breathing', label: 'Slow breathing', action: 'breathe' },
-  { id: 'outside', label: 'Going outside or for a walk' },
-  { id: 'calling', label: 'Calling or texting someone', action: 'call' },
-  { id: 'water', label: 'Drinking water or eating' },
-  { id: 'distraction', label: 'Doing something else (music, a game, cleaning)' },
-  { id: 'leaving', label: 'Leaving the risky place' },
-  { id: 'faith', label: 'Prayer or quiet reflection' },
-  { id: 'record', label: 'Writing down the thought', action: 'record' },
-  { id: 'talking', label: 'Talking it through here' },
+  { id: 'breathing', label: msg('Slow breathing'), action: 'breathe' },
+  { id: 'outside', label: msg('Going outside or for a walk') },
+  { id: 'calling', label: msg('Calling or texting someone'), action: 'call' },
+  { id: 'water', label: msg('Drinking water or eating') },
+  { id: 'distraction', label: msg('Doing something else (music, a game, cleaning)') },
+  { id: 'leaving', label: msg('Leaving the risky place') },
+  { id: 'faith', label: msg('Prayer or quiet reflection') },
+  { id: 'record', label: msg('Writing down the thought'), action: 'record' },
+  { id: 'talking', label: msg('Talking it through here') },
 ];
 
 export const stepLabel = (id: string) => COPING_STEPS.find(s => s.id === id)?.label || id;

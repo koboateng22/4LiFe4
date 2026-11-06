@@ -5,6 +5,7 @@ import type { EmergencyCenter } from '../types';
 import type { ClientRecord } from './types';
 import { initialsOf } from '../components/ui';
 
+import { t } from '../i18n';
 interface Props {
   clients: ClientRecord[]; // only clients with a shared location
   centres: EmergencyCenter[];
@@ -47,7 +48,8 @@ export const SafetyMap: React.FC<Props> = ({ clients, centres, selectedId, neare
 
   useEffect(() => {
     if (!elRef.current || mapRef.current) return;
-    const map = L.map(elRef.current, { zoomControl: true, attributionControl: true }).setView([6.2, -1.0], 7);
+    const map = L.map(elRef.current, { zoomControl: false, attributionControl: true }).setView([6.2, -1.0], 7);
+    L.control.zoom({ zoomInTitle: t('Zoom in'), zoomOutTitle: t('Zoom out') }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '&copy; OpenStreetMap contributors',
@@ -121,5 +123,5 @@ export const SafetyMap: React.FC<Props> = ({ clients, centres, selectedId, neare
     return () => ro.disconnect();
   }, []);
 
-  return <div ref={elRef} className="h-[420px] w-full overflow-hidden rounded-2xl border border-line bg-muted sm:h-[520px]" role="region" aria-label="Map of clients at risk and emergency services. The list beside the map has the same information." />;
+  return <div ref={elRef} className="h-[420px] w-full overflow-hidden rounded-2xl border border-line bg-muted sm:h-[520px]" role="region" aria-label={t("Map of clients at risk and emergency services. The list beside the map has the same information.")} />;
 };

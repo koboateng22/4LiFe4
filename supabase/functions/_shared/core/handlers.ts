@@ -12,6 +12,7 @@ import { assessRisk, asRiskLevel, maxRisk, moderateText, type RiskLevel } from '
 import { trailerStreamer } from './aiTrailer.ts';
 import { TESTING_QUESTIONS, THINKING_TRAPS, guessTrap, isTrapId, type TherapyMode } from './cbt.ts';
 import { firstAidTopic } from './firstAid.ts';
+import { cleanVideoSearch, isoDurationSeconds, videoCategory, type LibraryVideo } from './videoLibrary.ts';
 import { aiConfig, generateJson, generateText, streamChat, type Env } from './ai.ts';
 import {
   CRISIS_SUGGESTIONS,
@@ -318,6 +319,131 @@ export async function firstAidVideos(topicId: unknown, ctx: Ctx): Promise<Result
   } catch (error) {
     console.error('YouTube search error:', error);
     return ok({ topic: topic.id, videos: [], error: 'Videos are not available right now.' });
+  }
+}
+
+/* =====================================================================
+ * 5b. The Learn section: a video library by topic, with search and paging (YouTube Data API v3)
+ *     The key stays on the server. A search costs 100 of the project's 10,000 daily quota
+ *     units, so answers are cached for 12 hours (and by the CDN for an hour), and once this
+ *     server has spent its daily budget (VIDEO_DAILY_UNITS, default 6000) it answers from the
+ *     cache only. Every result is checked with videos.list (1 unit): only public, embeddable
+ *     videos that aren't age-restricted or blocked in Ghana are shown.
+ * ===================================================================== */
+const libraryCache = new Map<string, { at: number; body: { videos: LibraryVideo[]; nextPage: string | null } }>();
+const LIBRARY_CACHE_MAX = 300;
+let quotaDay = '';
+let quotaUsed = 0;
+
+/** Spends YouTube quota units from today's budget. False when the budget is used up. */
+function spendQuota(units: number, env: Env): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== quotaDay) {
+    quotaDay = today;
+    quotaUsed = 0;
+  }
+  const budget = Number(env('VIDEO_DAILY_UNITS')) || 6000;
+  if (quotaUsed + units > budget) return false;
+  quotaUsed += units;
+  return true;
+}
+
+/** For tests: forget cached answers and today's spending */
+export function __resetVideoLibrary() {
+  libraryCache.clear();
+  quotaDay = '';
+  quotaUsed = 0;
+}
+
+export async function libraryVideos(query: { category?: unknown; q?: unknown; page?: unknown }, ctx: Ctx): Promise<Result> {
+  const category = videoCategory(String(query.category || 'wellness'));
+  if (!category) return bad('Unknown topic');
+  const typed = cleanVideoSearch(query.q);
+  const page = /^[\w-]{1,100}$/.test(String(query.page || '')) ? String(query.page) : '';
+
+  const key = youtubeKey(ctx.env);
+  if (!key) return ok({ category: category.id, videos: [], nextPage: null, keyMissing: true });
+
+  const cacheKey = `${category.id}|${typed.toLowerCase()}|${page}`;
+  const cached = libraryCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < VIDEO_TTL_MS) return ok({ category: category.id, ...cached.body }, PUBLIC_CACHE);
+  if (!spendQuota(101, ctx.env)) {
+    if (cached) return ok({ category: category.id, ...cached.body }, PUBLIC_CACHE);
+    return ok({ category: category.id, videos: [], nextPage: null, error: 'Videos are not available right now. Please try again later.' });
+  }
+
+  // What the person typed always stays inside the topic, so a search can't wander off mental health
+  const q = typed ? `${typed} ${category.query}` : category.query;
+  const search = new URL('https://www.googleapis.com/youtube/v3/search');
+  search.search = new URLSearchParams({
+    part: 'snippet',
+    type: 'video',
+    videoEmbeddable: 'true',
+    videoSyndicated: 'true',
+    safeSearch: 'strict',
+    relevanceLanguage: 'en',
+    regionCode: 'GH',
+    maxResults: '12',
+    q,
+    key,
+    ...(page ? { pageToken: page } : {}),
+  }).toString();
+
+  try {
+    const r = await fetch(search, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) {
+      console.error('YouTube search failed:', r.status, (await r.text()).slice(0, 300));
+      return ok({ category: category.id, videos: [], nextPage: null, error: 'Videos are not available right now. Please try again later.' });
+    }
+    const data = (await r.json()) as any;
+    const ids: string[] = (data.items || []).map((it: any) => String(it?.id?.videoId || '')).filter((id: string) => /^[\w-]{6,20}$/.test(id));
+    let videos: LibraryVideo[] = [];
+    if (ids.length) {
+      const details = new URL('https://www.googleapis.com/youtube/v3/videos');
+      details.search = new URLSearchParams({ part: 'snippet,contentDetails,status', id: ids.join(','), key }).toString();
+      const d = await fetch(details, { signal: AbortSignal.timeout(8000) });
+      if (!d.ok) {
+        console.error('YouTube videos.list failed:', d.status, (await d.text()).slice(0, 300));
+        return ok({ category: category.id, videos: [], nextPage: null, error: 'Videos are not available right now. Please try again later.' });
+      }
+      const byId = new Map<string, any>(((await d.json()) as any).items?.map((v: any) => [String(v.id), v]) || []);
+      videos = ids
+        .map(id => byId.get(id))
+        // gone or private, not embeddable, age-restricted, or blocked in Ghana: left out
+        .filter(
+          (v: any) =>
+            v &&
+            v.status?.privacyStatus === 'public' &&
+            v.status?.embeddable !== false &&
+            v.status?.uploadStatus !== 'rejected' &&
+            v.contentDetails?.contentRating?.ytRating !== 'ytAgeRestricted' &&
+            !(v.contentDetails?.regionRestriction?.blocked || []).includes('GH') &&
+            !(v.contentDetails?.regionRestriction?.allowed && !v.contentDetails.regionRestriction.allowed.includes('GH')) &&
+            v.snippet?.liveBroadcastContent !== 'live'
+        )
+        .map((v: any) => {
+          const thumbs = v.snippet?.thumbnails || {};
+          const thumb = String(thumbs.medium?.url || thumbs.high?.url || thumbs.default?.url || '');
+          return {
+            id: String(v.id),
+            title: unescapeHtml(clip(v.snippet?.title, 200)),
+            channel: unescapeHtml(clip(v.snippet?.channelTitle, 100)),
+            description: unescapeHtml(clip(String(v.snippet?.description || '').replace(/\s+/g, ' '), 220)),
+            thumb: thumb.startsWith('https://') ? thumb : '',
+            duration: isoDurationSeconds(v.contentDetails?.duration),
+            category: category.id,
+            publishedAt: clip(v.snippet?.publishedAt, 30),
+          };
+        });
+    }
+    const nextPage = typeof data.nextPageToken === 'string' && /^[\w-]{1,100}$/.test(data.nextPageToken) ? data.nextPageToken : null;
+    const body = { videos, nextPage };
+    if (libraryCache.size >= LIBRARY_CACHE_MAX) libraryCache.delete(libraryCache.keys().next().value as string);
+    libraryCache.set(cacheKey, { at: Date.now(), body });
+    return ok({ category: category.id, ...body }, PUBLIC_CACHE);
+  } catch (error) {
+    console.error('YouTube library error:', error);
+    return ok({ category: category.id, videos: [], nextPage: null, error: 'Videos are not available right now. Please try again later.' });
   }
 }
 

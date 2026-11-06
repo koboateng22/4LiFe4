@@ -10,6 +10,7 @@ import { WAVE_CHECK_EVERY, WAVE_MINUTES, type Wave } from '../../lib/coping';
 import { CravingLevels, cravingLabel } from './CravingLevels';
 import { Button, cx } from '../ui';
 
+import { t as tr } from '../../i18n';
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
 /** The wave so far, as a small chart */
@@ -20,7 +21,7 @@ const WaveChart: React.FC<{ wave: Wave; nowMin: number }> = ({ wave, nowMin }) =
   const y = (lvl: number) => 6 + (1 - lvl / 10) * (H - 18);
   const pts = wave.points.map(p => `${x(p.m).toFixed(1)},${y(p.level).toFixed(1)}`).join(' ');
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMinYMid meet" className="h-[72px] w-full max-w-md" role="img" aria-label={`Craving over time: ${wave.points.map(p => `${Math.round(p.m)} min ${p.level}`).join(', ')}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMinYMid meet" className="h-[72px] w-full max-w-md" role="img" aria-label={tr('Craving over time: {points}', { points: wave.points.map(p => tr('{count} min: {level}', { count: Math.round(p.m), level: p.level })).join(', ') })}>
       {/* the usual shape of a craving wave, for comparison */}
       <path d={`M ${x(0)} ${y(6)} C ${x(4)} ${y(9)}, ${x(7)} ${y(9)}, ${x(10)} ${y(6)} S ${x(16)} ${y(2)}, ${x(20)} ${y(1.5)}`} fill="none" stroke="var(--line)" strokeWidth="2" strokeDasharray="4 5" />
       {[0, 5, 10, 15, 20].map(m => (
@@ -70,11 +71,11 @@ export const WaveTimer: React.FC<{
   const drop = first && last ? first.level - last.level : 0;
 
   return (
-    <section aria-label="Ride the wave timer" className="flex flex-col gap-3 border-b border-line bg-pri-soft/50 px-4 py-3.5 sm:px-5">
+    <section aria-label={tr("Ride the wave timer")} className="flex flex-col gap-3 border-b border-line bg-pri-soft/50 px-4 py-3.5 sm:px-5">
       <div className="flex items-center justify-between gap-3">
         <p className="m-0 flex items-center gap-2 text-[0.9375rem] font-bold text-ink">
           <Timer className="h-5 w-5 text-pri-text" aria-hidden="true" />
-          {wave.finished ? 'You rode the wave' : done ? 'Last check-in' : 'Riding the wave'}
+          {wave.finished ? tr("You rode the wave") : done ? tr("Last check-in") : tr("Riding the wave")}
           {!wave.finished && (
             <span className="tabular-nums font-extrabold text-pri-text" aria-label={`${fmt(left)} left`}>
               {fmt(left)}
@@ -85,9 +86,9 @@ export const WaveTimer: React.FC<{
           type="button"
           onClick={onStop}
           className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-ink-2 hover:bg-muted cursor-pointer"
-          aria-label={wave.finished ? 'Close the timer' : 'Stop the timer'}
+          aria-label={wave.finished ? tr("Close the timer") : tr("Stop the timer")}
         >
-          <X className="h-4 w-4" aria-hidden="true" /> {wave.finished ? 'Close' : 'Stop'}
+          <X className="h-4 w-4" aria-hidden="true" /> {wave.finished ? tr("Close") : tr("Stop")}
         </button>
       </div>
 
@@ -96,25 +97,24 @@ export const WaveTimer: React.FC<{
       {checkDue ? (
         <div className={cx('flex flex-col gap-2 rounded-xl bg-surface p-3', 'ring-2 ring-pri')} role="status">
           <p id={labelId} className="m-0 text-[0.9375rem] font-bold text-ink">
-            {Math.round(elapsedMin)} minutes in. How strong is the craving now?
+            {tr('{count} minutes in. How strong is the craving now?', { count: Math.round(elapsedMin) })}
           </p>
           <CravingLevels labelledBy={labelId} onChange={onRate} />
         </div>
       ) : wave.finished ? (
         <p className="m-0 text-[0.9375rem] text-ink-2" aria-live="polite">
           {drop > 0
-            ? `It went from ${cravingLabel(first.level)} to ${cravingLabel(last.level)}. You didn't act on it — that is how cravings lose their power.`
-            : 'It stayed strong this time. That happens. Breathing, leaving the place or calling someone can help — or press SOS.'}
+            ? tr("It went from {v0} to {v1}. You didn't act on it — that is how cravings lose their power.", { v0: cravingLabel(first.level), v1: cravingLabel(last.level) })
+            : tr("It stayed strong this time. That happens. Breathing, leaving the place or calling someone can help — or press SOS.")}
         </p>
       ) : (
         <p className="m-0 text-sm text-ink-2">
-          Cravings rise, peak and pass. Keep talking, breathe, or do something else — I'll ask again in{' '}
-          {Math.max(1, Math.ceil(WAVE_CHECK_EVERY - (capped - lastM)))} min.
+          {tr("Cravings rise, peak and pass. Keep talking, breathe, or do something else — I'll ask again in {count} min.", { count: Math.max(1, Math.ceil(WAVE_CHECK_EVERY - (capped - lastM))) })}
         </p>
       )}
       {wave.finished && (
         <Button size="sm" variant="secondary" className="self-start" onClick={onStop}>
-          Done
+          {tr("Done")}
         </Button>
       )}
     </section>

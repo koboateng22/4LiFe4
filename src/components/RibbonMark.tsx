@@ -6,6 +6,7 @@
  */
 import React from 'react';
 import { cx } from './ui';
+import { t as tr } from '../i18n';
 
 type Tone = 'brand' | 'onDark' | 'soft';
 
@@ -29,7 +30,7 @@ export const RibbonMark: React.FC<{
       viewBox="0 0 60 100"
       className={cx('shrink-0', breathe && 'ribbon-breathe', className)}
       role={label ? 'img' : undefined}
-      aria-label={label}
+      aria-label={tr(label)}
       aria-hidden={label ? undefined : true}
       focusable="false"
     >

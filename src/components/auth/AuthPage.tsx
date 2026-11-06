@@ -1,5 +1,8 @@
 import { markWelcomePending } from '../WelcomeTour';
 import React, { useState } from 'react';
+import type { ThemePref } from '../../lib/theme';
+import { DEMO_ENABLED } from '../../lib/demo';
+import { OtherSignIn } from './OtherSignIn';
 import { UserProfile, TriageCategory, BeliefSystem, AuthAccount } from '../../types';
 import { 
   Shield, Lock, Mail, User, Eye, EyeOff, Sparkles, CheckCircle2, 
@@ -22,10 +25,11 @@ export const STARTER_PROFILE: UserProfile = {
   name: '',
   nickname: '',
   age: '',
-  region: 'Greater Accra',
-  belief: 'theist',
+  // Nothing is assumed: no region, no faith (the AI then keeps to practical ideas), no ratings
+  region: '',
+  belief: 'undecided',
   language: 'en',
-  theme: 'light',
+  theme: 'system',
   fontSize: 'md',
   currentTriage: 'general',
   sobrietyStreakDays: 0,
@@ -41,9 +45,9 @@ export const STARTER_PROFILE: UserProfile = {
   sleepStart: '22:30',
   wakeTime: '06:30',
   reminderTime: '18:00',
-  calmTriggers: ['4-7-8 Deep Breathing'],
-  currentMood: 'okay',
-  currentCraving: 3,
+  calmTriggers: [],
+  currentMood: '',
+  currentCraving: 0,
   completedCheckinsCount: 0,
   mindfulnessMinutes: 0,
   calmingGamesPlayed: 0,
@@ -55,14 +59,16 @@ export const STARTER_PROFILE: UserProfile = {
 };
 
 /** With Supabase, accounts use a password; on this device only, a short PIN. */
-const SECRET = isRemote ? 'password' : 'PIN';
 import type { TherapistProfile } from '../../therapist/types';
 import { Stethoscope } from 'lucide-react';
 
+import { t as tr, T, msg } from '../../i18n';
 interface AuthPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
-  currentTheme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  /** The theme choice on this device (light, dark or system) */
+  currentTheme: ThemePref;
+  /** Whether the dark theme is showing now */
+  isDark: boolean;
   currentLanguage: string;
   onChangeLanguage: (lang: string) => void;
   /** Called when a therapist signs in or finishes signing up */
@@ -71,7 +77,8 @@ interface AuthPageProps {
   initialError?: string;
 }
 
-const DEMO_ACCOUNTS: AuthAccount[] = [
+/** Demo accounts: development and preview builds only (see lib/demo.ts) */
+const DEMO_ACCOUNTS: AuthAccount[] = !DEMO_ENABLED ? [] : [
   {
     id: 'usr_demo_1',
     email: 'kwame@4life.org',
@@ -207,7 +214,7 @@ const DEMO_ACCOUNTS: AuthAccount[] = [
 export const AuthPage: React.FC<AuthPageProps> = ({
   onLoginSuccess,
   currentTheme,
-  onToggleTheme,
+  isDark,
   currentLanguage,
   onChangeLanguage,
   onTherapistLogin,
@@ -246,7 +253,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
 
-  const isDark = currentTheme === 'dark';
 
   // Load saved accounts from localStorage or initialize with defaults
   const getSavedAccounts = (): AuthAccount[] => {
@@ -276,6 +282,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   const [authBusy, setAuthBusy] = useState(false);
   const [confirmSent, setConfirmSent] = useState('');
 
+  /** After any Supabase sign-in (password, Google, phone code): open the right workspace */
+  const finishRemoteSignIn = async (user: { id: string; role: 'client' | 'therapist' | 'admin' }) => {
+    if (user.role === 'therapist') {
+      if (onTherapistLogin) onTherapistLogin(await loadTherapistProfile(user.id));
+      return;
+    }
+    onLoginSuccess(await clientApi.loadClientProfile(user.id, { ...STARTER_PROFILE, theme: currentTheme, language: currentLanguage }));
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -285,18 +300,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
 
     if (isRemote) {
       if (!cleanEmail.includes('@') || !cleanPin) {
-        setLoginError('Please enter your email address and password.');
+        setLoginError(tr('Please enter your email address and password.'));
         return;
       }
       setAuthBusy(true);
       try {
-        const user = await clientApi.signIn(cleanEmail, cleanPin);
-        if (user.role === 'therapist') {
-          if (onTherapistLogin) onTherapistLogin(await loadTherapistProfile(user.id));
-          return;
-        }
-        const loaded = await clientApi.loadClientProfile(user.id, { ...STARTER_PROFILE, theme: currentTheme, language: currentLanguage });
-        onLoginSuccess(loaded);
+        await finishRemoteSignIn(await clientApi.signIn(cleanEmail, cleanPin));
       } catch (err) {
         setLoginError(friendlyError(err));
       } finally {
@@ -306,12 +315,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     }
 
     if (!cleanEmail) {
-      setLoginError('Please enter your email or recovery username.');
+      setLoginError(tr('Please enter your email or recovery username.'));
       return;
     }
 
     if (!cleanPin) {
-      setLoginError('Please enter your 4-digit security PIN or password.');
+      setLoginError(tr('Please enter your 4-digit security PIN or password.'));
       return;
     }
 
@@ -321,12 +330,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     );
 
     if (!found) {
-      setLoginError('No recovery account found with this email or username. You can sign up or try demo credentials.');
+      // Outside demo builds the same message as a wrong PIN, so the form doesn't reveal which accounts exist
+      setLoginError(DEMO_ENABLED ? tr('No recovery account found with this email or username. You can sign up or try demo credentials.') : tr('That email and password do not match. Check them and try again.'));
       return;
     }
 
     if (found.pin !== cleanPin && found.password !== cleanPin) {
-      setLoginError('Incorrect Security PIN. If forgotten, click "Reset PIN" below or try default PIN "1234".');
+      setLoginError(DEMO_ENABLED ? tr('Incorrect Security PIN. If forgotten, click "Reset PIN" below or try default PIN "1234".') : tr('That email and password do not match. Check them and try again.'));
       return;
     }
 
@@ -366,37 +376,37 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       nickname: `Guest_${guestId.slice(-4)}`,
       email: `${guestId}@sanctuary.local`,
       isGuest: true,
-      age: 20,
-      region: 'Greater Accra',
-      belief: 'theist',
-      religionType: 'Christian',
+      // Nothing is assumed about a guest: they can fill these in under Settings
+      age: '',
+      region: '',
+      belief: 'undecided',
       language: currentLanguage,
       theme: currentTheme,
       fontSize: 'md',
-      currentTriage: 'substance',
-      sobrietyStreakDays: 1,
+      currentTriage: 'general',
+      sobrietyStreakDays: 0,
       hr: 72,
       watchConnected: false,
       adBlockCount: 0,
       nsfwBlockCount: 0,
       shieldingActive: true,
-      customBlockedUrls: ['adult-trigger-hub.com', 'endless-doomscroll.xyz'],
+      customBlockedUrls: [],
       permBrowserBlock: true,
       permAds: true,
       windDownActive: false,
       sleepStart: '22:30',
       wakeTime: '06:30',
       reminderTime: '18:00',
-      calmTriggers: ['4-7-8 Deep Breathing', 'Rainforest Soundscape'],
-      currentMood: 'hopeful',
-      currentCraving: 3,
-      completedCheckinsCount: 1,
-      mindfulnessMinutes: 10,
-      calmingGamesPlayed: 1,
-      xpPoints: 100,
+      calmTriggers: [],
+      currentMood: '',
+      currentCraving: 0,
+      completedCheckinsCount: 0,
+      mindfulnessMinutes: 0,
+      calmingGamesPlayed: 0,
+      xpPoints: 0,
       userAvatar: '🌱',
       aiAvatar: '🌿',
-      aiName: 'Gemini Recovery Guide',
+      aiName: '4Life',
       contacts: [],
     };
 
@@ -406,21 +416,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({
   // Sign-up checks, one group per step, so each mistake is shown on the step it belongs to
   const signupStepError = (step: 1 | 2 | 3 | 4): string => {
     if (step === 1) {
-      if (!signupName.trim()) return 'Please enter your name, or a name you would like us to call you.';
+      if (!signupName.trim()) return tr('Please enter your name, or a name you would like us to call you.');
       return ageError(signupAge);
     }
     if (step === 2) {
       const emailClean = signupEmail.trim().toLowerCase();
-      if (!emailClean || !emailClean.includes('@')) return 'Please enter a valid email address. We only use it to help you get back into your account.';
-      if (!isRemote && getSavedAccounts().some(a => a.email.toLowerCase() === emailClean)) return 'An account with this email already exists. Please sign in instead.';
+      if (!emailClean || !emailClean.includes('@')) return tr('Please enter a valid email address. We only use it to help you get back into your account.');
+      if (!isRemote && getSavedAccounts().some(a => a.email.toLowerCase() === emailClean)) return tr('An account with this email already exists. Please sign in instead.');
       const pinClean = signupPin.trim();
-      if (isRemote && pinClean.length < 8) return 'Your password needs at least 8 characters.';
-      if (!isRemote && (!pinClean || pinClean.length < 4)) return 'Your PIN needs at least 4 digits.';
-      if (pinClean !== signupConfirmPin.trim()) return `The two ${SECRET}s do not match. Please type them again.`;
+      if (isRemote && pinClean.length < 8) return tr('Your password needs at least 8 characters.');
+      if (!isRemote && (!pinClean || pinClean.length < 4)) return tr('Your PIN needs at least 4 digits.');
+      if (pinClean !== signupConfirmPin.trim()) return isRemote ? tr('The two passwords do not match. Please type them again.') : tr('The two PINs do not match. Please type them again.');
       return '';
     }
     if (step === 3) return '';
-    if (!agreedToTerms) return 'Please tick the safe-space promise to continue.';
+    if (!agreedToTerms) return tr('Please tick the safe-space promise to continue.');
     return '';
   };
 
@@ -579,33 +589,37 @@ export const AuthPage: React.FC<AuthPageProps> = ({
     const emailToReset = forgotEmail.trim().toLowerCase();
     if (isRemote) {
       if (!emailToReset.includes('@')) {
-        setForgotSuccess('Please enter the email address you signed up with.');
+        setForgotSuccess(tr('Please enter the email address you signed up with.'));
         return;
       }
       const { error } = await db().auth.resetPasswordForEmail(emailToReset, { redirectTo: window.location.origin });
       setForgotSuccess(
-        error ? friendlyError(error) : `If an account exists for ${emailToReset}, we have sent a link to set a new password. Check your email.`
+        error ? friendlyError(error) : tr('If an account exists for {email}, we have sent a link to set a new password. Check your email.', { email: emailToReset })
       );
       return;
     }
     const accounts = getSavedAccounts();
     const found = accounts.find(a => a.email.toLowerCase() === emailToReset);
 
-    if (found) {
-      setForgotSuccess(`Account located! Your registered 4-Digit Security PIN is: "${found.pin}". You can now log in securely.`);
+    // The PIN protects this device's notes from someone else picking up the phone, so it is never shown
+    // to whoever types the email, except with the demo accounts
+    if (!DEMO_ENABLED) {
+      setForgotSuccess(tr("For your privacy, a PIN can't be shown again. If you have forgotten it, you can create a new account on this device."));
+    } else if (found) {
+      setForgotSuccess(tr('Account located! Your registered 4-digit security PIN is: "{pin}". You can now log in securely.', { pin: found.pin }));
     } else {
-      setForgotSuccess(`We could not find an account with "${emailToReset}". You can log in with demo account kwame@4life.org (PIN: 1234) or create a new account.`);
+      setForgotSuccess(tr('We could not find an account with "{email}". You can log in with demo account kwame@4life.org (PIN: 1234) or create a new account.', { email: emailToReset }));
     }
   };
 
   const shellTitle =
-    role === 'therapist' ? 'Therapist workspace' : authMode === 'login' ? 'Welcome back' : 'Create your account';
+    role === 'therapist' ? tr('Therapist workspace') : authMode === 'login' ? tr('Welcome back') : tr('Create your account');
   const shellSubtitle =
     role === 'therapist'
-      ? 'Sign in, or join in five short steps. New accounts are checked before clients can book.'
+      ? tr('Sign in, or join in five short steps. New accounts are checked before clients can book.')
       : authMode === 'login'
-        ? 'Sign in to AI therapy, the Global Village and Instant EMS.'
-        : 'Four short steps. Only you — and a counsellor you choose — can see your information.';
+        ? tr('Sign in to AI therapy, the Global Village and Instant EMS.')
+        : tr('Four short steps. Only you — and a counsellor you choose — can see your information.');
 
   return (
     <>
@@ -613,14 +627,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       role={role}
       onRoleChange={onTherapistLogin ? setRole : undefined}
       isDark={isDark}
-      onToggleTheme={onToggleTheme}
       language={currentLanguage}
       onChangeLanguage={code => {
         onChangeLanguage(code);
         changeLanguage(code);
       }}
-      title={shellTitle}
-      subtitle={shellSubtitle}
+      title={tr(shellTitle)}
+      subtitle={tr(shellSubtitle)}
     >
       {role === 'therapist' && onTherapistLogin ? (
         <TherapistAuth
@@ -649,7 +662,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               }`}
             >
               <KeyRound className="hidden h-4 w-4 shrink-0 min-[390px]:block" aria-hidden="true" />
-              <span className="min-w-0">Sign In</span>
+              <T text="<0>Sign In</0>" parts={[<span className="min-w-0" />]} />
             </button>
             <button
               type="button"
@@ -665,7 +678,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               }`}
             >
               <User className="hidden h-4 w-4 shrink-0 min-[390px]:block" aria-hidden="true" />
-              <span className="min-w-0">Create Account</span>
+              <T text="<0>Create Account</0>" parts={[<span className="min-w-0" />]} />
             </button>
           </div>
 
@@ -676,7 +689,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               {loginError && (
                 <div className="p-3.5 rounded-2xl bg-danger-soft border border-danger text-danger-text text-xs flex items-start gap-2.5 animate-fadeIn">
                   <AlertCircle className="w-4 h-4 text-danger-text shrink-0 mt-0.5" />
-                  <div className="leading-relaxed">{loginError}</div>
+                  <div className="leading-relaxed">{tr(loginError)}</div>
                 </div>
               )}
               {isRemote && needsNewLink(loginError) && <ResendConfirmation email={loginEmail} />}
@@ -684,7 +697,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               {/* Email / Username */}
               <div>
                 <label className="block text-sm font-bold text-ink mb-1.5">
-                  {isRemote ? 'Email address' : 'Email or community name'}
+                  {isRemote ? tr("Email address") : tr("Email or community name")}
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-ink-3 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -693,7 +706,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     autoComplete="username"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org'}
+                    placeholder={isRemote || !DEMO_ENABLED ? tr("e.g. kwame@gmail.com") : tr("e.g. kwame@4life.org")}
                     className={cx(inputClass, 'pl-11')}
                   />
                 </div>
@@ -703,18 +716,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({
               <div>
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3">
                   <label className="block text-sm font-bold text-ink">
-                    {isRemote ? 'Password' : 'PIN or password'}
+                    {isRemote ? tr("Password") : tr("PIN or password")}
                   </label>
                   <button
                     type="button"
                     onClick={() => {
-                      setForgotEmail(loginEmail || (isRemote ? '' : 'kwame@4life.org'));
+                      setForgotEmail(loginEmail || (isRemote || !DEMO_ENABLED ? '' : 'kwame@4life.org'));
                       setForgotSuccess('');
                       setForgotModalOpen(true);
                     }}
                     className="-my-2.5 inline-flex min-h-10 items-center text-sm font-semibold text-pri-text hover:underline cursor-pointer"
                   >
-                    {isRemote ? 'Forgot password?' : 'Forgot your PIN?'}
+                    {isRemote ? tr("Forgot password?") : tr("Forgot your PIN?")}
                   </button>
                 </div>
                 <div className="relative">
@@ -724,14 +737,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     value={loginPin}
                     onChange={(e) => setLoginPin(e.target.value)}
                     autoComplete="current-password"
-                    placeholder={isRemote ? 'Your password' : 'Your PIN (demo: 1234)'}
+                    placeholder={isRemote ? tr("Your password") : DEMO_ENABLED ? tr("Your PIN (demo: 1234)") : tr("Your PIN")}
                     maxLength={isRemote ? 72 : 20}
                     className={cx(inputClass, 'pl-11 pr-11')}
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPin(!showLoginPin)}
-                    aria-label={showLoginPin ? `Hide ${SECRET}` : `Show ${SECRET}`}
+                    aria-label={showLoginPin ? (isRemote ? tr('Hide password') : tr('Hide PIN')) : (isRemote ? tr('Show password') : tr('Show PIN'))}
                     aria-pressed={showLoginPin}
                     className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-ink-3 hover:text-ink-2"
                   >
@@ -749,7 +762,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded text-pri-text border-line focus:ring-pri"
                   />
-                  <span>Remember this device</span>
+                  <T text="<0>Remember this device</0>" parts={[<span />]} />
                 </label>
               </div>
 
@@ -759,15 +772,19 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 disabled={authBusy}
                 className="w-full py-3 bg-pri hover:bg-pri-hover text-[#fff] font-bold rounded-2xl text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
               >
-                <span>{authBusy ? 'Signing in…' : 'Sign in'}</span>
+                <span>{authBusy ? tr("Signing in…") : tr("Sign in")}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
+              {/* Google and phone sign-in (Supabase, when switched on) */}
+              {isRemote && <OtherSignIn onSignedIn={finishRemoteSignIn} />}
+
               {/* Demo Profiles Bar (device mode only) */}
-              <div className={isRemote ? 'hidden' : undefined}>
+              {!isRemote && DEMO_ENABLED && (
+              <div>
               <div className="pt-4 border-t border-line space-y-2.5 lg:pt-3 lg:space-y-2">
                 <p className="text-sm font-bold text-ink-3 text-center">
-                  Try a demo account
+                  {tr("Try a demo account")}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {DEMO_ACCOUNTS.map((acc) => (
@@ -783,7 +800,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                           <span>{acc.name}</span>
                         </div>
                         <p className="text-xs text-ink-3 truncate">
-                          {acc.profile.sobrietyStreakDays} days clean · PIN {acc.pin}
+                          {tr("{sobrietyStreakDays} days clean · PIN {pin}", { sobrietyStreakDays: acc.profile.sobrietyStreakDays, pin: acc.pin })}
                         </p>
                       </div>
                       <ArrowRight className="h-4 w-4 shrink-0 text-pri-text transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -792,6 +809,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 </div>
               </div>
               </div>
+              )}
 
               {/* Anonymous Guest Access */}
               <div className="text-center pt-2 lg:pt-0">
@@ -800,7 +818,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   onClick={handleGuestLogin}
                   className="min-h-11 px-1 py-2 text-sm font-semibold leading-snug text-ink-3 hover:text-pri-text underline cursor-pointer"
                 >
-                  Or continue as an anonymous guest (no account needed)
+                  {tr("Or continue as an anonymous guest (no account needed)")}
                 </button>
               </div>
 
@@ -810,9 +828,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {authMode === 'signup' && confirmSent && (
             <div className="flex flex-col items-center gap-4 rounded-2xl bg-pri-soft p-6 text-center text-pri-ink" role="status">
               <Check className="h-8 w-8" aria-hidden="true" />
-              <p className="m-0 text-lg font-bold">Check your email</p>
+              <p className="m-0 text-lg font-bold">{tr("Check your email")}</p>
               <p className="m-0 text-[0.9375rem] leading-relaxed">
-                We sent a link to <strong>{confirmSent}</strong>. Open it to confirm your account, then sign in.
+                <T text="We sent a link to <0>{confirmSent}</0>. Open it to confirm your account, then sign in." parts={[<strong />]} vars={{ confirmSent }} />
               </p>
               <button
                 type="button"
@@ -823,7 +841,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   setAuthMode('login');
                 }}
               >
-                Go to sign in
+                {tr("Go to sign in")}
               </button>
             </div>
           )}
@@ -831,30 +849,30 @@ export const AuthPage: React.FC<AuthPageProps> = ({
           {/* 2. SIGN UP VIEW — four short steps */}
           {authMode === 'signup' && !confirmSent && (() => {
             const STEPS = [
-              { n: 1, short: 'You', title: 'About you' },
-              { n: 2, short: 'Security', title: 'Secure your account' },
-              { n: 3, short: 'Focus', title: 'What would you like help with?' },
-              { n: 4, short: 'Support', title: 'Support and safe space' },
+              { n: 1, short: msg('You'), title: msg('About you') },
+              { n: 2, short: msg('Security'), title: msg('Secure your account') },
+              { n: 3, short: msg('Focus'), title: msg('What would you like help with?') },
+              { n: 4, short: msg('Support'), title: msg('Support and safe space') },
             ] as const;
             const current = STEPS[signupStep - 1];
             const pathways = [
-              { id: 'substance', label: 'Drugs or alcohol', icon: '🌿' },
-              { id: 'porn', label: 'Adult content', icon: '🛡️' },
-              { id: 'social_media', label: 'Screens and gaming', icon: '📱' },
-              { id: 'anger', label: 'Anger and stress', icon: '🕊️' },
-              { id: 'general', label: 'General wellbeing', icon: '⚖️' },
+              { id: 'substance', label: msg('Drugs or alcohol'), icon: '🌿' },
+              { id: 'porn', label: msg('Adult content'), icon: '🛡️' },
+              { id: 'social_media', label: msg('Screens and gaming'), icon: '📱' },
+              { id: 'anger', label: msg('Anger and stress'), icon: '🕊️' },
+              { id: 'general', label: msg('General wellbeing'), icon: '⚖️' },
             ];
             const beliefs: Array<{ id: BeliefSystem; label: string; desc: string }> = [
-              { id: 'theist', label: 'Faith and prayer', desc: 'Scripture, prayer and spiritual hope' },
-              { id: 'secular', label: 'Science and psychology', desc: 'Evidence-based tools and brain science' },
-              { id: 'undecided', label: 'Not sure yet', desc: 'A mix of both — change it any time' },
+              { id: 'theist', label: msg('Faith and prayer'), desc: msg('Scripture, prayer and spiritual hope') },
+              { id: 'secular', label: msg('Science and psychology'), desc: msg('Evidence-based tools and brain science') },
+              { id: 'undecided', label: msg('Not sure yet'), desc: msg('A mix of both — change it any time') },
             ];
 
             return (
               <form onSubmit={handleSignupSubmit} className="flex flex-col gap-6 lg:gap-4" noValidate>
                 {/* Progress: where you are and what is next */}
                 <div className="flex flex-col gap-3 lg:gap-2">
-                  <ol className="m-0 grid list-none grid-cols-4 gap-2 p-0" aria-label="Sign-up steps">
+                  <ol className="m-0 grid list-none grid-cols-4 gap-2 p-0" aria-label={tr("Sign-up steps")}>
                     {STEPS.map(st => {
                       const done = st.n < signupStep;
                       const active = st.n === signupStep;
@@ -872,29 +890,29 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                             )}
                           >
                             {done ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <span aria-hidden="true">{st.n}.</span>}
-                            <span className="truncate">{st.short}</span>
+                            <span className="truncate">{tr(st.short)}</span>
                           </button>
                         </li>
                       );
                     })}
                   </ol>
                   <div>
-                    <p className="m-0 text-sm font-semibold text-ink-3 lg:hidden">Step {signupStep} of 4</p>
-                    <h3 className="m-0 text-xl font-bold text-ink">{current.title}</h3>
+                    <p className="m-0 text-sm font-semibold text-ink-3 lg:hidden">{tr("Step {signupStep} of 4", { signupStep })}</p>
+                    <h3 className="m-0 text-xl font-bold text-ink">{tr(current.title)}</h3>
                   </div>
                 </div>
 
                 {signupError && (
                   <div role="alert" className="flex items-start gap-2.5 rounded-xl bg-danger-soft px-4 py-3 text-[0.9375rem] text-danger-text animate-fadeIn">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                    <p className="m-0 leading-relaxed">{signupError}</p>
+                    <p className="m-0 leading-relaxed">{tr(signupError)}</p>
                   </div>
                 )}
 
                 {/* STEP 1 — About you */}
                 {signupStep === 1 && (
                   <div key="s1" className="flex flex-col gap-5 animate-fadeIn lg:gap-4">
-                    <Field label="Your name" htmlFor="su-name" hint="Your real name or any name you are comfortable with. Only you see it.">
+                    <Field label={tr("Your name")} htmlFor="su-name" hint={tr("Your real name or any name you are comfortable with. Only you see it.")}>
                       <input
                         id="su-name"
                         type="text"
@@ -902,26 +920,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         autoComplete="name"
                         value={signupName}
                         onChange={e => setSignupName(e.target.value)}
-                        placeholder="e.g. Kofi Asante"
+                        placeholder={tr("e.g. Kofi Asante")}
                         className={inputClass}
                       />
                     </Field>
                     <Field
-                      label="Community name"
+                      label={tr("Community name")}
                       htmlFor="su-handle"
                       optional
-                      hint={`What others see in the Village. Leave it blank and we'll use ${(signupName.trim().split(' ')[0] || 'Kofi')}_Warrior.`}
+                      hint={tr("What others see in the Village. Leave it blank and we'll use {handle}.", { handle: `${signupName.trim().split(' ')[0] || 'Kofi'}_Warrior` })}
                     >
                       <input
                         id="su-handle"
                         type="text"
                         value={signupNickname}
                         onChange={e => setSignupNickname(e.target.value)}
-                        placeholder="e.g. Asante_Warrior"
+                        placeholder={tr("e.g. Asante_Warrior")}
                         className={inputClass}
                       />
                     </Field>
-                    <Field label="Your age" htmlFor="su-age" hint={`In years. It helps us suit your support to you. You need to be ${MIN_AGE} or older to use 4Life.`}>
+                    <Field label={tr("Your age")} htmlFor="su-age" hint={tr("In years. It helps us suit your support to you. You need to be {MIN_AGE} or older to use 4Life.", { MIN_AGE })}>
                       <input
                         id="su-age"
                         type="text"
@@ -932,12 +950,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         onChange={e => setSignupAge(ageDigits(e.target.value))}
                         aria-invalid={!!signupError && !!ageError(signupAge)}
                         aria-describedby="su-age-limits"
-                        placeholder="e.g. 22"
+                        placeholder={tr("e.g. 22")}
                         className={cx(inputClass, 'sm:max-w-40')}
                       />
-                      <span id="su-age-limits" className="sr-only">
-                        A whole number from {MIN_AGE} to {MAX_AGE}.
-                      </span>
+                      <T text="<0>A whole number from {MIN_AGE} to {MAX_AGE}.</0>" parts={[<span id="su-age-limits" className="sr-only" />]} vars={{ MIN_AGE, MAX_AGE }} />
                     </Field>
                   </div>
                 )}
@@ -945,7 +961,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {/* STEP 2 — Secure your account */}
                 {signupStep === 2 && (
                   <div key="s2" className="flex flex-col gap-5 animate-fadeIn lg:gap-4">
-                    <Field label="Email address" htmlFor="su-email" hint={`Used to sign in, and to help you get back in if you forget your ${SECRET}.`}>
+                    <Field label={tr("Email address")} htmlFor="su-email" hint={isRemote ? tr('Used to sign in, and to help you get back in if you forget your password.') : tr('Used to sign in, and to help you get back in if you forget your PIN.')}>
                       <input
                         id="su-email"
                         type="email"
@@ -953,12 +969,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         autoComplete="email"
                         value={signupEmail}
                         onChange={e => setSignupEmail(e.target.value)}
-                        placeholder="e.g. kofi@gmail.com"
+                        placeholder={tr("e.g. kofi@gmail.com")}
                         className={inputClass}
                       />
                     </Field>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                      <Field label={`Choose a ${SECRET}`} htmlFor="su-pin" hint={isRemote ? 'At least 8 characters.' : 'At least 4 digits.'}>
+                      <Field label={isRemote ? tr('Choose a password') : tr('Choose a PIN')} htmlFor="su-pin" hint={isRemote ? tr("At least 8 characters.") : tr("At least 4 digits.")}>
                         <input
                           id="su-pin"
                           type={showSignupPin ? 'text' : 'password'}
@@ -966,12 +982,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                           autoComplete="new-password"
                           value={signupPin}
                           onChange={e => setSignupPin(e.target.value)}
-                          placeholder={isRemote ? '' : 'e.g. 5678'}
+                          placeholder={isRemote ? '' : tr("e.g. 5678")}
                           maxLength={isRemote ? 72 : 10}
                           className={inputClass}
                         />
                       </Field>
-                      <Field label="Type it again" htmlFor="su-pin2">
+                      <Field label={tr("Type it again")} htmlFor="su-pin2">
                         <input
                           id="su-pin2"
                           type={showSignupPin ? 'text' : 'password'}
@@ -979,7 +995,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                           autoComplete="new-password"
                           value={signupConfirmPin}
                           onChange={e => setSignupConfirmPin(e.target.value)}
-                          placeholder={`Repeat your ${SECRET}`}
+                          placeholder={isRemote ? tr('Repeat your password') : tr('Repeat your PIN')}
                           maxLength={isRemote ? 72 : 10}
                           className={inputClass}
                         />
@@ -991,7 +1007,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       className="flex min-h-11 items-center gap-2 self-start text-[0.9375rem] font-semibold text-pri-text hover:underline cursor-pointer"
                     >
                       {showSignupPin ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
-                      {showSignupPin ? `Hide ${SECRET}` : `Show ${SECRET}`}
+                      {showSignupPin ? (isRemote ? tr('Hide password') : tr('Hide PIN')) : (isRemote ? tr('Show password') : tr('Show PIN'))}
                     </button>
                   </div>
                 )}
@@ -1000,7 +1016,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {signupStep === 3 && (
                   <div key="s3" className="flex flex-col gap-6 animate-fadeIn lg:gap-4">
                     <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-                      <legend className="mb-2.5 p-0 text-sm font-bold text-ink lg:mb-1.5">Choose the one that fits best</legend>
+                      <legend className="mb-2.5 p-0 text-sm font-bold text-ink lg:mb-1.5">{tr("Choose the one that fits best")}</legend>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {pathways.map(pw => {
                           const selected = signupTriage === pw.id;
@@ -1016,17 +1032,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                               )}
                             >
                               <span className="text-lg" aria-hidden="true">{pw.icon}</span>
-                              <span className="flex-1">{pw.label}</span>
+                              <span className="flex-1">{tr(pw.label)}</span>
                               {selected && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
                             </button>
                           );
                         })}
                       </div>
-                      <p className="m-0 text-sm text-ink-3 lg:hidden">You can change this later in Settings.</p>
+                      <p className="m-0 text-sm text-ink-3 lg:hidden">{tr("You can change this later in Settings.")}</p>
                     </fieldset>
 
                     <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
-                      <legend className="mb-2.5 p-0 text-sm font-bold text-ink lg:mb-1.5">What kind of encouragement suits you?</legend>
+                      <legend className="mb-2.5 p-0 text-sm font-bold text-ink lg:mb-1.5">{tr("What kind of encouragement suits you?")}</legend>
                       <div className="flex flex-col gap-2 lg:grid lg:grid-cols-3">
                         {beliefs.map(bl => {
                           const selected = signupBelief === bl.id;
@@ -1036,15 +1052,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                               type="button"
                               aria-pressed={selected}
                               onClick={() => setSignupBelief(bl.id)}
-                              title={bl.desc}
+                              title={tr(bl.desc)}
                               className={cx(
                                 'flex min-h-12 items-center gap-3 rounded-xl border-2 px-3.5 py-2.5 text-left transition-colors lg:min-h-11 lg:justify-center lg:px-2 lg:py-2 lg:text-center cursor-pointer',
                                 selected ? 'border-pri bg-pri-soft' : 'border-line bg-surface hover:border-pri-text'
                               )}
                             >
                               <span className="min-w-0 flex-1">
-                                <span className={cx('block text-[0.9375rem] font-bold', selected ? 'text-pri-ink' : 'text-ink')}>{bl.label}</span>
-                                <span className={cx('block text-sm lg:sr-only', selected ? 'text-pri-ink' : 'text-ink-3')}>{bl.desc}</span>
+                                <span className={cx('block text-[0.9375rem] font-bold', selected ? 'text-pri-ink' : 'text-ink')}>{tr(bl.label)}</span>
+                                <span className={cx('block text-sm lg:sr-only', selected ? 'text-pri-ink' : 'text-ink-3')}>{tr(bl.desc)}</span>
                               </span>
                               {selected && <Check className="h-4 w-4 shrink-0 text-pri-ink lg:hidden" aria-hidden="true" />}
                             </button>
@@ -1059,17 +1075,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {signupStep === 4 && (
                   <div key="s4" className="flex flex-col gap-6 animate-fadeIn">
                     <Field
-                      label="Email of someone who supports you"
+                      label={tr("Email of someone who supports you")}
                       htmlFor="su-support"
                       optional
-                      hint="A friend, family member or mentor we can alert if you press SOS. You can add more people later."
+                      hint={tr("A friend, family member or mentor we can alert if you press SOS. You can add more people later.")}
                     >
                       <input
                         id="su-support"
                         type="email"
                         value={emergencyEmail}
                         onChange={e => setEmergencyEmail(e.target.value)}
-                        placeholder="e.g. mentor@family.org"
+                        placeholder={tr("e.g. mentor@family.org")}
                         className={inputClass}
                       />
                     </Field>
@@ -1082,8 +1098,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         className="mt-1 h-5 w-5 shrink-0 cursor-pointer"
                       />
                       <span>
-                        I agree to the <strong className="text-ink">safe-space promise</strong>: my recovery data stays private, and I will treat
-                        others in the community with respect.
+                        <T text="I agree to the <0>safe-space promise</0>: my recovery data stays private, and I will treat others in the community with respect." parts={[<strong className="text-ink" />]} />
                       </span>
                     </label>
                   </div>
@@ -1098,7 +1113,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                       className="flex min-h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-[0.9375rem] font-bold text-ink-2 hover:bg-muted cursor-pointer sm:px-4"
                     >
                       <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-                      Back
+                      {tr("Back")}
                     </button>
                   )}
                   <button
@@ -1108,12 +1123,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   >
                     {signupStep < 4 ? (
                       <>
-                        Continue
+                        {tr("Continue")}
                         <ArrowRight className="h-5 w-5" aria-hidden="true" />
                       </>
                     ) : (
                       <>
-                        Create my account
+                        {tr("Create my account")}
                         <Check className="h-5 w-5" aria-hidden="true" />
                       </>
                     )}
@@ -1130,7 +1145,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       {/* Forgot PIN Recovery Modal */}
       {forgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.6)] backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fadeIn">
-          <div role="dialog" aria-modal="true" aria-label={isRemote ? 'Reset your password' : 'PIN Recovery'} className="my-auto max-h-[85vh] max-h-[85dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-3xl border border-line bg-surface p-5 shadow-2xl sm:p-8">
+          <div role="dialog" aria-modal="true" aria-label={isRemote ? tr("Reset your password") : tr("PIN Recovery")} className="my-auto max-h-[85vh] max-h-[85dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-3xl border border-line bg-surface p-5 shadow-2xl sm:p-8">
             
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
@@ -1138,13 +1153,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   <KeyRound className="w-5 h-5 text-pri-text" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ink">{isRemote ? 'Reset your password' : 'PIN Recovery'}</h3>
-                  <p className="text-xs text-ink-3">{isRemote ? 'We will email you a link' : 'Find your 4-digit PIN'}</p>
+                  <h3 className="text-base font-bold text-ink">{isRemote ? tr("Reset your password") : tr("PIN Recovery")}</h3>
+                  <p className="text-xs text-ink-3">{isRemote ? tr("We will email you a link") : tr("Find your 4-digit PIN")}</p>
                 </div>
               </div>
               <button
                 type="button"
-                aria-label="Close"
+                aria-label={tr("Close")}
                 onClick={() => setForgotModalOpen(false)}
                 className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-xl text-lg font-bold text-ink-3 hover:bg-muted hover:text-ink-2"
               >
@@ -1155,20 +1170,20 @@ export const AuthPage: React.FC<AuthPageProps> = ({
             <form onSubmit={handleForgotSubmit} className="space-y-3">
               <div>
                 <label className="block text-sm font-bold text-ink mb-1.5">
-                  The email you signed up with
+                  {tr("The email you signed up with")}
                 </label>
                 <input
                   type="email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder={isRemote ? 'e.g. kwame@gmail.com' : 'e.g. kwame@4life.org'}
+                  placeholder={isRemote || !DEMO_ENABLED ? tr("e.g. kwame@gmail.com") : tr("e.g. kwame@4life.org")}
                   className={inputClass}
                 />
               </div>
 
               {forgotSuccess && (
                 <div className="p-3 bg-pri-soft border border-line rounded-xl text-xs text-pri-ink leading-relaxed animate-fadeIn">
-                  {forgotSuccess}
+                  {tr(forgotSuccess)}
                 </div>
               )}
 
@@ -1178,13 +1193,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                   onClick={() => setForgotModalOpen(false)}
                   className="min-h-11 cursor-pointer rounded-xl px-4 text-sm font-bold text-ink-2 hover:bg-muted"
                 >
-                  Close
+                  {tr("Close")}
                 </button>
                 <button
                   type="submit"
                   className="min-h-11 cursor-pointer rounded-xl bg-pri px-4 text-sm font-bold text-[#fff] shadow-xs hover:bg-pri-hover"
                 >
-                  {isRemote ? 'Send the link' : 'Find my PIN'}
+                  {isRemote ? tr("Send the link") : tr("Find my PIN")}
                 </button>
               </div>
             </form>

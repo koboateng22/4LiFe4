@@ -3,6 +3,7 @@
  * Only used when isRemote is true. Row Level Security decides what comes back:
  * a therapist only ever receives their own linked clients' shared data.
  */
+import { asThemePref, type ThemePref } from '../theme';
 import { db } from '../supabase';
 import type { ThoughtRecord } from '../cbt';
 import type {
@@ -16,6 +17,7 @@ import type {
   TherapistProfile,
   TherapySession,
 } from '../../therapist/types';
+import { msg } from '../../i18n';
 
 /* ---------- Therapist profile ---------- */
 
@@ -57,7 +59,7 @@ export async function signUpTherapist(email: string, password: string, t: Omit<T
   });
   if (error) throw error;
   // With email confirmation on, Supabase hides taken emails: no error, no identities, no email sent
-  if (data.user?.identities?.length === 0) throw new Error('User already registered');
+  if (data.user?.identities?.length === 0) throw new Error(msg('User already registered'));
   return { userId: data.user?.id || null, needsConfirmation: !data.session };
 }
 
@@ -115,6 +117,18 @@ const THERAPIST_COLUMNS: Partial<Record<keyof TherapistProfile, string>> = {
   slidingScale: 'sliding_scale',
   acceptingClients: 'accepting_clients',
 };
+
+/** The therapist's theme (kept on their own profile row, like a client's), so it follows them to other devices. */
+export async function loadMyTheme(id: string): Promise<ThemePref | null> {
+  const { data, error } = await db().from('profiles').select('theme').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data ? asThemePref(data.theme) : null;
+}
+
+export async function saveMyTheme(id: string, theme: ThemePref) {
+  const { error } = await db().from('profiles').update({ theme }).eq('id', id);
+  if (error) throw error;
+}
 
 export async function updateTherapistProfile(id: string, patch: Partial<TherapistProfile>) {
   const row: Record<string, unknown> = {};

@@ -122,7 +122,7 @@ try {
     await p.getByRole('radio', { name: /Therapist/ }).click();
     await clean(p, `${at} therapist sign in`);
     await p.getByRole('radio', { name: /Student/ }).click();
-    await p.getByRole('button', { name: 'Sign In' }).click();
+    await p.getByRole('button', { name: 'Sign In', exact: true }).click();
     await p.getByRole('button', { name: /Forgot/ }).click();
     await clean(p, `${at} forgot PIN`);
     await p.getByRole('button', { name: 'Close', exact: true }).first().click();

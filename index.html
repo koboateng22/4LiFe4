@@ -13,46 +13,20 @@
     <meta property="og:description" content="AI CBT therapy, an anonymous Global Village and instant emergency help for young people in recovery in Ghana." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // The saved theme (light, dark or the device's own setting) before anything is drawn, so there is no flash.
+      // Same rule as src/lib/theme.ts.
+      (function () {
+        var pref = 'system';
+        try { pref = localStorage.getItem('4life_user_theme') || 'system'; } catch (e) {}
+        var dark = pref === 'dark' || (pref !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var root = document.documentElement;
+        root.classList.add(dark ? 'dark' : 'light');
+        root.style.colorScheme = dark ? 'dark' : 'light';
+      })();
+    </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
-      /* Completely suppress Google Translate popups, floating bars, and tooltips */
-      .goog-te-banner-frame,
-      .goog-te-banner-frame.skiptranslate,
-      .goog-te-balloon-frame,
-      #goog-gt-tt,
-      .goog-te-combo,
-      .goog-tooltip,
-      .goog-tooltip:hover,
-      .goog-text-highlight,
-      iframe.skiptranslate,
-      .VIpgJd-ZVi9od-ORHb-OEVmcd,
-      .VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
-      .VIpgJd-ZVi9od-vH1Gmf,
-      .VIpgJd-ZVi9od-l4eHX-hSRGPd {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-        height: 0 !important;
-        width: 0 !important;
-        position: absolute !important;
-        left: -9999px !important;
-        top: -9999px !important;
-      }
-      body {
-        top: 0px !important;
-        position: static !important;
-      }
-      #google_translate_element {
-        position: absolute !important;
-        top: -9999px !important;
-        left: -9999px !important;
-        width: 1px !important;
-        height: 1px !important;
-        overflow: hidden !important;
-        opacity: 0.01 !important;
-        pointer-events: none !important;
-      }
       /* Prevent mobile viewport side wobble */
       html, body {
         /* clip (not hidden) so the sticky top bar keeps working */
@@ -68,24 +42,19 @@
       #splash strong { font-size: 22px; font-weight: 800; }
       #splash span { font-size: 15px; color: #475569; }
       @keyframes splash-breathe { 0% { transform: scale(0.94); } 40% { transform: scale(1.06); } 100% { transform: scale(0.94); } }
-      @media (prefers-color-scheme: dark) { #splash { background: #0b1512; color: #f1f5f9; } #splash span { color: #94a3b8; } }
+      html.dark #splash { background: #0b1512; color: #f1f5f9; } html.dark #splash span { color: #94a3b8; }
       @media (prefers-reduced-motion: reduce) { #splash svg { animation: none; } }
+      /* If the app hasn't started after 10 s (very slow or broken connection): say so, offer a reload,
+         and keep the emergency numbers one tap away. Pure CSS, so it works even when the app's code never arrives. */
+      #splash .slow { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 18px; max-width: 320px; text-align: center; opacity: 0; visibility: hidden; animation: splash-slow 0.4s ease 10s forwards; }
+      #splash .slow p { margin: 0; font-size: 15px; line-height: 1.5; color: inherit; }
+      #splash .slow a { font-weight: 800; color: #be123c; }
+      #splash .slow button { min-height: 44px; padding: 0 22px; border: 0; border-radius: 14px; background: #047857; color: #fff; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }
+      html.dark #splash .slow a { color: #fda4af; }
+      @keyframes splash-slow { to { opacity: 1; visibility: visible; } }
     </style>
-    <script type="text/javascript">
-      function googleTranslateElementInit() {
-        if (window.google && window.google.translate) {
-          new window.google.translate.TranslateElement({
-            pageLanguage: 'en',
-            autoDisplay: false,
-            layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE
-          }, 'google_translate_element');
-        }
-      }
-    </script>
-    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   </head>
   <body class="font-sans antialiased overflow-x-clip">
-    <div id="google_translate_element"></div>
     <div id="root" class="w-full max-w-full overflow-x-clip">
       <!-- Opening screen while the app loads: the green ribbon of mental health awareness, breathing -->
       <div id="splash" role="status" aria-label="4Life is opening">
@@ -95,7 +64,17 @@
         </svg>
         <strong>4Life</strong>
         <span>Mental health matters</span>
+        <div class="slow">
+          <p>Still opening. On a slow connection this can take a little longer.</p>
+          <button type="button" onclick="location.reload()">Try again</button>
+          <p>In danger right now? Call <a href="tel:112">112</a> or <a href="tel:193">193</a> (ambulance).</p>
+        </div>
       </div>
+      <noscript>
+        <p style="margin: 24px auto; max-width: 340px; text-align: center; font: 16px/1.5 system-ui, sans-serif;">
+          4Life needs JavaScript to run. In danger right now? Call <a href="tel:112">112</a> or <a href="tel:193">193</a> (ambulance).
+        </p>
+      </noscript>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

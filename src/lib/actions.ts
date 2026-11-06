@@ -14,7 +14,8 @@ export type AppAction =
   | 'checkin' // Home: scroll to today's check-in
   | 'ask' // AI CBT therapy: put the person's words in the message box (they press Send)
   | 'safety-plan' // Instant EMS: show my safety plan
-  | 'first-aid'; // Instant EMS: show first aid
+  | 'first-aid' // Instant EMS: show first aid
+  | 'appearance'; // Settings: show Appearance (theme, text size)
 
 const EVENT = '4life:action';
 let pending: { action: AppAction; text?: string } | null = null;

@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.first-aid-videos]
 verify_jwt = false
 
+[functions.library-videos]
+verify_jwt = false
+
 [functions.health]
 verify_jwt = false
 

@@ -67,11 +67,23 @@ Instant EMS has a **First aid while you wait** section: overdose, CPR, choking, 
 
 To get a key: Google Cloud console → APIs & Services → enable **YouTube Data API v3** → Credentials → Create API key. Restrict it to the YouTube Data API.
 
+## Languages
+
+The app ships in English and 26 other languages, chosen from the language button at the top or in Settings. The choice is saved on the device, and AI replies are written in it. Emergency and first-aid steps always stay in English. Twi, Ga, Ewe, Hausa, Fante and Dagbani are hidden until native speakers have checked them.
+
+Text is written in English in the code, and that English is its key: `t('Welcome back')`, or `<T text="Call <0>112</0>" parts={[<a href="tel:112" />]} />` for text with a link inside. The words for each language are in `src/locales/<language>/<area>.json`. After adding or changing English text, run `npm run i18n:extract`, add the new texts to every language, then run `npm run test:i18n`.
+
 ## Tests
 
 ```bash
 npm run test:unit            # no database needed; also checks the Edge Functions are in sync
 npm run ai:check             # checks your Gemini key
+npm run test:i18n            # every language has every text
+npm run test:i18n:e2e        # each language in Chrome at phone size (needs Chrome)
+npm run test:theme           # theme only in Settings, light/dark/system, remembered (needs Chrome)
+npm run test:learn           # the Learn videos page, against a fake YouTube (needs Chrome)
+npm run test:account-db      # theme on the account, Google/phone sign-up profiles (PostgreSQL in-process)
+npm run test:demo-build      # no demo accounts in a production build
 ```
 
 Database and integration tests are described in SUPABASE.md. What changed and where things are in the code: **CHANGES.md**.

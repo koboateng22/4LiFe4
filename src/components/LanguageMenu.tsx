@@ -1,14 +1,15 @@
 /**
  * A "Translate" button that opens a small menu of languages.
- * Ghanaian languages come first; picking one translates the whole app
- * (through the Google Translate helper in utils/translateUtils).
+ * Only languages with every word translated are listed (see src/i18n);
+ * picking one switches the whole app at once, offline too.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Languages } from 'lucide-react';
-import { WORLD_LANGUAGES } from '../data/religionsData';
+import { SELECTABLE_LANGUAGES as LANGS } from '../data/religionsData';
 import { cx } from './ui';
 
-const GHANA = ['en', 'ak', 'fat', 'gaa', 'ee', 'ha', 'dag'];
+import { t } from '../i18n';
+const AFRICA = ['yo', 'ig', 'sw', 'am', 'so', 'zu'];
 
 interface LanguageMenuProps {
   value: string;
@@ -23,9 +24,10 @@ interface LanguageMenuProps {
 export const LanguageMenu: React.FC<LanguageMenuProps> = ({ value, onChange, tone = 'surface', showName = true, className }) => {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
-  const current = WORLD_LANGUAGES.find(l => l.code === value) || WORLD_LANGUAGES[0];
-  const ghana = WORLD_LANGUAGES.filter(l => GHANA.includes(l.code));
-  const others = WORLD_LANGUAGES.filter(l => !GHANA.includes(l.code));
+  const current = LANGS.find(l => l.code === value) || LANGS[0];
+  const english = LANGS.filter(l => l.code === 'en');
+  const africa = LANGS.filter(l => AFRICA.includes(l.code));
+  const others = LANGS.filter(l => l.code !== 'en' && !AFRICA.includes(l.code));
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -40,7 +42,7 @@ export const LanguageMenu: React.FC<LanguageMenuProps> = ({ value, onChange, ton
     };
   }, [open]);
 
-  const item = (l: (typeof WORLD_LANGUAGES)[number]) => {
+  const item = (l: (typeof LANGS)[number]) => {
     const on = l.code === current.code;
     return (
       <button
@@ -73,8 +75,8 @@ export const LanguageMenu: React.FC<LanguageMenuProps> = ({ value, onChange, ton
         onClick={() => setOpen(o => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Translate. Current language: ${current.name}`}
-        title="Translate"
+        aria-label={t("Translate. Current language: {name}", { name: current.name })}
+        title={t("Translate")}
         className={cx(
           'flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-xl px-2.5 text-sm font-bold transition-colors cursor-pointer',
           tone === 'glass'
@@ -97,15 +99,19 @@ export const LanguageMenu: React.FC<LanguageMenuProps> = ({ value, onChange, ton
       {open && (
         <div
           role="menu"
-          aria-label="Choose a language"
+          aria-label={t("Choose a language")}
           className="absolute right-0 top-[calc(100%+8px)] z-50 max-h-[min(26rem,70vh)] w-64 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-2 text-ink shadow-xl animate-fadeIn"
         >
-          <p className="m-0 px-3 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wider text-ink-3">Ghana</p>
-          {ghana.map(item)}
-          <div className="my-1.5 h-px bg-line" />
-          <p className="m-0 px-3 pb-1 pt-1 text-xs font-bold uppercase tracking-wider text-ink-3">More languages</p>
+          {english.map(item)}
+          {africa.length > 0 && (
+            <>
+              <p className="m-0 px-3 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-ink-3">{t('Across Africa')}</p>
+              {africa.map(item)}
+            </>
+          )}
+          {others.length > 0 && <p className="m-0 px-3 pb-1 pt-2.5 text-xs font-bold uppercase tracking-wider text-ink-3">{t('More languages')}</p>}
           {others.map(item)}
-          <p className="m-0 px-3 pb-1 pt-2 text-xs leading-snug text-ink-3">Translated automatically. Some words may not be perfect.</p>
+          <p className="m-0 px-3 pb-1 pt-2 text-xs leading-snug text-ink-3">{t('Translated with AI, not yet checked by native speakers. Emergency steps stay in English.')}</p>
         </div>
       )}
     </div>

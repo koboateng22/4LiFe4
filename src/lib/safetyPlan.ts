@@ -9,6 +9,7 @@
  */
 import type { UserProfile } from '../types';
 import { db, hasRemote } from './supabase';
+import { msg } from '../i18n';
 
 export interface MySafetyPlan {
   warningSigns: string;
@@ -31,11 +32,11 @@ export const PLAN_LIMITS: Record<keyof Omit<MySafetyPlan, 'updatedAt'>, number> 
 
 /** Gentle examples people can tap to add */
 export const PLAN_IDEAS: Record<keyof Omit<MySafetyPlan, 'updatedAt'>, string[]> = {
-  warningSigns: ['Feeling lonely at night', 'After an argument at home', 'Passing the drinking spot', 'When money comes in', 'Not sleeping', 'Hiding things from people'],
-  copingSteps: ['Slow breathing for 2 minutes', 'Go for a walk', 'Take a cold shower', 'Music or a game', 'Write a thought record', 'Pray or sit quietly'],
-  safePlaces: ['The library', 'A friend’s home', 'Church or mosque', 'The gym or pitch', 'Family home'],
+  warningSigns: [msg('Feeling lonely at night'), msg('After an argument at home'), msg('Passing the drinking spot'), msg('When money comes in'), msg('Not sleeping'), msg('Hiding things from people')],
+  copingSteps: [msg('Slow breathing for 2 minutes'), msg('Go for a walk'), msg('Take a cold shower'), msg('Music or a game'), msg('Write a thought record'), msg('Pray or sit quietly')],
+  safePlaces: [msg('The library'), msg('A friend’s home'), msg('Church or mosque'), msg('The gym or pitch'), msg('Family home')],
   supportPeople: [],
-  reasons: ['My family', 'My studies and future', 'My faith', 'Feeling clear in the morning', 'People who believe in me'],
+  reasons: [msg('My family'), msg('My studies and future'), msg('My faith'), msg('Feeling clear in the morning'), msg('People who believe in me')],
 };
 
 const isUuid = (id?: string) => !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);

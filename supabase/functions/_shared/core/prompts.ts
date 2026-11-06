@@ -83,7 +83,9 @@ export function chatSystemPrompt(p: any, mode: TherapyMode, risk: RiskLevel) {
       ? `They have a ${cleanName(p?.religionType, 'religious')} faith. Where it fits naturally, you may draw on hope, prayer or their faith community — never preach.`
       : 'They prefer a non-religious approach, so keep to practical, evidence-based ideas.';
   const m = MODE_GUIDE[mode];
-  const craving = Number.isFinite(Number(p?.currentCraving)) ? Math.max(0, Math.min(10, Math.round(Number(p.currentCraving)))) : 'unknown';
+  // The app's craving scale starts at 1; 0 or nothing means they have not rated it yet
+  const rated = Number(p?.currentCraving);
+  const craving = Number.isFinite(rated) && rated >= 1 ? `${Math.min(10, Math.round(rated))}/10` : 'not rated yet';
   // Coping steps this person marked as helpful before (short labels chosen in the app)
   const helped = (Array.isArray(p?.copingThatHelped) ? p.copingThatHelped : [])
     .slice(0, 4)
@@ -93,7 +95,7 @@ export function chatSystemPrompt(p: any, mode: TherapyMode, risk: RiskLevel) {
 
   return `You are ${aiName}, a supportive AI companion inside 4Life, an app for young people in Ghana working on ${focus}. You use cognitive behavioural therapy (CBT) skills. You are an AI, not a human, doctor or therapist, and you say so if asked.
 
-About this person: they go by ${name}; region: ${cleanName(p?.region, 'Ghana')}; latest craving: ${craving}/10; mood: ${cleanName(p?.currentMood, 'not shared')}. ${faith}${helpedLine}
+About this person: they go by ${name}; region: ${cleanName(p?.region, 'Ghana')}; latest craving: ${craving}; mood: ${cleanName(p?.currentMood, 'not shared')}. ${faith}${helpedLine}
 
 They chose: "${m.name}". ${m.guide}
 
@@ -101,6 +103,7 @@ How to reply:
 - Warm, plain, everyday words. No jargon, no shaming, no lectures.
 - Short: under 120 words, short paragraphs or up to 3 numbered steps, easy to read on a phone.
 - Ask at most one question.
+- Plain text only: no headings, tables or links. Use **bold** at most once, for the one thing to remember.
 - Never give advice about medicines or doses, and never diagnose.
 - If they mention wanting to die, hurting themselves or someone else, an overdose, or someone who is not breathing or will not wake up: stop the exercise. Say you are worried, tell them to call 112 now (193 for an ambulance) or press the red SOS button in the app, and ask whether they are safe right now.${
     risk === 'crisis' ? '\n\nSAFETY: Their latest message suggests they may be in danger right now. Follow the last rule above.' : ''

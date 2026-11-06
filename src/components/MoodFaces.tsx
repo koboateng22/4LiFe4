@@ -4,13 +4,14 @@
  */
 import React from 'react';
 import { cx } from './ui';
+import { t, msg } from '../i18n';
 
 export const MOOD_FACES = [
-  { id: 'struggling', label: 'Struggling', bg: '#fb7185', mouth: 'M20 45 q12 -12 24 0' },
-  { id: 'low', label: 'Low', bg: '#f59e0b', mouth: 'M21 44 q11 -6 22 0' },
-  { id: 'okay', label: 'Okay', bg: '#fcd34d', mouth: 'M22 42 h20' },
-  { id: 'good', label: 'Good', bg: '#6ee7b7', mouth: 'M21 39 q11 8 22 0' },
-  { id: 'great', label: 'Great', bg: '#34d399', mouth: 'M19 37 q13 14 26 0' },
+  { id: 'struggling', label: msg('Struggling'), bg: '#fb7185', mouth: 'M20 45 q12 -12 24 0' },
+  { id: 'low', label: msg('Low'), bg: '#f59e0b', mouth: 'M21 44 q11 -6 22 0' },
+  { id: 'okay', label: msg('Okay'), bg: '#fcd34d', mouth: 'M22 42 h20' },
+  { id: 'good', label: msg('Good'), bg: '#6ee7b7', mouth: 'M21 39 q11 8 22 0' },
+  { id: 'great', label: msg('Great'), bg: '#34d399', mouth: 'M19 37 q13 14 26 0' },
 ] as const;
 
 export const MoodFaces: React.FC<{ value: string; onChange: (id: string) => void; labelledBy?: string }> = ({ value, onChange, labelledBy }) => (
@@ -39,7 +40,7 @@ export const MoodFaces: React.FC<{ value: string; onChange: (id: string) => void
               <path d={m.mouth} stroke="#022c22" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
           </span>
-          <span className={cx('truncate text-xs font-bold sm:text-sm', on ? 'text-ink' : 'text-ink-3')}>{m.label}</span>
+          <span className={cx('truncate text-xs font-bold sm:text-sm', on ? 'text-ink' : 'text-ink-3')}>{t(m.label)}</span>
         </button>
       );
     })}

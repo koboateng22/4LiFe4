@@ -9,6 +9,7 @@ import { PageHero } from '../../components/PageHero';
 import { CaseloadIllustration } from '../../components/auth/AuthIllustrations';
 import { FormatIcon, RiskBadge, SessionRow, missedCheckins, needsNote, trend } from '../parts';
 
+import { t, msg } from '../../i18n';
 interface Props {
   therapist: TherapistProfile;
   store: TherapistStore;
@@ -39,15 +40,15 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
   clients.forEach(c => {
     if (c.status !== 'active') return;
     if (c.risk === 'high')
-      alerts.push({ key: c.id + 'r', tone: 'danger', icon: <AlertTriangle className="h-5 w-5" />, title: `${c.nickname} is marked high risk`, detail: c.lastLocation && c.locationConsent ? `Location shared ${ago(c.lastLocation.at)}. See the nearest emergency services.` : 'Review the safety plan and consider a check-in call.', action: 'Safety map', onClick: () => nav.openSafety(c.id) });
+      alerts.push({ key: c.id + 'r', tone: 'danger', icon: <AlertTriangle className="h-5 w-5" />, title: t('{name} is marked high risk', { name: c.nickname }), detail: c.lastLocation && c.locationConsent ? t('Location shared {when}. See the nearest emergency services.', { when: ago(c.lastLocation.at) }) : t('Review the safety plan and consider a check-in call.'), action: msg('Safety map'), onClick: () => nav.openSafety(c.id) });
     const tr = c.sharesCheckins ? trend(c.craving) : null;
     if (tr != null && tr >= 1.5)
-      alerts.push({ key: c.id + 'c', tone: 'warn', icon: <TrendingUp className="h-5 w-5" />, title: `${c.nickname}: cravings rising`, detail: `About ${tr.toFixed(1)} points higher than the week before.`, action: 'See trend', onClick: () => nav.openClient(c.id) });
+      alerts.push({ key: c.id + 'c', tone: 'warn', icon: <TrendingUp className="h-5 w-5" />, title: t('{name}: cravings rising', { name: c.nickname }), detail: t('About {points} points higher than the week before.', { points: tr.toFixed(1) }), action: msg('See trend'), onClick: () => nav.openClient(c.id) });
     if (c.sharesCheckins && missedCheckins(c.craving) >= 2)
-      alerts.push({ key: c.id + 'm', tone: 'warn', icon: <UserX className="h-5 w-5" />, title: `${c.nickname} missed ${missedCheckins(c.craving)} check-ins`, detail: 'In the last 7 days.', action: 'Open client', onClick: () => nav.openClient(c.id) });
+      alerts.push({ key: c.id + 'm', tone: 'warn', icon: <UserX className="h-5 w-5" />, title: t('{name} missed {count} check-ins', { name: c.nickname, count: missedCheckins(c.craving) }), detail: msg('In the last 7 days.'), action: msg('Open client'), onClick: () => nav.openClient(c.id) });
   });
   notesToFinish.forEach(s =>
-    alerts.push({ key: s.id, tone: 'info', icon: <FileText className="h-5 w-5" />, title: `Finish notes for ${clientOf(s.clientId)?.nickname}`, detail: `${fmtDay(s.start)}, ${fmtTime(s.start)} session`, action: 'Write notes', onClick: () => nav.openSession(s.id) })
+    alerts.push({ key: s.id, tone: 'info', icon: <FileText className="h-5 w-5" />, title: t('Finish notes for {name}', { name: clientOf(s.clientId)?.nickname }), detail: t('{day}, {time} session', { day: fmtDay(s.start), time: fmtTime(s.start) }), action: msg('Write notes'), onClick: () => nav.openSession(s.id) })
   );
   const order = { danger: 0, warn: 1, info: 2 };
   alerts.sort((a, b) => order[a.tone] - order[b.tone]);
@@ -69,17 +70,19 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
         }
         text={
           isNew
-            ? 'Welcome to your workspace.'
-            : `${leftToday} ${leftToday === 1 ? 'session' : 'sessions'} left today${newRequests.length ? ` · ${newRequests.length} new ${newRequests.length === 1 ? 'request' : 'requests'}` : ''}`
+            ? t('Welcome to your workspace.')
+            : newRequests.length
+              ? `${t('{count} sessions left today', { count: leftToday })} · ${t('{count} new requests', { count: newRequests.length })}`
+              : t('{count} sessions left today', { count: leftToday })
         }
         art={<CaseloadIllustration />}
       />
 
       {therapist.verification === 'pending' && (
         <Notice tone="info" icon={<ShieldCheck className="h-5 w-5" />}>
-          <p className="m-0 font-bold">We are checking your licence</p>
+          <p className="m-0 font-bold">{t("We are checking your licence")}</p>
           <p className="m-0 mt-1">
-            This usually takes 2–3 working days. Until then your profile is hidden from clients. You can set up your hours and explore the workspace.
+            {t("This usually takes 2–3 working days. Until then your profile is hidden from clients. You can set up your hours and explore the workspace.")}
           </p>
         </Notice>
       )}
@@ -87,25 +90,25 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
       {/* First-run checklist for new therapists */}
       {isNew && (
         <Card as="section" aria-labelledby="t-start" className="flex flex-col gap-4">
-          <SectionHeader id="t-start" title="Get ready for your first client" subtitle="Four short steps." />
+          <SectionHeader id="t-start" title={t("Get ready for your first client")} subtitle={t("Four short steps.")} />
           <ol className="m-0 flex list-none flex-col gap-2 p-0">
             {[
-              { done: therapist.verification === 'verified', title: 'Licence check', detail: therapist.verification === 'verified' ? 'Verified' : 'In progress — nothing to do', go: undefined },
-              { done: false, title: 'Confirm your hours', detail: `${therapist.days.join(', ')} · ${therapist.startTime}–${therapist.endTime}`, go: () => nav.go('availability') },
-              { done: false, title: 'Check what clients see', detail: 'Your introduction, approaches and fee', go: () => nav.go('profile') },
-              { done: false, title: 'Read the crisis steps', detail: 'What to do if a client is at risk', go: () => nav.go('resources') },
+              { done: therapist.verification === 'verified', title: msg('Licence check'), detail: therapist.verification === 'verified' ? msg('Verified') : msg('In progress — nothing to do'), go: undefined },
+              { done: false, title: msg('Confirm your hours'), detail: `${therapist.days.join(', ')} · ${therapist.startTime}–${therapist.endTime}`, go: () => nav.go('availability') },
+              { done: false, title: msg('Check what clients see'), detail: msg('Your introduction, approaches and fee'), go: () => nav.go('profile') },
+              { done: false, title: msg('Read the crisis steps'), detail: msg('What to do if a client is at risk'), go: () => nav.go('resources') },
             ].map((s, i) => (
               <li key={s.title} className="flex items-center gap-4 rounded-xl border border-line px-4 py-3">
                 <span className={s.done ? 'flex h-8 w-8 items-center justify-center rounded-full bg-pri text-[#fff]' : 'flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-bold text-ink-2'}>
                   {s.done ? <Check className="h-4 w-4" aria-hidden="true" /> : i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-base font-bold text-ink">{s.title}</span>
-                  <span className="block text-sm text-ink-3">{s.detail}</span>
+                  <span className="block text-base font-bold text-ink">{t(s.title)}</span>
+                  <span className="block text-sm text-ink-3">{t(s.detail)}</span>
                 </span>
                 {s.go && (
                   <Button variant="secondary" size="sm" onClick={s.go}>
-                    Open
+                    {t("Open")}
                   </Button>
                 )}
               </li>
@@ -120,7 +123,7 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="m-0 text-sm font-bold text-pri-text">
-                {next.status === 'in_progress' ? 'In progress now' : minsToNext <= 0 ? 'Starting now' : minsToNext < 90 ? `Next session · in ${minsToNext} min` : `Next session · ${fmtDay(next.start)}`}
+                {next.status === 'in_progress' ? t("In progress now") : minsToNext <= 0 ? t("Starting now") : minsToNext < 90 ? t("Next session · in {minsToNext} min", { minsToNext }) : t("Next session · {v0}", { v0: fmtDay(next.start) })}
               </p>
               <h2 id="t-next" className="m-0 mt-1 text-xl font-bold text-ink sm:text-[1.375rem]">
                 {nextClient.nickname}
@@ -140,25 +143,25 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
 
           <dl className="m-0 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-xl bg-bg p-3.5">
-              <dt className="text-sm text-ink-3">Focus</dt>
+              <dt className="text-sm text-ink-3">{t("Focus")}</dt>
               <dd className="m-0 text-base font-bold text-ink">{focusLabel(nextClient.focus)}</dd>
             </div>
             <div className="rounded-xl bg-bg p-3.5">
-              <dt className="text-sm text-ink-3">Clean streak</dt>
-              <dd className="m-0 text-base font-bold text-ink">{nextClient.streakDays} days</dd>
+              <dt className="text-sm text-ink-3">{t("Clean streak")}</dt>
+              <dd className="m-0 text-base font-bold text-ink">{t("{streakDays} days", { streakDays: nextClient.streakDays })}</dd>
             </div>
             <div className="rounded-xl bg-bg p-3.5">
-              <dt className="text-sm text-ink-3">Today’s topic</dt>
-              <dd className="m-0 text-base font-bold text-ink">{next.topic || 'Not set yet'}</dd>
+              <dt className="text-sm text-ink-3">{t("Today’s topic")}</dt>
+              <dd className="m-0 text-base font-bold text-ink">{next.topic || t("Not set yet")}</dd>
             </div>
           </dl>
 
           <div className="flex flex-wrap gap-3">
             <Button size="lg" onClick={() => nav.openSession(next.id)} icon={<ClipboardList className="h-5 w-5" />}>
-              {next.status === 'in_progress' ? 'Return to session' : 'Prepare and start'}
+              {next.status === 'in_progress' ? t("Return to session") : t("Prepare and start")}
             </Button>
             <Button size="lg" variant="secondary" onClick={() => nav.openClient(nextClient.id)}>
-              View client
+              {t("View client")}
             </Button>
           </div>
         </Card>
@@ -169,19 +172,19 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
         <Card as="section" aria-labelledby="t-sched" className="flex flex-col gap-3">
           <SectionHeader
             id="t-sched"
-            title="Today’s schedule"
+            title={t("Today’s schedule")}
             size="md"
             action={
               <Button variant="link" onClick={() => nav.go('sessions')}>
-                All sessions <ArrowRight className="h-4 w-4" />
+                {t("All sessions")} <ArrowRight className="h-4 w-4" />
               </Button>
             }
           />
           {today.length === 0 ? (
             <div className="flex flex-col items-start gap-3 rounded-xl bg-bg p-5">
-              <p className="m-0 text-base text-ink-2">No sessions today.</p>
+              <p className="m-0 text-base text-ink-2">{t("No sessions today.")}</p>
               <Button variant="secondary" icon={<CalendarPlus className="h-5 w-5" />} onClick={() => nav.go('sessions')}>
-                Book a session
+                {t("Book a session")}
               </Button>
             </div>
           ) : (
@@ -195,7 +198,7 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
 
         {/* Needs attention */}
         <Card as="section" aria-labelledby="t-attn" className="flex flex-col gap-3">
-          <SectionHeader id="t-attn" title="Needs your attention" size="md" />
+          <SectionHeader id="t-attn" title={t("Needs your attention")} size="md" />
           {newRequests.length > 0 && (
             <button
               type="button"
@@ -204,13 +207,13 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
             >
               <Inbox className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="flex-1 text-[0.9375rem] font-bold">
-                {newRequests.length} new session {newRequests.length === 1 ? 'request' : 'requests'}
+                {t("{length} new session", { length: newRequests.length })} {newRequests.length === 1 ? 'request' : 'requests'}
               </span>
               <ArrowRight className="h-5 w-5" aria-hidden="true" />
             </button>
           )}
           {alerts.length === 0 && newRequests.length === 0 ? (
-            <p className="m-0 rounded-xl bg-bg p-5 text-base text-ink-2">Nothing needs you right now.</p>
+            <p className="m-0 rounded-xl bg-bg p-5 text-base text-ink-2">{t("Nothing needs you right now.")}</p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {alerts.slice(0, 6).map(a => (
@@ -220,8 +223,8 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
                       {a.icon}
                     </IconBadge>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[0.9375rem] font-bold text-ink">{a.title}</span>
-                      <span className="block text-sm text-ink-3">{a.detail}</span>
+                      <span className="block text-[0.9375rem] font-bold text-ink">{t(a.title)}</span>
+                      <span className="block text-sm text-ink-3">{t(a.detail)}</span>
                     </span>
                     <span className="shrink-0 self-center text-sm font-bold text-pri-text">{a.action}</span>
                   </button>
@@ -234,16 +237,16 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
 
       {/* Week in numbers */}
       {!isNew && (
-        <section aria-label="This week" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <section aria-label={t("This week")} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
-            { label: 'Active clients', value: activeClients, go: () => nav.go('clients') },
-            { label: 'Sessions in the next 7 days', value: thisWeek, go: () => nav.go('sessions') },
-            { label: 'Notes to finish', value: notesToFinish.length, go: () => nav.go('sessions') },
-            { label: 'New requests', value: newRequests.length, go: () => nav.go('requests') },
+            { label: msg('Active clients'), value: activeClients, go: () => nav.go('clients') },
+            { label: msg('Sessions in the next 7 days'), value: thisWeek, go: () => nav.go('sessions') },
+            { label: msg('Notes to finish'), value: notesToFinish.length, go: () => nav.go('sessions') },
+            { label: msg('New requests'), value: newRequests.length, go: () => nav.go('requests') },
           ].map(s => (
             <button key={s.label} type="button" onClick={s.go} className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 text-left hover:border-pri-text cursor-pointer">
               <span className="text-3xl font-extrabold text-ink">{s.value}</span>
-              <span className="text-[0.9375rem] text-ink-2">{s.label}</span>
+              <span className="text-[0.9375rem] text-ink-2">{t(s.label)}</span>
             </button>
           ))}
         </section>
@@ -251,7 +254,7 @@ export const TodayTab: React.FC<Props> = ({ therapist, store, nav }) => {
 
       {!isNew && (
         <p className="m-0 text-sm text-ink-3">
-          <Badge tone="muted">Tip</Badge> Risk flags come from check-ins clients choose to share. They support your judgement — they do not replace it.
+          <Badge tone="muted">{t("Tip")}</Badge> {t("Risk flags come from check-ins clients choose to share. They support your judgement — they do not replace it.")}
         </p>
       )}
     </div>

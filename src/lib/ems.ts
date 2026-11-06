@@ -6,6 +6,7 @@ import type { EmergencyCenter } from '../types';
 import { EMERGENCY_CENTERS } from '../data/counselors';
 import { distanceKm, roughDriveMins } from '../therapist/data';
 import { db, hasRemote } from './supabase';
+import { msg } from '../i18n';
 
 export { distanceKm, roughDriveMins };
 
@@ -24,15 +25,15 @@ export interface Hotline {
  * supabase/migrations/…_cbt_village_ems.sql (emergency_hotlines).
  */
 export const CHECKED_HOTLINES: Hotline[] = [
-  { id: 'gh-112', label: 'Emergency (all services)', number: '112', description: 'Police, fire and ambulance. Free from any phone.', verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
-  { id: 'gh-193', label: 'Ambulance', number: '193', description: 'National Ambulance Service.', verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
-  { id: 'gh-191', label: 'Police', number: '191', description: 'If you or someone else is in danger.', verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
-  { id: 'gh-192', label: 'Fire service', number: '192', description: 'Fire and rescue.', verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
+  { id: 'gh-112', label: msg('Emergency (all services)'), number: '112', description: msg('Police, fire and ambulance. Free from any phone.'), verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
+  { id: 'gh-193', label: msg('Ambulance'), number: '193', description: msg('National Ambulance Service.'), verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
+  { id: 'gh-191', label: msg('Police'), number: '191', description: msg('If you or someone else is in danger.'), verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
+  { id: 'gh-192', label: msg('Fire service'), number: '192', description: msg('Fire and rescue.'), verifiedAt: '2026-08-31', source: 'TherapyRoute Ghana crisis lines' },
   {
     id: 'gh-yonkodo',
-    label: 'Yonkodo Foundation',
+    label: msg('Yonkodo Foundation'),
     number: '0558 288 288',
-    description: 'Emotional support and suicide prevention, answered by trained volunteers. Also on WhatsApp.',
+    description: msg('Emotional support and suicide prevention, answered by trained volunteers. Also on WhatsApp.'),
     verifiedAt: '2026-08-31',
     source: 'TherapyRoute Ghana crisis lines',
   },

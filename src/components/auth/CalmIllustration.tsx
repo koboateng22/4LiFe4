@@ -11,6 +11,7 @@
 import React, { useRef, useState } from 'react';
 import { cx } from '../ui';
 
+import { t } from '../../i18n';
 export type CalmIcon = 'chat' | 'people' | 'phone' | 'clock' | 'heart';
 
 const SKIN = '#9A5B34';
@@ -145,7 +146,7 @@ export const CalmIllustration: React.FC<CalmIllustrationProps> = ({ active, onPi
       viewBox="0 -8 480 350"
       className={cx('block h-auto w-full overflow-visible', className)}
       role="img"
-      aria-label="A young person meditating calmly, surrounded by icons for chat, community, emergency help, time and health"
+      aria-label={t("A young person meditating calmly, surrounded by icons for chat, community, emergency help, time and health")}
       onPointerMove={drift}
       onPointerLeave={() => icons.current && (icons.current.style.transform = '')}
     >
@@ -167,7 +168,7 @@ export const CalmIllustration: React.FC<CalmIllustrationProps> = ({ active, onPi
                 <g
                   role={pick ? 'button' : undefined}
                   tabIndex={pick ? 0 : undefined}
-                  aria-label={label}
+                  aria-label={t(label)}
                   aria-pressed={pick ? active === ic.id : undefined}
                   onClick={pick}
                   onKeyDown={e => {

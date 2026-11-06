@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { cx } from './ui';
 
+import { t } from '../i18n';
 export const BackToTop: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
   const [show, setShow] = useState(false);
 
@@ -20,8 +21,8 @@ export const BackToTop: React.FC<{ hidden?: boolean }> = ({ hidden }) => {
   return (
     <button
       type="button"
-      aria-label="Back to top"
-      title="Back to top"
+      aria-label={t("Back to top")}
+      title={t("Back to top")}
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
       onClick={() => {

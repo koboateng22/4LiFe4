@@ -11,13 +11,23 @@ import { ghanaDigits, isOpenNow, locationMessage } from '../src/lib/ems';
 import { parseOverpass, mergePlaces, kmBetween, osmDirectionsHref } from '../src/lib/osm';
 import { circleTiming } from '../src/lib/village';
 import { MAX_AGE, MIN_AGE, ageDigits, ageError, parseAge } from '../src/lib/age';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { T, __setMessages, formatNumber, normalizeLanguage, setLanguage, t as tx } from '../src/i18n';
 import { FIRST_AID, firstAidTopic, youtubeSearchHref } from '../src/lib/firstAid';
 import { execFileSync } from 'node:child_process';
 import { cleanName, replyLanguage } from '../server/core/text';
 import { toTurns, asMode } from '../server/core/prompts';
 import { checkSignIn, rateLimiter } from '../server/core/guard';
 import { aiConfig } from '../server/core/ai';
-import { readChat } from '../server/core/handlers';
+import { readChat, libraryVideos, __resetVideoLibrary } from '../server/core/handlers';
+import { cleanVideoSearch, formatDuration, isoDurationSeconds } from '../src/lib/videoLibrary';
+import { RichText, toBlocks } from '../src/lib/richText';
+import { COUNTRIES, cleanCode, countryByCode, showPhone, toE164 } from '../src/lib/phone';
+import { friendlyError, __useTestClient } from '../src/lib/supabase';
+import * as clientApiForAuth from '../src/lib/db/clientApi';
+import { needsAccountSetup } from '../src/components/auth/FinishSetup';
+import { chatSystemPrompt } from '../server/core/prompts';
 
 // A small in-memory localStorage, so the on-device parts can be tested here
 const mem = new Map<string, string>();
@@ -96,13 +106,16 @@ ok(levels.cravingLabel(9) === 'intense' && levels.cravingLabel(4) === 'mild' && 
 // Village one-tap reactions (on this device)
 {
   const me = { id: 'guest', nickname: 'Tester' };
-  const before = (await village.listPosts(me)).find(p => p.id === 'vp-1')!;
-  await village.setReaction(me, 'vp-1', 'metoo', true);
-  await village.setReaction(me, 'vp-1', 'metoo', true); // twice counts once
-  const after = (await village.listPosts(me)).find(p => p.id === 'vp-1')!;
+  // outside demo builds the village starts empty, so the test makes its own post
+  ok((await village.listPosts(me)).length === 0, 'without demo data the village starts empty (no sample posts)');
+  const post = await village.createPost(me, { topic: 'general', title: 'Day 3', body: 'Evenings are hard but I am still here.' });
+  const before = (await village.listPosts(me)).find(p => p.id === post.id)!;
+  await village.setReaction(me, post.id, 'metoo', true);
+  await village.setReaction(me, post.id, 'metoo', true); // twice counts once
+  const after = (await village.listPosts(me)).find(p => p.id === post.id)!;
   ok(after.metooCount === before.metooCount + 1 && after.myReactions.metoo && !after.myReactions.helped, '"Me too" is counted once');
-  await village.setReaction(me, 'vp-1', 'metoo', false);
-  const back = (await village.listPosts(me)).find(p => p.id === 'vp-1')!;
+  await village.setReaction(me, post.id, 'metoo', false);
+  const back = (await village.listPosts(me)).find(p => p.id === post.id)!;
   ok(back.metooCount === before.metooCount && !back.myReactions.metoo && back.supportCount === before.supportCount, 'taking back a reaction changes only that one');
   const c = (await village.listCircles(me))[0];
   const g0 = await village.circleGoing(me, c);
@@ -207,4 +220,117 @@ ok(ageError('12').includes('call 112'), 'someone too young is told where to find
 ok(ageError('13') === '' && ageError('120') === '', 'no message for a good age');
 ok(ageDigits('2a2.5-') === '225' && ageDigits('1234') === '123', 'age boxes keep digits only');
 
+// ---------- Translations ----------
+__setMessages('en', { 'days clean': { one: 'day clean', other: 'days clean' } });
+__setMessages('fr', { 'Hello {name}': 'Bonjour {name}', 'days clean': { one: 'jour', many: 'jours', other: 'jours' }, 'Call <0>112</0> now': 'Appelez le <0>112</0> maintenant' });
+__setMessages('ru', { '{count} days': { one: '{count} день', few: '{count} дня', many: '{count} дней', other: '{count} дня' } });
+await setLanguage('en');
+ok(tx('Hello {name}', { name: 'Ama' }) === 'Hello Ama', 'English text is its own key, with {name} filled in');
+ok(tx('days clean', { count: 1 }) === 'day clean' && tx('days clean', { count: 3 }) === 'days clean', 'English plural forms');
+await setLanguage('fr');
+ok(tx('Hello {name}', { name: 'Ama' }) === 'Bonjour Ama', 'the chosen language is used');
+ok(tx('Not translated yet') === 'Not translated yet', 'a missing text falls back to English, never to a key or blank');
+ok(tx('days clean', { count: 1 }) === 'jour' && tx('days clean', { count: 2 }) === 'jours', 'French plural forms');
+ok(formatNumber(1234.5) === new Intl.NumberFormat('fr').format(1234.5), 'numbers are written the local way');
+ok(renderToStaticMarkup(React.createElement(T, { text: 'Call <0>112</0> now', parts: [React.createElement('a', { href: 'tel:112' })] })) === 'Appelez le <a href="tel:112">112</a> maintenant', 'links and bold words keep their place in translated sentences');
+await setLanguage('ru');
+ok([1, 2, 5, 21].map(c => tx('{count} days', { count: c })).join(',') === '1 день,2 дня,5 дней,21 день', 'languages with more plural forms (Russian)');
+ok(normalizeLanguage('fr-CA') === 'fr' && normalizeLanguage('xx') === 'en' && normalizeLanguage('') === 'en', 'unknown languages fall back to English');
+await setLanguage('en');
+
+// AI replies: light formatting only, never HTML
+{
+  const html = renderToStaticMarkup(React.createElement(RichText, { text: 'Hi **there**.\n\n1. Drink water\n2. Call **Mary**\n\n- one\n- two\n<script>alert(1)</script> and a stray ** star' }));
+  ok(html.includes('<strong class="font-bold">there</strong>') && html.includes('<ol') && (html.match(/<li/g) || []).length === 4, 'AI replies show bold text and numbered and bullet lists');
+  ok(!html.includes('<script>') && html.includes('&lt;script&gt;') && html.includes('stray ** star'), 'reply text is never treated as HTML, and an unfinished ** stays as text');
+  ok(toBlocks('### Plan\nStep').length === 1 && renderToStaticMarkup(React.createElement(RichText, { text: '### Plan' })).includes('<strong'), 'headings become bold lines');
+  ok(toBlocks('3. third\n4. fourth')[0].kind === 'ol' && (toBlocks('3. third')[0] as any).start === 3, 'numbered lists keep their first number');
+}
+ok(chatSystemPrompt({ currentCraving: 0 }, 'cbt', 'none').includes('latest craving: not rated yet') && chatSystemPrompt({ currentCraving: 7 }, 'cbt', 'none').includes('latest craving: 7/10'), 'the AI is not told a craving the person never rated');
+// Learn videos (YouTube Data API v3), against a fake YouTube
+{
+  ok(isoDurationSeconds('PT1H2M3S') === 3723 && isoDurationSeconds('PT45S') === 45 && isoDurationSeconds('P0D') === 0 && isoDurationSeconds('junk') === 0, 'YouTube video lengths are read');
+  ok(formatDuration(754) === '12:34' && formatDuration(3723) === '1:02:03' && formatDuration(0) === '', 'video lengths are written as m:ss or h:mm:ss');
+  ok(cleanVideoSearch(' sleep <script>&"x" '.repeat(20)).length <= 80 && !/[<>&"]/.test(cleanVideoSearch('a<b>&"c')), 'typed searches are cleaned and kept short');
+  const realFetch = globalThis.fetch;
+  const calls: string[] = [];
+  const v = (id: string, extra: any = {}) => ({
+    id,
+    snippet: { title: `Video ${id} &amp; more`, channelTitle: 'Calm Channel', description: 'A   short\n description', thumbnails: { medium: { url: `https://i.ytimg.com/vi/${id}/mq.jpg` } }, publishedAt: '2026-01-01T00:00:00Z', liveBroadcastContent: 'none', ...extra.snippet },
+    contentDetails: { duration: 'PT8M5S', ...extra.contentDetails },
+    status: { privacyStatus: 'public', embeddable: true, uploadStatus: 'processed', ...extra.status },
+  });
+  globalThis.fetch = (async (u: any) => {
+    const url = new URL(String(u));
+    calls.push(url.pathname + '?' + url.searchParams.get('q') + '|' + (url.searchParams.get('pageToken') || ''));
+    if (url.pathname.endsWith('/search'))
+      return new Response(JSON.stringify({ nextPageToken: 'NEXT_1', items: ['okvideo01', 'agelimit1', 'private01', 'blockedGH', 'noembed01', 'gonevideo'].map(id => ({ id: { videoId: id } })) }));
+    return new Response(JSON.stringify({ items: [
+      v('okvideo01'),
+      v('agelimit1', { contentDetails: { contentRating: { ytRating: 'ytAgeRestricted' } } }),
+      v('private01', { status: { privacyStatus: 'private' } }),
+      v('blockedGH', { contentDetails: { regionRestriction: { blocked: ['GH'] } } }),
+      v('noembed01', { status: { embeddable: false } }),
+    ] }));
+  }) as any;
+  try {
+    const env = (k: string) => ({ YOUTUBE_API_KEY: 'test-key', VIDEO_DAILY_UNITS: '250' } as any)[k];
+    __resetVideoLibrary();
+    const none = await libraryVideos({ category: 'cbt' }, { env: () => undefined } as any);
+    ok((none.body as any).keyMissing === true && calls.length === 0, 'without a YouTube key nothing is fetched and the app is told why');
+    ok((await libraryVideos({ category: 'nope' }, { env } as any)).status === 400, 'an unknown topic is refused');
+    const r = await libraryVideos({ category: 'cbt', q: 'sleep' }, { env } as any);
+    const body = r.body as any;
+    ok(body.videos.length === 1 && body.videos[0].id === 'okvideo01', 'deleted, private, age-restricted, blocked-in-Ghana and non-embeddable videos are left out');
+    ok(body.videos[0].duration === 485 && body.videos[0].title === 'Video okvideo01 & more' && body.videos[0].description === 'A short description' && body.videos[0].channel === 'Calm Channel' && body.videos[0].category === 'cbt', 'each video has its length, title, channel, short description and topic');
+    ok(body.nextPage === 'NEXT_1' && r.cache?.startsWith('public'), 'there is a next page, and the answer may be cached');
+    ok(calls[0].includes('sleep cognitive behavioural therapy'), 'a typed search stays inside its topic');
+    const before = calls.length;
+    await libraryVideos({ category: 'cbt', q: 'sleep' }, { env } as any);
+    ok(calls.length === before, 'the same search again comes from the cache (no YouTube quota spent)');
+    await libraryVideos({ category: 'cbt', q: 'sleep', page: 'NEXT_1' }, { env } as any);
+    ok(calls[calls.length - 2].endsWith('|NEXT_1'), 'the next page is asked for with its token');
+    ok((await libraryVideos({ category: 'cbt', page: 'bad token!' }, { env } as any)) && !calls.some(c => c.includes('bad token')), 'a strange page token is never sent on');
+    // budget 250: three searches of 101 units go over it
+    const over = (await libraryVideos({ category: 'stress', q: 'exams' }, { env } as any)).body as any;
+    ok(over.videos.length === 0 && /not available/.test(over.error), "once the day's quota budget is spent, new searches wait and say so");
+  } finally {
+    globalThis.fetch = realFetch;
+    __resetVideoLibrary();
+  }
+}
+// Phone sign-in: numbers in international form, codes, plain error messages
+{
+  const gh = countryByCode('GH');
+  ok(toE164(gh, '024 123 4567') === '+233241234567' && toE164(gh, '+233 24 123 4567') === '+233241234567' && toE164(gh, '00233241234567') === '+233241234567', 'Ghana numbers typed the local or international way become +233…');
+  ok(toE164(gh, '24123') === null && toE164(gh, '0241234567890') === null && toE164(gh, 'abc') === null, 'numbers that are too short, too long or not numbers are refused');
+  ok(toE164(countryByCode('NG'), '0803 123 4567') === '+2348031234567' && toE164(gh, '+44 7700 900123') === '+447700900123', 'other countries, and a number typed with another country code, work');
+  ok(showPhone('+233241234567') === '+233 24 123 4567' && cleanCode('12 34-56789') === '123456' && COUNTRIES[0].code === 'GH', 'numbers are shown back readably, codes keep 6 digits, Ghana comes first');
+  ok(/expired/.test(friendlyError({ message: 'Token has expired or is invalid' })) && /not right/.test(friendlyError({ message: 'Invalid OTP' })), 'expired and wrong codes get plain messages');
+  ok(/wait a minute/.test(friendlyError({ message: 'For security purposes, you can only request this after 52 seconds.' })) && /could not send a text/i.test(friendlyError({ message: 'Error sending SMS: Twilio error 21211' })), 'resend limits and failed texts get plain messages');
+  ok(/not switched on/.test(friendlyError({ message: 'Unsupported provider: provider is not enabled' })), 'Google sign-in that is not set up says so plainly');
+
+  // Through the app's own client code, against a stand-in Supabase
+  const calls: any[] = [];
+  const fake: any = {
+    auth: {
+      signInWithOtp: async (a: any) => (calls.push(['otp', a]), { error: null }),
+      verifyOtp: async (a: any) => (calls.push(['verify', a]), a.token === '123456' ? { data: { user: { id: 'u-phone' } }, error: null } : { data: {}, error: { message: 'Token has expired or is invalid' } }),
+      signInWithOAuth: async (a: any) => (calls.push(['oauth', a]), { error: null }),
+      signOut: async () => ({ error: null }),
+    },
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: 'client' }, error: null }) }) }) }),
+  };
+  __useTestClient(fake);
+  (globalThis as any).window = { location: { origin: 'https://4life.example' } };
+  await clientApiForAuth.sendPhoneCode('+233241234567');
+  ok(calls[0][1].phone === '+233241234567' && calls[0][1].options.channel === 'sms', 'asking for a code goes to Supabase (which texts it through Twilio Verify)');
+  ok((await clientApiForAuth.verifyPhoneCode('+233241234567', '123456')).id === 'u-phone', 'the right code signs the person in, checked by Supabase');
+  ok(await clientApiForAuth.verifyPhoneCode('+233241234567', '000000').then(() => false, e => /expired/i.test(friendlyError(e))), 'a wrong or expired code is refused with a plain message');
+  await clientApiForAuth.signInWithGoogle();
+  ok(calls.at(-1)[1].provider === 'google' && calls.at(-1)[1].options.redirectTo === 'https://4life.example/', 'Google sign-in comes back to this app');
+  ok(needsAccountSetup({ nickname: 'member_1a2b3c4d', age: '' } as any) && !needsAccountSetup({ nickname: 'Kofi_W', age: 20 } as any), 'a first Google or phone sign-in is asked for a community name and age');
+  ok(!needsAccountSetup({ nickname: 'Kofi_W', age: '' } as any), 'an older account without an age is never held back from the app (or its emergency help)');
+  delete (globalThis as any).window;
+}
 console.log(`All ${n} unit checks passed`);

@@ -5,27 +5,29 @@
  * Village works on this device only (sample posts plus anything you add),
  * so the app can still be tried offline.
  */
+import { DEMO_ENABLED } from './demo';
 import { apiFetch } from './apiFetch';
 import { db, hasRemote, newId } from './supabase';
 import { moderateText, maxRisk, asRiskLevel, type RiskLevel } from './safety';
+import { msg, t, getLanguage } from '../i18n';
 
 export type Topic = 'substance' | 'porn_social' | 'anger' | 'overeating' | 'general';
 
 export const TOPICS: Array<{ id: Topic; label: string }> = [
-  { id: 'substance', label: 'Drugs and alcohol' },
-  { id: 'porn_social', label: 'Porn and screen time' },
-  { id: 'anger', label: 'Anger and stress' },
-  { id: 'overeating', label: 'Emotional eating' },
-  { id: 'general', label: 'General' },
+  { id: 'substance', label: msg('Drugs and alcohol') },
+  { id: 'porn_social', label: msg('Porn and screen time') },
+  { id: 'anger', label: msg('Anger and stress') },
+  { id: 'overeating', label: msg('Emotional eating') },
+  { id: 'general', label: msg('General') },
 ];
-export const topicLabel = (t: string) => TOPICS.find(x => x.id === t)?.label || 'General';
+export const topicLabel = (id: string) => t(TOPICS.find(x => x.id === id)?.label || msg('General'));
 
 /** One-tap support on a post */
 export type Reaction = 'strength' | 'metoo' | 'helped';
 export const REACTIONS: Array<{ id: Reaction; label: string; done: string }> = [
-  { id: 'strength', label: 'Sending strength', done: 'Strength sent' },
-  { id: 'metoo', label: 'Me too', done: 'Me too' },
-  { id: 'helped', label: 'This helped me', done: 'Helped me' },
+  { id: 'strength', label: msg('Sending strength'), done: msg('Strength sent') },
+  { id: 'metoo', label: msg('Me too'), done: msg('Me too') },
+  { id: 'helped', label: msg('This helped me'), done: msg('Helped me') },
 ];
 
 export interface VillagePost {
@@ -87,12 +89,12 @@ export interface CircleMessage {
 
 export type ReportReason = 'unkind' | 'unsafe' | 'drugs' | 'personal_info' | 'spam' | 'other';
 export const REPORT_REASONS: Array<{ id: ReportReason; label: string }> = [
-  { id: 'unkind', label: 'Unkind, bullying or hateful' },
-  { id: 'unsafe', label: 'Someone may be in danger' },
-  { id: 'drugs', label: 'Buying or selling drugs' },
-  { id: 'personal_info', label: 'Shares someone’s contact details or identity' },
-  { id: 'spam', label: 'Spam or advertising' },
-  { id: 'other', label: 'Something else' },
+  { id: 'unkind', label: msg('Unkind, bullying or hateful') },
+  { id: 'unsafe', label: msg('Someone may be in danger') },
+  { id: 'drugs', label: msg('Buying or selling drugs') },
+  { id: 'personal_info', label: msg('Shares someone’s contact details or identity') },
+  { id: 'spam', label: msg('Spam or advertising') },
+  { id: 'other', label: msg('Something else') },
 ];
 
 export interface Me {
@@ -117,7 +119,7 @@ export type PostCheck =
 export async function checkBeforePosting(text: string): Promise<PostCheck> {
   const local = moderateText(text);
   if (local.risk === 'crisis') return { status: 'crisis' };
-  if (!local.ok) return { status: 'blocked', reason: local.reason || 'Please rewrite this.' };
+  if (!local.ok) return { status: 'blocked', reason: local.reason || msg('Please rewrite this.') };
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 6000);
@@ -132,7 +134,7 @@ export async function checkBeforePosting(text: string): Promise<PostCheck> {
       const data = await res.json();
       const risk = maxRisk(local.risk, asRiskLevel(data.risk));
       if (risk === 'crisis') return { status: 'crisis' };
-      if (data.ok === false) return { status: 'blocked', reason: String(data.reason || 'Please rewrite this so it follows the Village rules.') };
+      if (data.ok === false) return { status: 'blocked', reason: String(data.reason || msg('Please rewrite this so it follows the Village rules.')) };
       return { status: 'ok', risk };
     }
   } catch {
@@ -172,8 +174,8 @@ const seedLocal = (): LocalState => ({
       id: 'vp-1',
       authorName: 'GoldenTree_233',
       topic: 'substance',
-      title: '42 days without alcohol — what helped me in week one',
-      body: 'Evenings were my danger zone, when my friends gathered at the spot near our hostel. What worked: I planned every evening in advance, told one person my plan, and when the urge came I rode it out with the AI for 20 minutes. It always passed. If you are in week one — it gets easier around day 14.',
+      title: msg('42 days without alcohol — what helped me in week one'),
+      body: msg('Evenings were my danger zone, when my friends gathered at the spot near our hostel. What worked: I planned every evening in advance, told one person my plan, and when the urge came I rode it out with the AI for 20 minutes. It always passed. If you are in week one — it gets easier around day 14.'),
       supportCount: 24,
       replyCount: 2,
       createdAt: hoursAgo(2),
@@ -185,8 +187,8 @@ const seedLocal = (): LocalState => ({
       id: 'vp-2',
       authorName: 'ClearMind_24',
       topic: 'porn_social',
-      title: 'Phone outside the bedroom = no more 3 AM loops',
-      body: 'My relapses always happened in bed with my phone. I bought a cheap alarm clock and now my phone charges in the hall. 18 days so far. The first nights were hard and boring, but my mornings are so much better.',
+      title: msg('Phone outside the bedroom = no more 3 AM loops'),
+      body: msg('My relapses always happened in bed with my phone. I bought a cheap alarm clock and now my phone charges in the hall. 18 days so far. The first nights were hard and boring, but my mornings are so much better.'),
       supportCount: 15,
       replyCount: 1,
       createdAt: hoursAgo(9),
@@ -198,8 +200,8 @@ const seedLocal = (): LocalState => ({
       id: 'vp-3',
       authorName: 'Akosua_Rising',
       topic: 'anger',
-      title: 'Thought record actually changed how I reacted at home',
-      body: 'My brother said something and my first thought was "he always disrespects me". I wrote it down, noticed "always" (overgeneralising) and wrote a fairer thought. I still felt annoyed, but 40 instead of 90. We talked instead of shouting.',
+      title: msg('Thought record actually changed how I reacted at home'),
+      body: msg('My brother said something and my first thought was "he always disrespects me". I wrote it down, noticed "always" (overgeneralising) and wrote a fairer thought. I still felt annoyed, but 40 instead of 90. We talked instead of shouting.'),
       supportCount: 11,
       replyCount: 0,
       createdAt: hoursAgo(26),
@@ -211,8 +213,8 @@ const seedLocal = (): LocalState => ({
       id: 'vp-4',
       authorName: 'NewDawn_Tema',
       topic: 'general',
-      title: 'Relapsed after 9 days. Starting again today.',
-      body: 'I felt like all my progress was gone. Reading old posts here helped me see a slip is not the end. Today is day 1 again, and I know more than I did last time.',
+      title: msg('Relapsed after 9 days. Starting again today.'),
+      body: msg('I felt like all my progress was gone. Reading old posts here helped me see a slip is not the end. Today is day 1 again, and I know more than I did last time.'),
       supportCount: 31,
       replyCount: 1,
       createdAt: hoursAgo(50),
@@ -222,16 +224,16 @@ const seedLocal = (): LocalState => ({
     },
   ],
   replies: [
-    { id: 'vr-1', postId: 'vp-1', authorName: 'HopefulSoul', body: 'Day 4 here in Accra and evenings are tough. Planning tonight now — thank you.', createdAt: hoursAgo(1) },
-    { id: 'vr-2', postId: 'vp-1', authorName: 'Kofi_Steady', body: 'Telling one person the plan is so underrated. Congratulations!', createdAt: hoursAgo(0.5) },
-    { id: 'vr-3', postId: 'vp-2', authorName: 'Akosua_Rising', body: 'Doing this tonight. Thanks for the idea.', createdAt: hoursAgo(5) },
-    { id: 'vr-4', postId: 'vp-4', authorName: 'GoldenTree_233', body: 'Nine days is real. You learned what your risky moments are. Proud of you for coming back.', createdAt: hoursAgo(48) },
+    { id: 'vr-1', postId: 'vp-1', authorName: 'HopefulSoul', body: msg('Day 4 here in Accra and evenings are tough. Planning tonight now — thank you.'), createdAt: hoursAgo(1) },
+    { id: 'vr-2', postId: 'vp-1', authorName: 'Kofi_Steady', body: msg('Telling one person the plan is so underrated. Congratulations!'), createdAt: hoursAgo(0.5) },
+    { id: 'vr-3', postId: 'vp-2', authorName: 'Akosua_Rising', body: msg('Doing this tonight. Thanks for the idea.'), createdAt: hoursAgo(5) },
+    { id: 'vr-4', postId: 'vp-4', authorName: 'GoldenTree_233', body: msg('Nine days is real. You learned what your risky moments are. Proud of you for coming back.'), createdAt: hoursAgo(48) },
   ],
   blocked: [],
   reported: [],
   circleMessages: [
-    { id: 'cm-1', circleId: 'circle-sober-evenings', authorName: 'Dr. Ama (host)', body: 'Welcome everyone. What is shared in this circle stays in this circle.', createdAt: hoursAgo(20) },
-    { id: 'cm-2', circleId: 'circle-sober-evenings', authorName: 'Kofi_Steady', body: 'Grateful to be here. 14 days today.', createdAt: hoursAgo(19.9) },
+    { id: 'cm-1', circleId: 'circle-sober-evenings', authorName: 'Dr. Ama (host)', body: msg('Welcome everyone. What is shared in this circle stays in this circle.'), createdAt: hoursAgo(20) },
+    { id: 'cm-2', circleId: 'circle-sober-evenings', authorName: 'Kofi_Steady', body: msg('Grateful to be here. 14 days today.'), createdAt: hoursAgo(19.9) },
   ],
 });
 
@@ -240,7 +242,8 @@ const readLocal = (): LocalState => {
     const raw = localStorage.getItem(LOCAL_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  const s = seedLocal();
+  // Sample posts only in development and preview builds (see lib/demo.ts); otherwise an empty village
+  const s: LocalState = DEMO_ENABLED ? seedLocal() : { posts: [], replies: [], blocked: [], reported: [], circleMessages: [] };
   writeLocal(s);
   return s;
 };
@@ -460,10 +463,10 @@ export async function unblock(me: Me, person: BlockedPerson) {
 /* ------------------------------------------------------------------ */
 
 export const DEFAULT_CIRCLES: Circle[] = [
-  { id: 'circle-sober-evenings', title: 'Sober evenings', topic: 'substance', hostName: 'Dr. Ama Konadu', hostRole: 'Clinical psychologist', description: 'For the hours after lectures or work when cravings are strongest. Share one hard moment and one win.', weekday: 3, startTime: '19:00', durationMin: 60 },
-  { id: 'circle-screen-reset', title: 'Screen-time reset', topic: 'porn_social', hostName: 'Kojo A.', hostRole: 'Peer supporter, 2 years in recovery', description: 'Late-night scrolling and explicit content: practical tips and honest talk, no judgement.', weekday: 2, startTime: '21:00', durationMin: 45 },
-  { id: 'circle-cool-head', title: 'Cool head', topic: 'anger', hostName: 'Efua M.', hostRole: 'Counsellor', description: 'When stress turns into anger. Learn one calming skill each week.', weekday: 4, startTime: '18:30', durationMin: 60 },
-  { id: 'circle-weekend-plan', title: 'Weekend plan', topic: 'general', hostName: 'Dr. Ama Konadu', hostRole: 'Clinical psychologist', description: 'Plan a safe weekend together: risky places, people to call, and things to do instead.', weekday: 5, startTime: '17:00', durationMin: 45 },
+  { id: 'circle-sober-evenings', title: msg('Sober evenings'), topic: 'substance', hostName: 'Dr. Ama Konadu', hostRole: 'Clinical psychologist', description: msg('For the hours after lectures or work when cravings are strongest. Share one hard moment and one win.'), weekday: 3, startTime: '19:00', durationMin: 60 },
+  { id: 'circle-screen-reset', title: msg('Screen-time reset'), topic: 'porn_social', hostName: 'Kojo A.', hostRole: 'Peer supporter, 2 years in recovery', description: msg('Late-night scrolling and explicit content: practical tips and honest talk, no judgement.'), weekday: 2, startTime: '21:00', durationMin: 45 },
+  { id: 'circle-cool-head', title: msg('Cool head'), topic: 'anger', hostName: 'Efua M.', hostRole: 'Counsellor', description: msg('When stress turns into anger. Learn one calming skill each week.'), weekday: 4, startTime: '18:30', durationMin: 60 },
+  { id: 'circle-weekend-plan', title: msg('Weekend plan'), topic: 'general', hostName: 'Dr. Ama Konadu', hostRole: 'Clinical psychologist', description: msg('Plan a safe weekend together: risky places, people to call, and things to do instead.'), weekday: 5, startTime: '17:00', durationMin: 45 },
 ];
 
 export async function listCircles(me: Me): Promise<Circle[]> {
@@ -483,7 +486,8 @@ export async function listCircles(me: Me): Promise<Circle[]> {
   }));
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** "Every Monday": a whole phrase per day, because languages say it differently */
+const EVERY_DAY = [msg('Sundays'), msg('Mondays'), msg('Tuesdays'), msg('Wednesdays'), msg('Thursdays'), msg('Fridays'), msg('Saturdays')];
 
 /** Ghana uses GMT all year, so circle times are UTC times. */
 export function circleTiming(c: Circle, now = new Date()) {
@@ -498,21 +502,23 @@ export function circleTiming(c: Circle, now = new Date()) {
   const end = new Date(start.getTime() + c.durationMin * 60000);
   const live = now >= start && now < end;
   const mins = Math.round((start.getTime() - now.getTime()) / 60000);
-  const time = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Accra' });
+  const time = start.toLocaleTimeString(getLanguage(), { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Accra' });
   // Calendar days in Ghana time (GMT), so 'today' and 'tomorrow' are right around midnight
   const dayNo = (d: Date) => Math.floor(d.getTime() / 86400000);
   const daysAway = dayNo(start) - dayNo(now);
-  const endTime = end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Accra' });
+  const endTime = end.toLocaleTimeString(getLanguage(), { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Accra' });
+  const weeklyShort = t('{days} at {time}', { days: t(EVERY_DAY[c.weekday]), time });
+  const until = t('until {time}', { time: endTime });
   const label = live
-    ? `Live now · until ${endTime}`
+    ? t('Live now · {until}', { until })
     : mins >= 0 && mins < 60
-      ? `Starts in ${mins} min`
+      ? t('Starts in {count} min', { count: mins })
       : daysAway === 0
-        ? `Today at ${time}`
+        ? t('Today at {time}', { time })
         : daysAway === 1
-          ? `Tomorrow at ${time}`
-          : `${DAY_NAMES[c.weekday]}s at ${time}`;
-  return { start, end, live, label, weekly: `${DAY_NAMES[c.weekday]}s at ${time} (Ghana time)` };
+          ? t('Tomorrow at {time}', { time })
+          : weeklyShort;
+  return { start, end, live, label, until, weeklyShort, weekly: t('{days} at {time} (Ghana time)', { days: t(EVERY_DAY[c.weekday]), time }) };
 }
 
 /** A calendar file with a weekly reminder, so people can add the circle to their phone's calendar. */
@@ -611,14 +617,14 @@ export async function askGuide(question: string, circleTitle: string, userProfil
 /** "2 hours ago", "yesterday" … */
 export function timeAgo(iso: string) {
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return t('just now');
+  if (mins < 60) return t('{count} min ago', { count: mins });
   const h = Math.round(mins / 60);
-  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  if (h < 24) return t('{count} hours ago', { count: h });
   const d = Math.round(h / 24);
-  if (d === 1) return 'yesterday';
-  if (d < 7) return `${d} days ago`;
-  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+  if (d === 1) return t('yesterday');
+  if (d < 7) return t('{count} days ago', { count: d });
+  return new Date(iso).toLocaleDateString(getLanguage(), { day: 'numeric', month: 'short' });
 }
 
 /* ------------------------------------------------------------------ */
@@ -640,8 +646,8 @@ export async function circleGoing(me: Me, c: Circle): Promise<{ count: number; m
     return { count: Number(count.data) || 0, mine: !!mine.data?.length };
   }
   const names = readLocal().rsvps?.[`${c.id}|${day}`] || [];
-  // Sample people in this demo village, so the count isn't always empty
-  const sample = 2 + (c.id.length % 5);
+  // Sample people in the demo village, so the count isn't always empty (demo builds only)
+  const sample = DEMO_ENABLED ? 2 + (c.id.length % 5) : 0;
   return { count: sample + names.length, mine: names.includes(me.nickname) };
 }
 

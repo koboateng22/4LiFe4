@@ -12,14 +12,15 @@ import { friendlyError, isRemote } from '../../lib/supabase';
 import { useAction } from '../../lib/actions';
 import { Button, Card, Field, Modal, Notice, cx, textareaClass } from '../ui';
 
+import { t as tr, msg } from '../../i18n';
 type PartKey = keyof Omit<MySafetyPlan, 'updatedAt'>;
 
 const PARTS: Array<{ key: PartKey; title: string; ask: string; hint: string }> = [
-  { key: 'warningSigns', title: 'My warning signs', ask: 'What tells you a hard moment is starting?', hint: 'Thoughts, feelings, places, times of day.' },
-  { key: 'copingSteps', title: 'Things I can do on my own', ask: 'What helps you get through it, by yourself?', hint: 'Small, easy things you can do right away.' },
-  { key: 'safePlaces', title: 'Safe places I can go', ask: 'Where do you feel safe and away from temptation?', hint: 'Places with people around are best.' },
-  { key: 'supportPeople', title: 'People I can call', ask: 'Who else can you reach out to?', hint: 'Your support people from Settings are already included.' },
-  { key: 'reasons', title: 'My reasons to keep going', ask: 'What matters most to you?', hint: 'People, hopes, plans — anything that keeps you going.' },
+  { key: 'warningSigns', title: msg('My warning signs'), ask: msg('What tells you a hard moment is starting?'), hint: msg('Thoughts, feelings, places, times of day.') },
+  { key: 'copingSteps', title: msg('Things I can do on my own'), ask: msg('What helps you get through it, by yourself?'), hint: msg('Small, easy things you can do right away.') },
+  { key: 'safePlaces', title: msg('Safe places I can go'), ask: msg('Where do you feel safe and away from temptation?'), hint: msg('Places with people around are best.') },
+  { key: 'supportPeople', title: msg('People I can call'), ask: msg('Who else can you reach out to?'), hint: msg('Your support people from Settings are already included.') },
+  { key: 'reasons', title: msg('My reasons to keep going'), ask: msg('What matters most to you?'), hint: msg('People, hopes, plans — anything that keeps you going.') },
 ];
 
 const lines = (t: string) =>
@@ -82,25 +83,25 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={`${id}-h`} className="m-0 flex items-center gap-2 text-xl font-bold text-ink">
-            <ShieldCheck className="h-6 w-6 text-pri-text" aria-hidden="true" /> My safety plan
+            <ShieldCheck className="h-6 w-6 text-pri-text" aria-hidden="true" /> {tr("My safety plan")}
           </h2>
           <p className="m-0 mt-1 text-[0.9375rem] text-ink-2">
-            {empty ? 'Your steps for a hard moment, in one place. It takes about 5 minutes.' : 'Go through it from the top. Move on to the next step if one doesn’t help.'}
+            {empty ? tr("Your steps for a hard moment, in one place. It takes about 5 minutes.") : tr("Go through it from the top. Move on to the next step if one doesn’t help.")}
           </p>
         </div>
         {loaded && (
           <Button variant={empty ? 'primary' : 'secondary'} icon={empty ? <Plus className="h-5 w-5" /> : <Pencil className="h-4 w-4" />} onClick={open}>
-            {empty ? 'Make my plan' : 'Edit'}
+            {empty ? tr("Make my plan") : tr("Edit")}
           </Button>
         )}
       </div>
 
       {saved && (
         <Notice icon={<Check className="h-5 w-5" />} className="font-bold">
-          Your safety plan is saved{isRemote ? ' — your counsellor can see it and help with it' : ' on this phone'}.
+          {tr("Your safety plan is saved")}{isRemote ? tr(" — your counsellor can see it and help with it") : tr(" on this phone")}.
         </Notice>
       )}
-      {error && !editing && <Notice tone="warn">{error}</Notice>}
+      {error && !editing && <Notice tone="warn">{tr(error)}</Notice>}
 
       {!empty && (
         <ol className="m-0 flex list-none flex-col gap-3 p-0">
@@ -114,7 +115,7 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="m-0 text-base font-bold text-ink">{part.title}</h3>
+                  <h3 className="m-0 text-base font-bold text-ink">{tr(part.title)}</h3>
                   {items.length > 0 && (
                     <ul className="m-0 mt-1.5 flex flex-col gap-1 pl-4 text-[0.9375rem] leading-relaxed text-ink-2">
                       {items.map(x => (
@@ -144,7 +145,7 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
               {PARTS.length + 1}
             </span>
             <div className="min-w-0 flex-1">
-              <h3 className="m-0 text-base font-bold text-ink">Professional help, any time</h3>
+              <h3 className="m-0 text-base font-bold text-ink">{tr("Professional help, any time")}</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {pros.map(h => (
                   <a
@@ -155,7 +156,7 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
                       h.id === 'gh-112' ? 'bg-danger text-[#fff] hover:bg-danger-hover' : 'border border-line bg-surface text-ink hover:border-pri-text'
                     )}
                   >
-                    <Phone className="h-4 w-4" aria-hidden="true" /> {h.number} · {h.label}
+                    <Phone className="h-4 w-4" aria-hidden="true" /> {h.number} · {tr(h.label)}
                   </a>
                 ))}
               </div>
@@ -167,24 +168,24 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
       <Modal
         isOpen={editing}
         onClose={() => setEditing(false)}
-        title="My safety plan"
-        subtitle="Write in your own words. Tap an idea to add it. You can change this any time."
+        title={tr("My safety plan")}
+        subtitle={tr("Write in your own words. Tap an idea to add it. You can change this any time.")}
         footer={
           <>
             <Button variant="ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {tr("Cancel")}
             </Button>
             <Button onClick={save} disabled={saving} icon={<Check className="h-5 w-5" />}>
-              {saving ? 'Saving…' : 'Save my plan'}
+              {saving ? tr("Saving…") : tr("Save my plan")}
             </Button>
           </>
         }
       >
         <div className="flex flex-col gap-6">
-          {error && <Notice tone="warn">{error}</Notice>}
+          {error && <Notice tone="warn">{tr(error)}</Notice>}
           {PARTS.map((part, i) => (
             <div key={part.key} className="flex flex-col gap-2">
-              <Field label={`${i + 1}. ${part.ask}`} htmlFor={`sp-${part.key}`} hint={part.hint}>
+              <Field label={`${i + 1}. ${tr(part.ask)}`} htmlFor={`sp-${part.key}`} hint={tr(part.hint)}>
                 <textarea
                   id={`sp-${part.key}`}
                   rows={2}
@@ -192,7 +193,7 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
                   value={draft[part.key]}
                   onChange={e => setDraft(d => ({ ...d, [part.key]: e.target.value }))}
                   className={textareaClass}
-                  placeholder="One idea per line"
+                  placeholder={tr("One idea per line")}
                 />
               </Field>
               {PLAN_IDEAS[part.key].length > 0 && (
@@ -201,10 +202,10 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
                     <button
                       key={idea}
                       type="button"
-                      onClick={() => addIdea(part.key, idea)}
+                      onClick={() => addIdea(part.key, tr(idea))}
                       className="inline-flex min-h-10 items-center rounded-full border border-dashed border-line px-3 text-sm font-semibold text-ink-2 hover:border-pri-text hover:text-ink cursor-pointer"
                     >
-                      + {idea}
+                      + {tr(idea)}
                     </button>
                   ))}
                 </div>
@@ -212,7 +213,7 @@ export const SafetyPlanCard: React.FC<{ profile: UserProfile; id?: string }> = (
             </div>
           ))}
           <p className="m-0 text-sm text-ink-3">
-            {isRemote ? 'Saved to your account. A counsellor you are linked with can see it and help with it.' : 'Saved on this phone only.'}
+            {isRemote ? tr("Saved to your account. A counsellor you are linked with can see it and help with it.") : tr("Saved on this phone only.")}
           </p>
         </div>
       </Modal>

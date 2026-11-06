@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { UserProfile, TriageCategory } from '../types';
 import { USER_AVATARS, AI_AVATARS } from '../data/forumData';
-import { WORLD_RELIGIONS, WORLD_LANGUAGES } from '../data/religionsData';
+import { WORLD_RELIGIONS, SELECTABLE_LANGUAGES } from '../data/religionsData';
 import { changeLanguage } from '../utils/translateUtils';
-import { t } from '../utils/translations';
 import { inputClass } from './ui';
 import { ageDigits, ageError } from '../lib/age';
 import { 
@@ -13,11 +12,15 @@ import {
   Flame, HelpCircle, MessageSquare, Volume2, Globe
 } from 'lucide-react';
 
+import { t, T, msg } from '../i18n';
 interface OnboardingFlowProps {
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
   onComplete: (selectedTriage?: TriageCategory, directAction?: string) => void;
 }
+
+/** Shown as one-tap buttons under the language list */
+const QUICK_LANGUAGES = ['en', 'fr', 'es', 'pt', 'ar', 'sw', 'yo', 'ig'];
 
 const GHANA_REGIONS = [
   'Greater Accra',
@@ -58,11 +61,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const ageProblem = String(profile.age ?? '').trim() ? ageError(profile.age) : '';
 
   const handleAddContact = () => {
-    if (!newContactName.trim()) return;
+    // A support person needs a real number: SOS texts it. (A made-up one used to be filled in.)
+    if (!newContactName.trim() || newContactPhone.replace(/\D/g, '').length < 7) return;
     const newContact = {
       id: 'c_' + Date.now(),
       name: newContactName.trim(),
-      phone: newContactPhone.trim() || '+233 24 000 0000',
+      phone: newContactPhone.trim(),
       email: newContactEmail.trim() || undefined,
       relationship: newContactRel,
       isPrimary: profile.contacts.length === 0,
@@ -104,9 +108,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <Sparkles className="h-5 w-5" />
               </span>
               <div>
-                <h1 className="m-0 text-xl font-bold text-ink sm:text-2xl">Set up <span translate="no">4Life</span></h1>
+                <h1 className="m-0 text-xl font-bold text-ink sm:text-2xl">{t("Set up")} <span translate="no">4Life</span></h1>
                 <p className="m-0 mt-0.5 text-base text-ink-2">
-                  Step {step} of 4 · {['About you', 'Privacy and support people', 'What you’re working on', 'Your support'][step - 1]}
+                  {t('Step {step} of 4 · {name}', { step, name: t([msg('About you'), msg('Privacy and support people'), msg('What you’re working on'), msg('Your support')][step - 1]) })}
                 </p>
               </div>
             </div>
@@ -115,11 +119,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               onClick={() => handleFinishOnboarding()}
               className="min-h-11 shrink-0 rounded-xl px-3 text-sm font-bold text-ink-2 hover:bg-muted cursor-pointer"
             >
-              <span className="sm:hidden">Skip</span>
-              <span className="hidden sm:inline">Skip for now</span>
+              <T text="<0>Skip</0><1>Skip for now</1>" parts={[<span className="sm:hidden" />, <span className="hidden sm:inline" />]} />
             </button>
           </div>
-          <div className="mt-5 flex gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step} aria-label={`Step ${step} of 4`}>
+          <div className="mt-5 flex gap-2" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step} aria-label={t("Step {step} of 4", { step })}>
             {[1, 2, 3, 4].map(s => (
               <span key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? 'bg-pri' : 'bg-muted'}`} />
             ))}
@@ -134,13 +137,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             <div className="space-y-5 animate-fadeIn">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-ink">About you</h2>
-                  <span className="text-sm font-semibold text-pri-text bg-pri-soft px-2 py-0.5 rounded-md border border-pri/30">
-                    Private
-                  </span>
+                  <h2 className="text-lg font-bold text-ink">{t("About you")}</h2>
+                  <T text="<0>Private</0>" parts={[<span className="text-sm font-semibold text-pri-text bg-pri-soft px-2 py-0.5 rounded-md border border-pri/30" />]} />
                 </div>
                 <p className="text-sm text-ink-3 mt-0.5">
-                  This helps AI therapy speak to you in a way that fits you. Only you can see it.
+                  {t("This helps AI therapy speak to you in a way that fits you. Only you can see it.")}
                 </p>
               </div>
 
@@ -148,20 +149,20 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-ink mb-1.5">
-                      Your name (private)
+                      {t("Your name (private)")}
                     </label>
                     <input
                       type="text"
                       value={profile.name}
                       onChange={e => setProfile({ ...profile, name: e.target.value })}
-                      placeholder="e.g. Kwadwo Mensah"
+                      placeholder={t("e.g. Kwadwo Mensah")}
                       className={inputClass}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="onboard-age" className="block text-sm font-bold text-ink mb-1.5">
-                      Age
+                      {t("Age")}
                     </label>
                     <input
                       id="onboard-age"
@@ -172,11 +173,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       value={profile.age ?? ''}
                       onChange={e => setProfile({ ...profile, age: ageDigits(e.target.value) })}
                       aria-invalid={showAgeError && !!ageProblem}
-                      placeholder="e.g. 22"
+                      placeholder={t("e.g. 22")}
                       className={inputClass}
                     />
                     {showAgeError && ageProblem && (
-                      <p role="alert" className="m-0 mt-1.5 text-sm text-danger-text">{ageProblem}</p>
+                      <p role="alert" className="m-0 mt-1.5 text-sm text-danger-text">{t(ageProblem)}</p>
                     )}
                   </div>
                 </div>
@@ -186,7 +187,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <label className="block text-sm font-bold text-ink mb-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <Globe className="w-3.5 h-3.5 text-pri-text" />
-                        <span>{t('preferred_lang', profile.language)}</span>
+                        <span>{t('Language')}</span>
                       </span>
                     </label>
                     <select
@@ -195,13 +196,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         const newLang = e.target.value;
                         setProfile({ ...profile, language: newLang });
                         changeLanguage(newLang);
-                        try {
-                          localStorage.setItem('4life_user_language', newLang);
-                        } catch {}
                       }}
                       className={inputClass}
                     >
-                      {WORLD_LANGUAGES.map(l => (
+                      {SELECTABLE_LANGUAGES.map(l => (
                         <option key={l.code} value={l.code}>
                           {l.name}{l.nativeName !== l.name ? ` (${l.nativeName})` : ''}
                         </option>
@@ -210,26 +208,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
                     {/* Quick popular language buttons */}
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {[
-                        { code: 'en', label: 'English' },
-                        { code: 'ak', label: 'Twi' },
-                        { code: 'fat', label: 'Fante' },
-                        { code: 'gaa', label: 'Ga' },
-                        { code: 'ee', label: 'Ewe' },
-                        { code: 'dag', label: 'Dagbani' },
-                        { code: 'ha', label: 'Hausa' },
-                        { code: 'fr', label: 'Français' },
-                        { code: 'es', label: 'Español' },
-                      ].map(ql => (
+                      {SELECTABLE_LANGUAGES.filter(l => QUICK_LANGUAGES.includes(l.code)).map(ql => (
                         <button
                           key={ql.code}
                           type="button"
                           onClick={() => {
                             setProfile({ ...profile, language: ql.code });
                             changeLanguage(ql.code);
-                            try {
-                              localStorage.setItem('4life_user_language', ql.code);
-                            } catch {}
                           }}
                           className={`px-2 py-1 rounded-lg text-sm font-bold border transition-all cursor-pointer ${
                             (profile.language || 'en') === ql.code
@@ -237,7 +222,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                               : 'bg-surface text-ink-2 border-line hover:bg-pri-soft'
                           }`}
                         >
-                          {ql.label}
+                          {ql.nativeName}
                         </button>
                       ))}
                     </div>
@@ -246,7 +231,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   <div>
                     <label className="block text-sm font-bold text-ink mb-1.5 flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-pri-text" />
-                      <span>Region</span>
+                      <T text="<0>Region</0>" parts={[<span />]} />
                     </label>
                     <select
                       value={profile.region}
@@ -263,7 +248,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 {/* Comprehensive World Religions Dropdown */}
                 <div>
                   <label className="block text-sm font-bold text-ink mb-1.5 flex items-center justify-between">
-                    <span>Faith or tradition</span>
+                    <T text="<0>Faith or tradition</0>" parts={[<span />]} />
                   </label>
                   <select
                     value={profile.religion || (profile.belief === 'secular' ? 'secular_atheist' : 'christianity')}
@@ -282,7 +267,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   >
                     {WORLD_RELIGIONS.map(r => (
                       <option key={r.id} value={r.id}>
-                        {r.name}
+                        {t(r.name)}
                       </option>
                     ))}
                   </select>
@@ -291,7 +276,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   {(() => {
                     const activeRel = WORLD_RELIGIONS.find(r => r.id === (profile.religion || (profile.belief === 'secular' ? 'secular_atheist' : 'christianity'))) || WORLD_RELIGIONS[0];
                     return (
-                      <p className="mt-2 mb-0 text-sm leading-relaxed text-ink-3">{activeRel.description}</p>
+                      <p className="mt-2 mb-0 text-sm leading-relaxed text-ink-3">{t(activeRel.description)}</p>
                     );
                   })()}
                 </div>
@@ -299,7 +284,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 {/* Belief System Mode Selection (Quick Switch) */}
                 <div>
                   <label className="block text-sm font-bold text-ink mb-1.5">
-                    How should AI therapy encourage you?
+                    {t("How should AI therapy encourage you?")}
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button
@@ -317,14 +302,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold flex items-center gap-1.5">
-                          With my faith
-                        </span>
+                        <T text="<0>With my faith</0>" parts={[<span className="text-sm font-bold flex items-center gap-1.5" />]} />
                         {profile.belief === 'theist' && <Check className="w-4 h-4 text-pri-text" />}
                       </div>
-                      <span className="text-sm text-ink-2">
-                        Hope, prayer and words from your faith, alongside practical CBT steps.
-                      </span>
+                      <T text="<0>Hope, prayer and words from your faith, alongside practical CBT steps.</0>" parts={[<span className="text-sm text-ink-2" />]} />
                     </button>
 
                     <button
@@ -342,14 +323,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold flex items-center gap-1.5">
-                          With practical science
-                        </span>
+                        <T text="<0>With practical science</0>" parts={[<span className="text-sm font-bold flex items-center gap-1.5" />]} />
                         {profile.belief === 'secular' && <Check className="w-4 h-4 text-pri-text" />}
                       </div>
-                      <span className="text-sm text-ink-2">
-                        Evidence-based CBT steps and plain explanations, without religion.
-                      </span>
+                      <T text="<0>Evidence-based CBT steps and plain explanations, without religion.</0>" parts={[<span className="text-sm text-ink-2" />]} />
                     </button>
                   </div>
                 </div>
@@ -357,7 +334,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 {/* Avatar Selection */}
                 <div>
                   <label className="block text-sm font-bold text-ink mb-1.5">
-                    Your avatar in the Village
+                    {t("Your avatar in the Village")}
                   </label>
                   <div className="flex flex-wrap gap-2.5">
                     {USER_AVATARS.map(av => (
@@ -370,7 +347,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                             ? 'bg-pri text-[#fff] scale-110 shadow-md ring-2 ring-pri'
                             : 'bg-muted border border-line hover:scale-105'
                         }`}
-                        title={av.label}
+                        title={t(av.label)}
                       >
                         {av.emoji}
                       </button>
@@ -382,7 +359,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <div className="p-4 bg-bg border border-line rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-ink flex items-center gap-1.5">
-                      <span>Text size and theme</span>
+                      <T text="<0>Text size and theme</0>" parts={[<span />]} />
                     </span>
                   </div>
 
@@ -390,13 +367,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     {/* Font Size Buttons */}
                     <div>
                       <label className="block text-sm font-semibold text-ink-2 mb-1.5">
-                        Text size
+                        {t("Text size")}
                       </label>
                       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                         {[
-                          { id: 'sm', label: 'Small', preview: 'A' },
-                          { id: 'md', label: 'Normal', preview: 'A+' },
-                          { id: 'lg', label: 'Large', preview: 'A++' },
+                          { id: 'sm', label: msg('Small'), preview: 'A' },
+                          { id: 'md', label: msg('Normal'), preview: 'A+' },
+                          { id: 'lg', label: msg('Large'), preview: 'A++' },
                           { id: 'xl', label: 'X-Large', preview: 'A+++' },
                         ].map(f => (
                           <button
@@ -410,7 +387,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                             }`}
                           >
                             <span className="text-sm">{f.preview}</span>
-                            <span className="text-sm mt-0.5">{f.label}</span>
+                            <span className="text-sm mt-0.5">{t(f.label)}</span>
                           </button>
                         ))}
                       </div>
@@ -419,7 +396,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     {/* Theme Selector (Forest/Emerald Dark vs Light) */}
                     <div>
                       <label className="block text-sm font-semibold text-ink-2 mb-1.5">
-                        Theme
+                        {t("Theme")}
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         <button
@@ -433,8 +410,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         >
                           <span className="text-lg">☀️</span>
                           <div>
-                            <span className="text-sm font-bold block">Light</span>
-                            <span className="text-sm text-[#475569]">Slate & Emerald</span>
+                            <T text="<0>Light</0><1>Slate & Emerald</1>" parts={[<span className="text-sm font-bold block" />, <span className="text-sm text-[#475569]" />]} />
                           </div>
                         </button>
 
@@ -449,8 +425,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         >
                           <span className="text-lg">🌙</span>
                           <div>
-                            <span className="text-sm font-bold block">Dark</span>
-                            <span className="text-sm text-[#34d399] font-semibold">Forest & Emerald</span>
+                            <T text="<0>Dark</0><1>Forest & Emerald</1>" parts={[<span className="text-sm font-bold block" />, <span className="text-sm text-[#34d399] font-semibold" />]} />
                           </div>
                         </button>
                       </div>
@@ -463,8 +438,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     profile.fontSize === 'lg' ? 'text-base' : 
                     profile.fontSize === 'xl' ? 'text-lg' : 'text-sm'
                   } bg-surface border-line`}>
-                    <span className="font-pacifico text-pri-text mr-2">4Life:</span>
-                    <span>"Welcome to your healing journey. One day at a time, one mindful moment at a time."</span>
+                    <T text={"<0>4Life:</0><1>\"Welcome to your healing journey. One day at a time, one mindful moment at a time.\"</1>"} parts={[<span className="font-pacifico text-pri-text mr-2" />, <span />]} />
                   </div>
                 </div>
               </div>
@@ -475,9 +449,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           {step === 2 && (
             <div className="space-y-5 animate-fadeIn">
               <div>
-                <h2 className="text-lg font-bold text-ink">Privacy and support people</h2>
+                <h2 className="text-lg font-bold text-ink">{t("Privacy and support people")}</h2>
                 <p className="text-sm text-ink-3 mt-0.5">
-                  Choose the name others see, and add someone you trust. In an emergency you can text them your location in one tap.
+                  {t("Choose the name others see, and add someone you trust. In an emergency you can text them your location in one tap.")}
                 </p>
               </div>
 
@@ -485,31 +459,31 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-ink mb-1.5">
-                      Community name
+                      {t("Community name")}
                     </label>
                     <input
                       type="text"
                       value={profile.nickname}
                       onChange={e => setProfile({ ...profile, nickname: e.target.value })}
-                      placeholder="e.g. HopefulWarrior_GH"
+                      placeholder={t("e.g. HopefulWarrior_GH")}
                       className={inputClass}
                     />
-                    <span className="text-sm text-ink-3 mt-1 block">Shown in the Village instead of your real name</span>
+                    <T text="<0>Shown in the Village instead of your real name</0>" parts={[<span className="text-sm text-ink-3 mt-1 block" />]} />
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-ink mb-1.5">
-                      4-digit PIN
+                      {t("4-digit PIN")}
                     </label>
                     <input
                       type="text"
                       maxLength={4}
                       value={profile.pinCode}
                       onChange={e => setProfile({ ...profile, pinCode: e.target.value })}
-                      placeholder="e.g. 5291"
+                      placeholder={t("e.g. 5291")}
                       className={inputClass}
                     />
-                    <span className="text-sm text-ink-3 mt-1 block">Used to sign in on this device</span>
+                    <T text="<0>Used to sign in on this device</0>" parts={[<span className="text-sm text-ink-3 mt-1 block" />]} />
                   </div>
                 </div>
 
@@ -518,7 +492,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-bold text-pri-ink flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5 text-pri-text" />
-                      <span>Support people</span>
+                      <T text="<0>Support people</0>" parts={[<span />]} />
                     </p>
                   </div>
                   
@@ -527,32 +501,33 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       type="text"
                       value={newContactName}
                       onChange={e => setNewContactName(e.target.value)}
-                      placeholder="Name, e.g. Sister Ama"
-                      aria-label="Support person’s name"
+                      placeholder={t("Name, e.g. Sister Ama")}
+                      aria-label={t("Support person’s name")}
                       className={inputClass}
                     />
                     <input
                       type="tel"
                       value={newContactPhone}
                       onChange={e => setNewContactPhone(e.target.value)}
-                      placeholder="Phone, e.g. 024 123 4567"
-                      aria-label="Phone number"
+                      placeholder={t("Phone, e.g. 024 123 4567")}
+                      aria-label={t("Phone number")}
                       className={inputClass}
                     />
                     <input
                       type="email"
                       value={newContactEmail}
                       onChange={e => setNewContactEmail(e.target.value)}
-                      placeholder="Email (optional)"
-                      aria-label="Email (optional)"
+                      placeholder={t("Email (optional)")}
+                      aria-label={t("Email (optional)")}
                       className={inputClass}
                     />
                     <button
                       type="button"
                       onClick={handleAddContact}
-                      className="min-h-12 px-4 bg-pri hover:bg-pri-hover text-[#fff] rounded-xl text-base font-bold transition-colors cursor-pointer"
+                      disabled={!newContactName.trim() || newContactPhone.replace(/\D/g, '').length < 7}
+                      className="min-h-12 px-4 disabled:opacity-50 bg-pri hover:bg-pri-hover text-[#fff] rounded-xl text-base font-bold transition-colors cursor-pointer"
                     >
-                      Add support person
+                      {t("Add support person")}
                     </button>
                   </div>
 
@@ -569,7 +544,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                             </span>
                           )}
                           {c.isPrimary && (
-                            <span className="bg-pri-soft text-pri-ink text-sm px-1.5 py-0.5 rounded-sm font-semibold">Primary</span>
+                            <span className="bg-pri-soft text-pri-ink text-sm px-1.5 py-0.5 rounded-sm font-semibold">{t("Primary")}</span>
                           )}
                         </div>
                         <button
@@ -577,7 +552,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                           onClick={() => handleRemoveContact(c.id)}
                           className="text-danger-text hover:underline font-bold text-sm"
                         >
-                          Remove
+                          {t("Remove")}
                         </button>
                       </div>
                     ))}
@@ -587,7 +562,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 {/* AI Companion Choice */}
                 <div>
                   <label className="block text-sm font-bold text-ink mb-1.5">
-                    Choose your AI companion
+                    {t("Choose your AI companion")}
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {AI_AVATARS.map(av => (
@@ -606,7 +581,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         </span>
                         <div>
                           <p className="text-sm font-bold text-ink">{av.name}</p>
-                          <p className="text-sm text-ink-3 leading-tight mt-0.5">{av.desc}</p>
+                          <p className="text-sm text-ink-3 leading-tight mt-0.5">{t(av.desc)}</p>
                         </div>
                       </button>
                     ))}
@@ -620,9 +595,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           {step === 3 && (
             <div className="space-y-5 animate-fadeIn">
               <div>
-                <h2 className="text-lg font-bold text-ink">What are you working on?</h2>
+                <h2 className="text-lg font-bold text-ink">{t("What are you working on?")}</h2>
                 <p className="text-sm text-ink-3 mt-0.5">
-                  Choose your main focus. AI therapy and the Village will be tailored to it. You can change it later in Settings.
+                  {t("Choose your main focus. AI therapy and the Village will be tailored to it. You can change it later in Settings.")}
                 </p>
               </div>
 
@@ -642,9 +617,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <span className="text-2xl">💊🍷</span>
                     {selectedTriage === 'substance' && <CheckCircle2 className="w-5 h-5 text-pri-text" />}
                   </div>
-                  <h3 className="font-bold text-sm text-ink">Drugs or alcohol</h3>
+                  <h3 className="font-bold text-sm text-ink">{t("Drugs or alcohol")}</h3>
                   <p className="text-sm text-ink-2 mt-1">
-                    Alcohol, cannabis, tramadol or other drugs. Help riding out cravings and the thoughts behind them.
+                    {t("Alcohol, cannabis, tramadol or other drugs. Help riding out cravings and the thoughts behind them.")}
                   </p>
                 </button>
 
@@ -662,9 +637,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <span className="text-2xl">🔞🔒</span>
                     {selectedTriage === 'porn' && <CheckCircle2 className="w-5 h-5 text-pri-text" />}
                   </div>
-                  <h3 className="font-bold text-sm text-ink">Porn or explicit content</h3>
+                  <h3 className="font-bold text-sm text-ink">{t("Porn or explicit content")}</h3>
                   <p className="text-sm text-ink-2 mt-1">
-                    Compulsive use of explicit content. Private support for urges, shame and late-night triggers.
+                    {t("Compulsive use of explicit content. Private support for urges, shame and late-night triggers.")}
                   </p>
                 </button>
 
@@ -682,9 +657,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <span className="text-2xl">📱⌛</span>
                     {selectedTriage === 'social_media' && <CheckCircle2 className="w-5 h-5 text-pri-text" />}
                   </div>
-                  <h3 className="font-bold text-sm text-ink">Social media and scrolling</h3>
+                  <h3 className="font-bold text-sm text-ink">{t("Social media and scrolling")}</h3>
                   <p className="text-sm text-ink-2 mt-1">
-                    Endless scrolling that eats into your sleep, studies and focus.
+                    {t("Endless scrolling that eats into your sleep, studies and focus.")}
                   </p>
                 </button>
 
@@ -702,9 +677,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <span className="text-2xl">🌊🧘</span>
                     {selectedTriage === 'anger' && <CheckCircle2 className="w-5 h-5 text-pri-text" />}
                   </div>
-                  <h3 className="font-bold text-sm text-ink">Anger and stress</h3>
+                  <h3 className="font-bold text-sm text-ink">{t("Anger and stress")}</h3>
                   <p className="text-sm text-ink-2 mt-1">
-                    Anger or stress that boils over. Calming steps and help with heated thoughts.
+                    {t("Anger or stress that boils over. Calming steps and help with heated thoughts.")}
                   </p>
                 </button>
 
@@ -722,9 +697,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <span className="text-2xl">🥗🏃</span>
                     {selectedTriage === 'overeating' && <CheckCircle2 className="w-5 h-5 text-pri-text" />}
                   </div>
-                  <h3 className="font-bold text-sm text-ink">Emotional eating</h3>
+                  <h3 className="font-bold text-sm text-ink">{t("Emotional eating")}</h3>
                   <p className="text-sm text-ink-2 mt-1">
-                    Eating to cope with feelings. Help noticing emotional hunger and what triggers it.
+                    {t("Eating to cope with feelings. Help noticing emotional hunger and what triggers it.")}
                   </p>
                 </button>
 
@@ -736,9 +711,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           {step === 4 && (
             <div className="space-y-5 animate-fadeIn">
               <div>
-                <h2 className="text-lg font-bold text-ink">Your support is ready</h2>
+                <h2 className="text-lg font-bold text-ink">{t("Your support is ready")}</h2>
                 <p className="text-sm text-ink-2 mt-1">
-                  4Life gives you three kinds of help. Pick where you would like to start — you can reach all three from the menu at any time.
+                  {t("4Life gives you three kinds of help. Pick where you would like to start — you can reach all three from the menu at any time.")}
                 </p>
               </div>
 
@@ -747,20 +722,20 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   {
                     id: 'chat',
                     icon: <MessageSquare className="w-6 h-6" />,
-                    title: 'AI CBT therapy',
-                    text: `Talk to ${profile.aiName || '4Life'} any time. Ride out a craving, or work through a thought step by step with a CBT thought record.`,
+                    title: msg('AI CBT therapy'),
+                    text: t('Talk to {aiName} any time. Ride out a craving, or work through a thought step by step with a CBT thought record.', { aiName: profile.aiName || '4Life' }),
                   },
                   {
                     id: 'community',
                     icon: <Globe className="w-6 h-6" />,
-                    title: 'Global Village',
-                    text: 'Share and read stories anonymously, and join live group circles with other people in recovery.',
+                    title: msg('Global Village'),
+                    text: msg('Share and read stories anonymously, and join live group circles with other people in recovery.'),
                   },
                   {
                     id: 'emergency_map',
                     icon: <Phone className="w-6 h-6" />,
-                    title: 'Instant EMS',
-                    text: 'Call 112 in one tap, send your location to your support person, and find the nearest hospital or ambulance.',
+                    title: msg('Instant EMS'),
+                    text: msg('Call 112 in one tap, send your location to your support person, and find the nearest hospital or ambulance.'),
                   },
                 ].map(f => (
                   <button
@@ -773,8 +748,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       {f.icon}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-base font-bold text-ink">{f.title}</span>
-                      <span className="block text-sm text-ink-2 mt-0.5 leading-relaxed">{f.text}</span>
+                      <span className="block text-base font-bold text-ink">{t(f.title)}</span>
+                      <span className="block text-sm text-ink-2 mt-0.5 leading-relaxed">{t(f.text)}</span>
                     </span>
                     <ArrowRight className="w-5 h-5 text-pri-text shrink-0 mt-3" aria-hidden="true" />
                   </button>
@@ -784,7 +759,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               <div className="p-4 rounded-2xl bg-danger-soft border border-danger/20 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-danger-text shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-sm text-ink leading-relaxed m-0">
-                  <strong>In danger right now?</strong> Call <a href="tel:112" className="font-bold text-danger-text underline">112</a>. The red SOS button is on every screen.
+                  <T text="<0>In danger right now?</0> Call <1>112</1>. The red SOS button is on every screen." parts={[<strong />, <a href="tel:112" className="font-bold text-danger-text underline" />]} />
                 </p>
               </div>
             </div>
@@ -800,7 +775,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               className="flex min-h-12 items-center gap-1.5 px-4 rounded-xl text-ink-2 hover:bg-muted font-bold text-base transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back
+              {t("Back")}
             </button>
           ) : (
             <div></div>
@@ -818,7 +793,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               }}
               className="flex min-h-12 items-center gap-1.5 px-6 rounded-xl bg-pri hover:bg-pri-hover text-[#fff] font-bold text-base transition-colors ml-auto cursor-pointer"
             >
-              <span>Continue</span>
+              <T text="<0>Continue</0>" parts={[<span />]} />
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
@@ -827,7 +802,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               onClick={() => handleFinishOnboarding()}
               className="flex min-h-12 items-center gap-1.5 px-6 rounded-xl bg-pri hover:bg-pri-hover text-[#fff] font-bold text-base transition-colors ml-auto cursor-pointer"
             >
-              <span>Go to Home</span>
+              <T text="<0>Go to Home</0>" parts={[<span />]} />
               <ArrowRight className="w-4 h-4" />
             </button>
           )}

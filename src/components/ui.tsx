@@ -9,6 +9,10 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { lockPage } from '../lib/motion';
 
+import { t as tr } from '../i18n';
+
+/** Shared components translate text they are given as plain strings (texts kept in data with msg()). */
+const tx = (v: React.ReactNode) => (typeof v === 'string' ? tr(v) : v);
 export const cx = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ');
 
 /* ---------- Cards & headings ---------- */
@@ -52,9 +56,9 @@ export const SectionHeader: React.FC<{
     <div className={cx('flex flex-wrap items-start justify-between gap-3', className)}>
       <div className="min-w-0">
         <H id={id} className={cx('m-0 font-bold text-ink', size === 'lg' ? 'text-xl sm:text-[1.375rem] leading-snug' : 'text-lg leading-snug')}>
-          {title}
+          {tx(title)}
         </H>
-        {subtitle && <p className="mt-1 text-base text-ink-3">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-base text-ink-3">{tx(subtitle)}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -113,8 +117,8 @@ export const IconButton: React.FC<
 > = ({ label, variant = 'secondary', className, children, type = 'button', ...rest }) => (
   <button
     type={type}
-    aria-label={label}
-    title={label}
+    aria-label={tr(label)}
+    title={tr(label)}
     className={cx(
       'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors cursor-pointer',
       BTN_VARIANTS[variant],
@@ -165,7 +169,7 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className={cx('inline-flex flex-wrap gap-1 rounded-2xl bg-muted p-1', className)}>
+    <div role="group" aria-label={tr(label)} className={cx('inline-flex flex-wrap gap-1 rounded-2xl bg-muted p-1', className)}>
       {options.map(o => {
         const on = o.value === value;
         return (
@@ -180,7 +184,7 @@ export function Segmented<T extends string>({
             )}
           >
             {o.icon}
-            {o.label}
+            {tx(o.label)}
           </button>
         );
       })}
@@ -203,7 +207,7 @@ export function Tabs<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="tablist" aria-label={label} className={cx('no-scrollbar fade-x flex gap-1 overflow-x-auto border-b border-line', className)}>
+    <div role="tablist" aria-label={tr(label)} className={cx('no-scrollbar fade-x flex gap-1 overflow-x-auto border-b border-line', className)}>
       {tabs.map(t => {
         const on = t.value === value;
         return (
@@ -219,7 +223,7 @@ export function Tabs<T extends string>({
             )}
           >
             {t.icon}
-            {t.label}
+            {tx(t.label)}
             {t.badge != null && (
               <span className={cx('rounded-full px-2 py-0.5 text-xs font-bold', on ? 'bg-pri-soft text-pri-ink' : 'bg-muted text-ink-2')}>
                 {t.badge}
@@ -247,8 +251,8 @@ export const ChoiceCard: React.FC<
     {...rest}
   >
     {icon}
-    <span className="text-base font-bold">{title}</span>
-    {description && <span className="text-sm leading-snug opacity-85">{description}</span>}
+    <span className="text-base font-bold">{tx(title)}</span>
+    {description && <span className="text-sm leading-snug opacity-85">{tx(description)}</span>}
   </button>
 );
 
@@ -271,8 +275,8 @@ export const Switch: React.FC<{ checked: boolean; onChange: (v: boolean) => void
     )}
   >
     <span>
-      <span className="block text-base font-bold">{label}</span>
-      {description && <span className={cx('block text-sm', tone === 'night' ? 'text-[#c2d6cb]' : 'text-ink-3')}>{description}</span>}
+      <span className="block text-base font-bold">{tr(label)}</span>
+      {description && <span className={cx('block text-sm', tone === 'night' ? 'text-[#c2d6cb]' : 'text-ink-3')}>{tr(description)}</span>}
     </span>
     <span
       className={cx(
@@ -303,11 +307,11 @@ export const Field: React.FC<{
 }> = ({ label, hint, htmlFor, optional, className, children }) => (
   <div className={cx('flex flex-col gap-1.5', className)}>
     <label htmlFor={htmlFor} className="text-sm font-bold text-ink">
-      {label}
-      {optional && <span className="ml-1 font-medium text-ink-3">(optional)</span>}
+      {tx(label)}
+      {optional && <span className="ml-1 font-medium text-ink-3">{tr("(optional)")}</span>}
     </label>
     {children}
-    {hint && <p className="text-sm text-ink-3">{hint}</p>}
+    {hint && <p className="text-sm text-ink-3">{tx(hint)}</p>}
   </div>
 );
 
@@ -503,11 +507,11 @@ export const Modal: React.FC<{
         <div className={cx('flex shrink-0 items-start justify-between gap-4 px-6 pt-5 sm:pt-6', hideTitle ? 'pb-0' : 'pb-4')}>
           <div className={cx('min-w-0', hideTitle && 'sr-only')}>
             <h2 id={titleId} className="m-0 text-xl font-bold leading-snug text-ink">
-              {title}
+              {tx(title)}
             </h2>
-            {subtitle && <p className="mt-1 text-base text-ink-3">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-base text-ink-3">{tx(subtitle)}</p>}
           </div>
-          <IconButton label="Close" variant="ghost" onClick={onClose} className="-mr-2 -mt-2 ml-auto">
+          <IconButton label={tr("Close")} variant="ghost" onClick={onClose} className="-mr-2 -mt-2 ml-auto">
             <X className="h-5 w-5" />
           </IconButton>
         </div>

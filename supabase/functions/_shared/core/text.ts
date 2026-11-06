@@ -54,5 +54,5 @@ export function replyLanguage(profile: any): { code: string; name: string } | nu
 export function languageRule(profile: any): string {
   const lang = replyLanguage(profile);
   if (!lang) return '';
-  return `\n\nLanguage: Always write your reply in ${lang.name}, even if the user writes in English. Use simple, everyday words a native speaker would use. Keep phone numbers such as 112 and 193 as digits.`;
+  return `\n\nLanguage: The person chose ${lang.name} in the app. Write every reply in ${lang.name}, even if they write in English or earlier messages were in English, and keep to it for the whole conversation. Only switch if they clearly ask you to use another language. Use simple, everyday words a native speaker would use. Keep phone numbers such as 112 and 193 as digits.`;
 }

@@ -5,6 +5,7 @@ import { cx } from './ui';
 import { haptic } from '../lib/motion';
 import { MoreHorizontal } from 'lucide-react';
 
+import { t } from '../i18n';
 interface BottomNavProps {
   activeTab: ActiveTab;
   onNavigate: (tab: ActiveTab) => void;
@@ -23,7 +24,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onNavigate, onO
 
   return (
     <nav
-      aria-label="Quick navigation"
+      aria-label={t("Quick navigation")}
       className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/85 px-1 pb-[max(env(safe-area-inset-bottom),6px)] pt-1 backdrop-blur-xl lg:hidden"
     >
       {BOTTOM_NAV_IDS.map(id => {
@@ -35,7 +36,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onNavigate, onO
             <span key={active ? 'on' : 'off'} className={cx('flex h-8 w-14 items-center justify-center rounded-full border border-transparent transition-colors duration-200', active && 'glass-btn glass-btn-on nav-pop')}>
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
-            {item.shortLabel}
+            {t(item.shortLabel)}
           </button>
         );
       })}
@@ -43,7 +44,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onNavigate, onO
         <span className={cx('flex h-8 w-14 items-center justify-center rounded-full border border-transparent transition-colors duration-200', inMore && 'glass-btn glass-btn-on')}>
           <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
         </span>
-        More
+        {t("More")}
       </button>
     </nav>
   );

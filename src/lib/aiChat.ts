@@ -8,6 +8,7 @@
 import { apiFetch } from './apiFetch';
 import type { RiskLevel } from './safety';
 import type { TherapyMode } from './cbt';
+import { msg } from '../i18n';
 
 export interface ChatDone {
   reply: string;
@@ -44,7 +45,7 @@ async function send(body: ChatBody, signal?: AbortSignal): Promise<Response> {
   } catch (e: any) {
     // Keep the Stop button working: the chat screen looks for an AbortError
     if (signal?.aborted || e?.name === 'AbortError') throw stopped();
-    if (e instanceof TypeError) throw new Error('The AI service could not be reached');
+    if (e instanceof TypeError) throw new Error(msg('The AI service could not be reached'));
     throw e;
   }
 }
@@ -95,6 +96,6 @@ export async function streamChat(body: ChatBody, handlers: StreamHandlers, signa
     if (finished) break;
   }
   if (buffer.trim()) handle(buffer);
-  if (!result.done) throw new Error('The reply was cut off');
+  if (!result.done) throw new Error(msg('The reply was cut off'));
   return result.done;
 }

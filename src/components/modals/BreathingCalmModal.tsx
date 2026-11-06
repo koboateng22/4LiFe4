@@ -1,26 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, cx } from '../ui';
 
+import { t, msg } from '../../i18n';
 interface BreathingCalmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onHeartRateCalmed?: (newHr: number) => void;
+  /** Called after each full round (in 4, hold 7, out 8), with the seconds it took */
+  onRoundDone?: (seconds: number) => void;
 }
 
 type BreathPhase = 'inhale' | 'hold' | 'exhale';
 
+const ROUNDS = 4;
+
 const PHASE_TEXT: Record<BreathPhase, string> = {
-  inhale: 'Breathe in',
-  hold: 'Hold gently',
-  exhale: 'Breathe out slowly',
+  inhale: msg('Breathe in'),
+  hold: msg('Hold gently'),
+  exhale: msg('Breathe out slowly'),
 };
 
 /** Guided 4-7-8 breathing: in for 4, hold for 7, out for 8. */
-export const BreathingCalmModal: React.FC<BreathingCalmModalProps> = ({ isOpen, onClose, onHeartRateCalmed }) => {
+export const BreathingCalmModal: React.FC<BreathingCalmModalProps> = ({ isOpen, onClose, onRoundDone }) => {
   const [phase, setPhase] = useState<BreathPhase>('inhale');
   const [countdown, setCountdown] = useState<number>(4);
   const [cycle, setCycle] = useState<number>(1);
-  const [simulatedHr, setSimulatedHr] = useState<number>(84);
+  const done = cycle > ROUNDS;
 
   // Start fresh every time the exercise opens
   useEffect(() => {
@@ -32,7 +36,7 @@ export const BreathingCalmModal: React.FC<BreathingCalmModalProps> = ({ isOpen, 
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || done) return;
     const timer = setTimeout(() => {
       if (countdown > 1) {
         setCountdown(c => c - 1);
@@ -48,32 +52,28 @@ export const BreathingCalmModal: React.FC<BreathingCalmModalProps> = ({ isOpen, 
         setPhase('inhale');
         setCountdown(4);
         setCycle(c => c + 1);
-        setSimulatedHr(prev => {
-          const next = Math.max(68, prev - 3);
-          onHeartRateCalmed?.(next);
-          return next;
-        });
+        onRoundDone?.(4 + 7 + 8);
       }
     }, 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, countdown, phase]);
+  }, [isOpen, countdown, phase, done]);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Breathe with me"
-      subtitle="Let the feeling rise and pass. Follow the circle."
+      title={t("Breathe with me")}
+      subtitle={t("Let the feeling rise and pass. Follow the circle.")}
       size="sm"
       footer={
         <Button block size="lg" onClick={onClose}>
-          I feel calmer
+          {t("I feel calmer")}
         </Button>
       }
     >
       <div className="flex flex-col items-center gap-6 py-2 text-center">
-        <p className="m-0 text-[0.9375rem] font-semibold text-ink-3">Round {cycle} of 4</p>
+        <p className="m-0 text-[0.9375rem] font-semibold text-ink-3">{done ? t("Done") : t("Round {cycle} of 4", { cycle })}</p>
 
         <div className="flex h-56 w-56 items-center justify-center" aria-hidden="true">
           <div
@@ -83,27 +83,15 @@ export const BreathingCalmModal: React.FC<BreathingCalmModalProps> = ({ isOpen, 
             )}
           >
             <div className="flex h-36 w-36 flex-col items-center justify-center rounded-full bg-pri text-[#fff]">
-              <span className="text-[3rem] font-extrabold leading-none tabular-nums">{countdown}</span>
+              <span className="text-[3rem] font-extrabold leading-none tabular-nums">{done ? '✓' : countdown}</span>
             </div>
           </div>
         </div>
 
         <p className="m-0 text-2xl font-bold text-ink" aria-live="polite">
-          {PHASE_TEXT[phase]}
+          {done ? t("You rode the wave") : t(PHASE_TEXT[phase])}
         </p>
 
-        <div className="grid w-full grid-cols-2 gap-3 text-left">
-          <div className="rounded-xl bg-bg p-4">
-            <p className="m-0 text-sm text-ink-3">Heart rate</p>
-            <p className="m-0 text-xl font-extrabold text-ink">
-              {simulatedHr} <span className="text-sm font-semibold text-ink-3">bpm</span>
-            </p>
-          </div>
-          <div className="rounded-xl bg-bg p-4">
-            <p className="m-0 text-sm text-ink-3">The craving</p>
-            <p className="m-0 text-xl font-extrabold text-ink">Easing</p>
-          </div>
-        </div>
       </div>
     </Modal>
   );

@@ -5,6 +5,7 @@
 import React from 'react';
 import { cx } from './ui';
 import { RibbonMark } from './RibbonMark';
+import { t } from '../i18n';
 
 export const PageHero: React.FC<{
   eyebrow?: string;
@@ -32,7 +33,7 @@ export const PageHero: React.FC<{
       <div className="flex min-w-0 flex-col gap-3">
         {eyebrow && <span className="inline-flex self-start rounded-full bg-[rgba(255,255,255,0.12)] px-3 py-1 text-sm font-bold text-[#a7f3d0]">{eyebrow}</span>}
         <h1 id={id} className="m-0 text-[1.6rem] font-extrabold leading-tight tracking-tight sm:text-[2.125rem]">
-          {title}
+          {t(title)}
         </h1>
         {text && <p className="m-0 max-w-xl text-[15px] leading-relaxed text-[#d1fae5] sm:text-lg">{text}</p>}
         {actions && <div className="mt-1 flex flex-wrap gap-2.5 sm:mt-2 sm:gap-3 [&>*]:grow sm:[&>*]:grow-0">{actions}</div>}

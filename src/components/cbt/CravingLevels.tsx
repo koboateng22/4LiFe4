@@ -5,19 +5,23 @@
  */
 import React from 'react';
 import { cx } from '../ui';
+import { t, msg, getLanguage } from '../../i18n';
 
 export const CRAVING_LEVELS = [
-  { value: 1, label: 'Barely', colour: '#34d399' },
-  { value: 3, label: 'Mild', colour: '#a3e635' },
-  { value: 5, label: 'Medium', colour: '#fbbf24' },
-  { value: 7, label: 'Strong', colour: '#fb923c' },
-  { value: 9, label: 'Intense', colour: '#fb7185' },
+  { value: 1, label: msg('Barely'), colour: '#34d399' },
+  { value: 3, label: msg('Mild'), colour: '#a3e635' },
+  { value: 5, label: msg('Medium'), colour: '#fbbf24' },
+  { value: 7, label: msg('Strong'), colour: '#fb923c' },
+  { value: 9, label: msg('Intense'), colour: '#fb7185' },
 ] as const;
 
 export const cravingLabel = (n?: number) => {
   if (n === undefined) return '';
   const l = [...CRAVING_LEVELS].reverse().find(x => n >= x.value) || CRAVING_LEVELS[0];
-  return l.label.toLowerCase();
+  const lang = getLanguage();
+  const word = t(l.label);
+  // German nouns and some scripts have no lower case to change to
+  return lang === 'de' ? word : word.toLocaleLowerCase(lang);
 };
 
 export const CravingLevels: React.FC<{
@@ -42,7 +46,7 @@ export const CravingLevels: React.FC<{
           )}
         >
           <span className="h-2.5 w-8 rounded-full" style={{ background: l.colour }} aria-hidden="true" />
-          <span className={cx('w-full truncate text-[0.8125rem] sm:text-sm', on ? 'font-extrabold text-ink' : 'font-semibold text-ink-2')}>{l.label}</span>
+          <span className={cx('w-full truncate text-[0.8125rem] sm:text-sm', on ? 'font-extrabold text-ink' : 'font-semibold text-ink-2')}>{t(l.label)}</span>
         </button>
       );
     })}

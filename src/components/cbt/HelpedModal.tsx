@@ -9,6 +9,7 @@ import { COPING_STEPS, saveHelped, type HelpedEntry } from '../../lib/coping';
 import { Button, Chip, Field, Modal, textareaClass } from '../ui';
 import { CravingLevels, cravingLabel } from './CravingLevels';
 
+import { t } from '../../i18n';
 export const HelpedModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -43,15 +44,15 @@ export const HelpedModal: React.FC<{
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="What helped today?"
-      subtitle="Saved on this phone, so next time you can start with what works for you."
+      title={t("What helped today?")}
+      subtitle={t("Saved on this phone, so next time you can start with what works for you.")}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Not now
+            {t("Not now")}
           </Button>
           <Button onClick={save} disabled={!steps.length} icon={<Check className="h-5 w-5" />}>
-            Save
+            {t("Save")}
           </Button>
         </>
       }
@@ -60,24 +61,24 @@ export const HelpedModal: React.FC<{
         {before !== undefined && (
           <div className="flex flex-col gap-2">
             <p id={labelId} className="m-0 text-base font-bold text-ink">
-              You started {cravingLabel(before)}. How strong is the craving now?
+              {t('You started {level}. How strong is the craving now?', { level: cravingLabel(before) })}
             </p>
             <CravingLevels labelledBy={labelId} value={now} onChange={setNow} />
           </div>
         )}
         <div className="flex flex-col gap-2.5">
           <p className="m-0 text-base font-bold text-ink" id={`${labelId}-steps`}>
-            What helped? Tick all that fit.
+            {t("What helped? Tick all that fit.")}
           </p>
           <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`${labelId}-steps`}>
             {COPING_STEPS.map(s => (
               <Chip key={s.id} selected={steps.includes(s.id)} onClick={() => toggle(s.id)} aria-pressed={steps.includes(s.id)}>
-                {s.label}
+                {t(s.label)}
               </Chip>
             ))}
           </div>
         </div>
-        <Field label="Anything else to remember?" htmlFor="helped-note" hint="Optional. For example: Mary always picks up after 8 pm.">
+        <Field label={t("Anything else to remember?")} htmlFor="helped-note" hint={t("Optional. For example: Mary always picks up after 8 pm.")}>
           <textarea id="helped-note" rows={2} maxLength={300} value={note} onChange={e => setNote(e.target.value)} className={textareaClass} />
         </Field>
       </div>

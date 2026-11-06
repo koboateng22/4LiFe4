@@ -6,6 +6,7 @@
  */
 import React from 'react';
 
+import { t } from '../../i18n';
 const C = {
   forest: '#022c22',
   forestMid: '#064e3b',
@@ -150,7 +151,7 @@ export const CaseloadIllustration: React.FC = () => (
       <circle cx="240" cy="124" r="5" fill={C.amberLight} />
       <rect x="176" y="70" width="64" height="26" rx="8" fill={C.forestMid} />
       <text x="208" y="88" textAnchor="middle" fontFamily="Nunito, ui-rounded, sans-serif" fontWeight="800" fontSize="13" fill={C.mint}>
-        3 today
+        {t("3 today")}
       </text>
     </g>
   </Svg>
@@ -179,7 +180,7 @@ export const SafetyIllustration: React.FC = () => (
     </g>
     <rect x="150" y="150" width="96" height="30" rx="10" fill={C.forestMid} />
     <text x="198" y="170" textAnchor="middle" fontFamily="Nunito, ui-rounded, sans-serif" fontWeight="800" fontSize="12" fill={C.mint}>
-      4.2 km · 9 min
+      {t("4.2 km · 9 min")}
     </text>
   </Svg>
 );

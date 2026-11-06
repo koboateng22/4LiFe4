@@ -7,6 +7,7 @@ import { Smartphone, Check } from 'lucide-react';
 import { canPromptInstall, isInstalled, isIOS, onInstallChange, promptInstall } from '../../lib/install';
 import { Button, Card } from '../ui';
 
+import { t } from '../../i18n';
 export const InstallShortcut: React.FC = () => {
   const [, force] = useState(0);
   useEffect(() => {
@@ -19,7 +20,7 @@ export const InstallShortcut: React.FC = () => {
   if (isInstalled()) {
     return (
       <p className="m-0 flex items-center gap-2 text-[0.9375rem] text-ink-2">
-        <Check className="h-5 w-5 text-pri-text" aria-hidden="true" /> 4Life is on your home screen. Long-press its icon for SOS.
+        <Check className="h-5 w-5 text-pri-text" aria-hidden="true" /> {t("4Life is on your home screen. Long-press its icon for SOS.")}
       </p>
     );
   }
@@ -30,20 +31,20 @@ export const InstallShortcut: React.FC = () => {
         <Smartphone className="mt-0.5 h-6 w-6 shrink-0 text-pri-text" aria-hidden="true" />
         <div className="min-w-0">
           <h2 id="install-h" className="m-0 text-lg font-bold text-ink">
-            Keep help one tap away
+            {t("Keep help one tap away")}
           </h2>
           <p className="m-0 mt-0.5 text-[0.9375rem] text-ink-2">
             {canPromptInstall()
-              ? 'Add 4Life to your home screen. It opens even without internet, and a long press on the icon gives you SOS.'
+              ? t("Add 4Life to your home screen. It opens even without internet, and a long press on the icon gives you SOS.")
               : isIOS()
-                ? 'In Safari, tap Share, then “Add to Home Screen”. It opens even without internet.'
-                : 'In your browser menu, tap “Add to Home screen” or “Install app”. Then a long press on the icon gives you SOS.'}
+                ? t("In Safari, tap Share, then “Add to Home Screen”. It opens even without internet.")
+                : t("In your browser menu, tap “Add to Home screen” or “Install app”. Then a long press on the icon gives you SOS.")}
           </p>
         </div>
       </div>
       {canPromptInstall() && (
         <Button className="shrink-0" onClick={() => promptInstall()} icon={<Smartphone className="h-5 w-5" />}>
-          Add to home screen
+          {t("Add to home screen")}
         </Button>
       )}
     </Card>

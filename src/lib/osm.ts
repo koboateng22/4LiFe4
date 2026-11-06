@@ -15,6 +15,7 @@
  * these services only to look things up; 4Life does not store it.
  */
 import type { EmergencyCenter } from '../types';
+import { msg } from '../i18n';
 
 export interface LatLng {
   lat: number;
@@ -100,15 +101,15 @@ const DEFAULT_NAME: Partial<Record<EmergencyCenter['type'], string>> = {
   hospital: 'Hospital',
   clinic: 'Clinic',
   pharmacy: 'Pharmacy',
-  police: 'Police station',
-  fire_station: 'Fire station',
-  rehab: 'Recovery centre',
+  police: msg('Police station'),
+  fire_station: msg('Fire station'),
+  rehab: msg('Recovery centre'),
 };
 
 function addressFromTags(t: Record<string, string>): string {
   const street = [t['addr:housenumber'], t['addr:street']].filter(Boolean).join(' ');
   const parts = [street, t['addr:suburb'] || t['addr:neighbourhood'], t['addr:city'] || t['addr:town'] || t['addr:village']].filter(Boolean);
-  return parts.length ? parts.join(', ') : 'Address not listed on the map';
+  return parts.length ? parts.join(', ') : msg('Address not listed on the map');
 }
 
 function toPlace(el: any): OsmPlace | null {
@@ -127,7 +128,7 @@ function toPlace(el: any): OsmPlace | null {
     phone,
     lat,
     lng,
-    hours: t.opening_hours === '24/7' ? 'Open 24 hours' : t.opening_hours || 'Opening hours not listed',
+    hours: t.opening_hours === '24/7' ? msg('Open 24 hours') : t.opening_hours || msg('Opening hours not listed'),
     bedsAvailable: false,
     source: 'osm',
     osmUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
@@ -179,7 +180,7 @@ export async function findNearbyPlaces(p: LatLng, radiusKm = 10): Promise<Nearby
     }
   }
   if (saved?.places?.length) return { places: saved.places, from: 'saved', at: saved.at };
-  throw new Error('Nearby places are not available right now');
+  throw new Error(msg('Nearby places are not available right now'));
 }
 
 /**

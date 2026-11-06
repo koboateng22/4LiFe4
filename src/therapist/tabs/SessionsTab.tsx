@@ -8,6 +8,7 @@ import type { TherapistNav } from '../TherapistApp';
 import { FORMAT_LABEL, SESSION_TYPE_LABEL, WEEKDAYS, at, fmtDateLong, toLocalInput } from '../data';
 import { SessionRow, needsNote } from '../parts';
 
+import { t as tr, msg } from '../../i18n';
 interface Props {
   therapist: TherapistProfile;
   store: TherapistStore;
@@ -51,27 +52,27 @@ export const SessionsTab: React.FC<Props> = ({ therapist, store, nav }) => {
     <div className="flex flex-col gap-6 animate-fadeIn">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented<View>
-          label="Which sessions"
+          label={tr("Which sessions")}
           value={view}
           onChange={setView}
           options={[
-            { value: 'upcoming', label: `Coming up (${upcoming.length})` },
-            { value: 'past', label: 'Past' },
-            { value: 'notes', label: `Notes to finish (${notes.length})` },
+            { value: 'upcoming', label: tr('Coming up ({count})', { count: upcoming.length }) },
+            { value: 'past', label: msg('Past') },
+            { value: 'notes', label: tr('Notes to finish ({count})', { count: notes.length }) },
           ]}
         />
         <Button icon={<CalendarPlus className="h-5 w-5" />} onClick={() => setBookOpen(true)} disabled={clients.length === 0}>
-          Book a session
+          {tr("Book a session")}
         </Button>
       </div>
 
       {list.length === 0 ? (
         <Card className="flex flex-col items-start gap-2">
           <p className="m-0 text-base font-bold text-ink">
-            {view === 'notes' ? 'All your notes are finished.' : view === 'past' ? 'No past sessions yet.' : 'No sessions booked.'}
+            {view === 'notes' ? tr("All your notes are finished.") : view === 'past' ? tr("No past sessions yet.") : tr("No sessions booked.")}
           </p>
           <p className="m-0 text-[0.9375rem] text-ink-2">
-            {clients.length === 0 ? 'When you accept a request, the first session appears here.' : 'Use “Book a session” to add one for a client.'}
+            {clients.length === 0 ? tr("When you accept a request, the first session appears here.") : tr("Use “Book a session” to add one for a client.")}
           </p>
         </Card>
       ) : (
@@ -118,7 +119,7 @@ export const BookSessionModal: React.FC<{
     if (isNaN(d.getTime())) return out;
     const day = WEEKDAYS[(d.getDay() + 6) % 7] as Weekday;
     const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    if (!therapist.days.includes(day) || hm < therapist.startTime || hm >= therapist.endTime) out.push('This is outside your usual hours.');
+    if (!therapist.days.includes(day) || hm < therapist.startTime || hm >= therapist.endTime) out.push(tr('This is outside your usual hours.'));
     const start = d.getTime();
     const end = start + length * 60000;
     const clash = store.data.sessions.find(s => {
@@ -126,8 +127,8 @@ export const BookSessionModal: React.FC<{
       const a = new Date(s.start).getTime();
       return start < a + s.durationMin * 60000 && end > a;
     });
-    if (clash) out.push('This overlaps another session.');
-    if (start < Date.now()) out.push('This time is in the past.');
+    if (clash) out.push(tr('This overlaps another session.'));
+    if (start < Date.now()) out.push(tr('This time is in the past.'));
     return out;
   }, [when, length, store.data.sessions, therapist]);
 
@@ -150,21 +151,21 @@ export const BookSessionModal: React.FC<{
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Book a session"
+      title={tr("Book a session")}
       size="sm"
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {tr("Cancel")}
           </Button>
           <Button onClick={save} disabled={!client}>
-            Book session
+            {tr("Book session")}
           </Button>
         </div>
       }
     >
       <div className="flex flex-col gap-5">
-        <Field label="Client" htmlFor="bk-client">
+        <Field label={tr("Client")} htmlFor="bk-client">
           <select id="bk-client" value={client} onChange={e => setClient(e.target.value)} className={inputClass}>
             {active.map(c => (
               <option key={c.id} value={c.id}>
@@ -173,26 +174,26 @@ export const BookSessionModal: React.FC<{
             ))}
           </select>
         </Field>
-        <Field label="Date and time" htmlFor="bk-when">
+        <Field label={tr("Date and time")} htmlFor="bk-when">
           <input id="bk-when" type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} className={inputClass} />
         </Field>
         {warnings.length > 0 && (
           <div className="flex items-start gap-2.5 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn" role="status">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <span>{warnings.join(' ')} You can still book it.</span>
+            <span>{warnings.join(' ')} {tr("You can still book it.")}</span>
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Length" htmlFor="bk-len">
+          <Field label={tr("Length")} htmlFor="bk-len">
             <select id="bk-len" value={length} onChange={e => setLength(Number(e.target.value))} className={inputClass}>
               {[30, 50, 60, 90].map(m => (
                 <option key={m} value={m}>
-                  {m} minutes
+                  {tr("{m} minutes", { m })}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="How" htmlFor="bk-fmt">
+          <Field label={tr("How")} htmlFor="bk-fmt">
             <select id="bk-fmt" value={format} onChange={e => setFormat(e.target.value as SessionFormat)} className={inputClass}>
               {(Object.keys(FORMAT_LABEL) as SessionFormat[]).map(f => (
                 <option key={f} value={f}>
@@ -202,7 +203,7 @@ export const BookSessionModal: React.FC<{
             </select>
           </Field>
         </div>
-        <Field label="Type of session" htmlFor="bk-type">
+        <Field label={tr("Type of session")} htmlFor="bk-type">
           <select id="bk-type" value={type} onChange={e => setType(e.target.value as SessionType)} className={inputClass}>
             {(Object.keys(SESSION_TYPE_LABEL) as SessionType[]).map(t => (
               <option key={t} value={t}>
@@ -211,8 +212,8 @@ export const BookSessionModal: React.FC<{
             ))}
           </select>
         </Field>
-        <Field label="Topic" htmlFor="bk-topic" optional>
-          <input id="bk-topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. Planning for the weekend" className={inputClass} />
+        <Field label={tr("Topic")} htmlFor="bk-topic" optional>
+          <input id="bk-topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder={tr("e.g. Planning for the weekend")} className={inputClass} />
         </Field>
       </div>
     </Modal>

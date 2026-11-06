@@ -3,7 +3,7 @@
  * which the Supabase functions use too, so both backends behave the same.
  */
 import { Router, type Request, type Response } from 'express';
-import { cbtSuggest, clientError, firstAidVideos, health, moderate, readChat, runChat, villageGuide, type Result } from './core/handlers.js';
+import { cbtSuggest, clientError, firstAidVideos, health, libraryVideos, moderate, readChat, runChat, villageGuide, type Result } from './core/handlers.js';
 import { limit, processEnv, signIn } from './middleware.js';
 
 const ctx = { env: processEnv };
@@ -27,6 +27,8 @@ export function apiRoutes() {
   // Open to everyone: no AI cost and nothing personal
   r.get('/health', handle(() => health(ctx)));
   r.get('/first-aid/videos', handle(req => firstAidVideos(req.query.topic, ctx)));
+  // The Learn section. Rate-limited: every new search spends YouTube quota
+  r.get('/videos', limit(), handle(req => libraryVideos({ category: req.query.category, q: req.query.q, page: req.query.page }, ctx)));
   r.post('/client-error', limit(), handle(req => clientError(req.body)));
 
   // 1. AI CBT therapy (streamed as server-sent events when the app asks for it)

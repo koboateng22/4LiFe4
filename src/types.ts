@@ -91,7 +91,8 @@ export interface UserProfile {
   calmingGamesPlayed?: number;
   xpPoints?: number;
   // UI Customization & Accessibility
-  theme?: 'light' | 'dark';
+  /** 'system' follows the device's light or dark setting */
+  theme?: 'light' | 'dark' | 'system';
   fontSize?: 'sm' | 'md' | 'lg' | 'xl';
   // Therapy Reminders
   therapyReminderEnabled?: boolean;
@@ -308,5 +309,5 @@ export interface EmergencyCenter {
   emergencyHotline?: string;
 }
 
-export type ActiveTab = 'dashboard' | 'chat' | 'community' | 'emergency_map' | 'profile_settings';
+export type ActiveTab = 'dashboard' | 'chat' | 'community' | 'learn' | 'emergency_map' | 'profile_settings';
 

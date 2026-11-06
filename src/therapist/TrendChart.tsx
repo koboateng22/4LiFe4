@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 
+import { t } from '../i18n';
 interface TrendChartProps {
   title: string;
   values: Array<number | null>;
@@ -82,12 +83,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({ title, values, min, max,
   return (
     <figure className="m-0 flex flex-col gap-2">
       <figcaption className="flex flex-col">
-        <span className="text-[0.9375rem] font-bold text-ink">{title}</span>
+        <span className="text-[0.9375rem] font-bold text-ink">{t(title)}</span>
         <span className="text-sm text-ink-3">{summary}</span>
       </figcaption>
 
       {!hasData ? (
-        <p className="m-0 rounded-xl bg-bg px-4 py-6 text-center text-[0.9375rem] text-ink-3">No check-ins shared in the last 14 days.</p>
+        <p className="m-0 rounded-xl bg-bg px-4 py-6 text-center text-[0.9375rem] text-ink-3">{t("No check-ins shared in the last 14 days.")}</p>
       ) : (
         <div className="relative" ref={boxRef}>
           <svg
@@ -95,7 +96,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ title, values, min, max,
             style={{ height: H }}
             className="block w-full touch-none outline-none focus-visible:ring-2 focus-visible:ring-pri/40 rounded-lg"
             role="img"
-            aria-label={`${title}: ${summary}. Use the left and right arrow keys to read each day.`}
+            aria-label={t("{title}: {summary}. Use the left and right arrow keys to read each day.", { title, summary })}
             tabIndex={0}
             onPointerMove={onMove}
             onPointerLeave={() => setHover(null)}
@@ -112,10 +113,10 @@ export const TrendChart: React.FC<TrendChartProps> = ({ title, values, min, max,
               </g>
             ))}
             <text x={PAD.left} y={H - 4} fontSize={FONT} fill="var(--ink-3)">
-              14 days ago
+              {t("14 days ago")}
             </text>
             <text x={W - PAD.right} y={H - 4} fontSize={FONT} fill="var(--ink-3)" textAnchor="end">
-              Today
+              {t("Today")}
             </text>
 
             {/* The line, with gaps for missed days */}
@@ -156,7 +157,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ title, values, min, max,
               style={{ left: `${Math.min(85, Math.max(15, (x(hover) / W) * 100))}%` }}
             >
               <span className="block font-bold text-ink">{dayLabel(hover, n)}</span>
-              <span className="block text-ink-2">{hv == null ? 'No check-in' : describe(hv)}</span>
+              <span className="block text-ink-2">{hv == null ? t("No check-in") : describe(hv)}</span>
             </div>
           )}
         </div>
@@ -164,15 +165,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({ title, values, min, max,
 
       {hasData && (
         <details className="text-sm text-ink-3">
-          <summary className="cursor-pointer font-semibold text-pri-text">Show as table</summary>
+          <summary className="cursor-pointer font-semibold text-pri-text">{t("Show as table")}</summary>
           <table className="mt-2 w-full border-collapse text-left text-sm" aria-labelledby={id}>
             <caption id={id} className="sr-only">
-              {title}, last 14 days
+              {t("{title}, last 14 days", { title })}
             </caption>
             <thead>
               <tr className="text-ink-2">
-                <th className="py-1 pr-3 font-semibold">Day</th>
-                <th className="py-1 font-semibold">Check-in</th>
+                <th className="py-1 pr-3 font-semibold">{t("Day")}</th>
+                <th className="py-1 font-semibold">{t("Check-in")}</th>
               </tr>
             </thead>
             <tbody>

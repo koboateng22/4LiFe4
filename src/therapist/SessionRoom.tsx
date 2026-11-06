@@ -9,6 +9,7 @@ import { FORMAT_LABEL, SESSION_AGENDA, SESSION_TYPE_LABEL, at, fmtDateLong, fmtD
 import { FormatIcon, RISK_INFO, RiskBadge, SharingNote, sessionState } from './parts';
 import { TrendChart } from './TrendChart';
 
+import { t as tr, T, msg } from '../i18n';
 type Phase = 'prepare' | 'during' | 'wrap';
 
 interface Props {
@@ -31,7 +32,7 @@ const emptyNote = (risk: ClientRisk): SessionNote => ({
   agendaDone: [],
 });
 
-const MOODS = ['Very low', 'Low', 'Okay', 'Good', 'Very good'];
+const MOODS = [msg('Very low'), msg('Low'), msg('Okay'), msg('Good'), msg('Very good')];
 
 /**
  * One therapy session, in the order it happens:
@@ -100,7 +101,7 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
     store.signNote(session, client, note, bookNext ? new Date(nextWhen).toISOString() : null, topic.trim() || undefined);
     setNote({ ...note, signedAt: new Date().toISOString() });
     setEditing(false);
-    setSavedMsg('Note signed and saved. Homework and risk level were added to the client’s record.');
+    setSavedMsg(tr('Note signed and saved. Homework and risk level were added to the client’s record.'));
   };
 
   const toggleAgenda = (item: string) =>
@@ -111,7 +112,7 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
   return (
     <div className="flex flex-col gap-6 animate-fadeIn">
       <button type="button" onClick={onClose} className="flex min-h-11 items-center gap-2 self-start text-[0.9375rem] font-bold text-pri-text hover:underline cursor-pointer">
-        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> Back
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> {tr("Back")}
       </button>
 
       {/* Session header */}
@@ -119,7 +120,7 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="m-0 text-sm font-semibold text-ink-3">
-              {fmtDay(session.start)}, {fmtTime(session.start)} · {session.durationMin} min
+              {fmtDay(session.start)}, {fmtTime(session.start)} {tr("· {durationMin} min", { durationMin: session.durationMin })}
             </p>
             <h1 className="m-0 mt-0.5 text-xl font-bold text-ink sm:text-2xl">{client.nickname}</h1>
             <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2 text-[0.9375rem] text-ink-2">
@@ -134,35 +135,33 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <RiskBadge risk={client.risk} />
-            <Badge tone={st.tone}>{st.label}</Badge>
+            <Badge tone={st.tone}>{tr(st.label)}</Badge>
           </div>
         </div>
 
         {session.status === 'in_progress' && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-bold text-ink">
-                {elapsed} of {session.durationMin} minutes
-              </span>
-              <span className="text-ink-3">{Math.max(0, session.durationMin - elapsed)} min left</span>
+              <T text="<0>{elapsed} of {durationMin} minutes</0>" parts={[<span className="font-bold text-ink" />]} vars={{ elapsed, durationMin: session.durationMin }} />
+              <span className="text-ink-3">{Math.max(0, session.durationMin - elapsed)} {tr("min left")}</span>
             </div>
-            <ProgressBar value={Math.min(100, (elapsed / session.durationMin) * 100)} tone={elapsed > session.durationMin ? 'warn' : 'pri'} label="Session time" />
+            <ProgressBar value={Math.min(100, (elapsed / session.durationMin) * 100)} tone={elapsed > session.durationMin ? 'warn' : 'pri'} label={tr("Session time")} />
           </div>
         )}
 
         {closed ? (
           <Notice tone="warn" icon={<XCircle className="h-5 w-5" />}>
-            This session was {session.status === 'no_show' ? 'missed — the client did not attend' : 'cancelled'}. Book another from the client’s page.
+            {tr("This session was")} {session.status === 'no_show' ? tr("missed — the client did not attend") : 'cancelled'}{tr(". Book another from the client’s page.")}
           </Notice>
         ) : (
           <Tabs<Phase>
-            label="Session steps"
+            label={tr("Session steps")}
             value={phase}
             onChange={setPhase}
             tabs={[
-              { value: 'prepare', label: '1. Prepare' },
-              { value: 'during', label: '2. In session' },
-              { value: 'wrap', label: '3. Wrap up', badge: session.status === 'completed' && !note.signedAt ? 'Note due' : undefined },
+              { value: 'prepare', label: msg('1. Prepare') },
+              { value: 'during', label: msg('2. In session') },
+              { value: 'wrap', label: msg('3. Wrap up'), badge: session.status === 'completed' && !note.signedAt ? tr('Note due') : undefined },
             ]}
           />
         )}
@@ -173,27 +172,27 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
         <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
           <div className="flex flex-col gap-6">
             <Card as="section" aria-labelledby="p-since" className="flex flex-col gap-5">
-              <SectionHeader id="p-since" title="Since the last session" size="md" subtitle={last ? `Last session: ${fmtDateLong(last.start)}` : 'This is your first session together.'} />
+              <SectionHeader id="p-since" title={tr("Since the last session")} size="md" subtitle={last ? tr("Last session: {v0}", { v0: fmtDateLong(last.start) }) : tr("This is your first session together.")} />
               <SharingNote shares={client.sharesCheckins} />
               {client.sharesCheckins ? (
                 <div className="grid gap-6 sm:grid-cols-2">
-                  <TrendChart title="Mood" values={client.mood} min={1} max={5} ticks={{ 1: 'Low', 3: 'Okay', 5: 'Great' }} describe={v => `Mood: ${MOODS[v - 1] || v}`} summary="1 = very low, 5 = very good" />
-                  <TrendChart title="Cravings" values={client.craving} min={0} max={10} ticks={{ 0: '0', 5: '5', 10: '10' }} describe={v => `Craving ${v} of 10`} summary="0 = none, 10 = overwhelming" />
+                  <TrendChart title={tr("Mood")} values={client.mood} min={1} max={5} ticks={{ 1: tr('Low'), 3: tr('Okay'), 5: tr('Great') }} describe={v => tr('Mood: {mood}', { mood: MOODS[v - 1] ? tr(MOODS[v - 1]) : v })} summary={tr('1 = very low, 5 = very good')} />
+                  <TrendChart title={tr("Cravings")} values={client.craving} min={0} max={10} ticks={{ 0: '0', 5: '5', 10: '10' }} describe={v => tr('Craving {v} of 10', { v })} summary={tr('0 = none, 10 = overwhelming')} />
                 </div>
               ) : (
                 <p className="m-0 rounded-xl bg-bg p-4 text-[0.9375rem] text-ink-2">
-                  {client.nickname} has not chosen to share daily check-ins. Ask how the week went at the start of the session.
+                  {tr("{nickname} has not chosen to share daily check-ins. Ask how the week went at the start of the session.", { nickname: client.nickname })}
                 </p>
               )}
             </Card>
 
             {last?.note && (
               <Card as="section" aria-labelledby="p-last" className="flex flex-col gap-3">
-                <SectionHeader id="p-last" title="Last session’s plan" size="md" />
-                <p className="m-0 text-base leading-relaxed text-ink-2">{last.note.plan || 'No plan written.'}</p>
+                <SectionHeader id="p-last" title={tr("Last session’s plan")} size="md" />
+                <p className="m-0 text-base leading-relaxed text-ink-2">{last.note.plan || tr("No plan written.")}</p>
                 {last.note.homework && (
                   <p className="m-0 text-[0.9375rem] text-ink-2">
-                    <strong className="text-ink">Homework set:</strong> {last.note.homework}
+                    <T text="<0>Homework set:</0> {homework}" parts={[<strong className="text-ink" />]} vars={{ homework: last.note.homework }} />
                   </p>
                 )}
               </Card>
@@ -202,21 +201,21 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
 
           <div className="flex flex-col gap-6">
             <Card as="section" aria-labelledby="p-plan" className="flex flex-col gap-4">
-              <SectionHeader id="p-plan" title="Plan for today" size="md" />
-              <Field label="Main topic" htmlFor="p-topic" optional>
-                <input id="p-topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder="e.g. How the weekend went" className={inputClass} />
+              <SectionHeader id="p-plan" title={tr("Plan for today")} size="md" />
+              <Field label={tr("Main topic")} htmlFor="p-topic" optional>
+                <input id="p-topic" value={topic} onChange={e => setTopic(e.target.value)} placeholder={tr("e.g. How the weekend went")} className={inputClass} />
               </Field>
               <div>
-                <p className="m-0 mb-2 text-sm font-bold text-ink">Homework to review</p>
+                <p className="m-0 mb-2 text-sm font-bold text-ink">{tr("Homework to review")}</p>
                 {client.homework.length === 0 ? (
-                  <p className="m-0 text-[0.9375rem] text-ink-3">No homework set.</p>
+                  <p className="m-0 text-[0.9375rem] text-ink-3">{tr("No homework set.")}</p>
                 ) : (
                   <ul className="m-0 flex list-none flex-col gap-2 p-0">
                     {client.homework.map(h => (
                       <li key={h.id} className="flex items-start gap-2 text-[0.9375rem] text-ink-2">
                         {h.done ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-pri-text" aria-hidden="true" /> : <Square className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />}
                         <span>
-                          {h.text} <span className="text-ink-3">· {h.done ? 'done' : 'not done yet'}</span>
+                          {tr(h.text)} <span className="text-ink-3">· {h.done ? 'done' : tr("not done yet")}</span>
                         </span>
                       </li>
                     ))}
@@ -225,7 +224,7 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
               </div>
               {client.goals.length > 0 && (
                 <div>
-                  <p className="m-0 mb-2 text-sm font-bold text-ink">Their goals</p>
+                  <p className="m-0 mb-2 text-sm font-bold text-ink">{tr("Their goals")}</p>
                   <ul className="m-0 list-disc pl-5 text-[0.9375rem] text-ink-2">
                     {client.goals.map(g => (
                       <li key={g}>{g}</li>
@@ -238,13 +237,13 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             {client.risk !== 'low' && client.safetyPlan.copingSteps && (
               <Card as="section" tone="warn" aria-labelledby="p-safety" className="flex flex-col gap-2">
                 <h2 id="p-safety" className="m-0 flex items-center gap-2 text-base font-bold text-warn">
-                  <ShieldAlert className="h-5 w-5" aria-hidden="true" /> Safety plan
+                  <ShieldAlert className="h-5 w-5" aria-hidden="true" /> {tr("Safety plan")}
                 </h2>
                 <p className="m-0 text-[0.9375rem] text-ink-2">
-                  <strong className="text-ink">Warning signs:</strong> {client.safetyPlan.warningSigns}
+                  <T text="<0>Warning signs:</0> {warningSigns}" parts={[<strong className="text-ink" />]} vars={{ warningSigns: client.safetyPlan.warningSigns }} />
                 </p>
                 <p className="m-0 text-[0.9375rem] text-ink-2">
-                  <strong className="text-ink">What helps:</strong> {client.safetyPlan.copingSteps}
+                  <T text="<0>What helps:</0> {copingSteps}" parts={[<strong className="text-ink" />]} vars={{ copingSteps: client.safetyPlan.copingSteps }} />
                 </p>
               </Card>
             )}
@@ -252,24 +251,24 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             <div className="flex flex-col gap-3">
               {session.status === 'scheduled' && (
                 <Button size="lg" block icon={<Play className="h-5 w-5" />} onClick={start}>
-                  Start session
+                  {tr("Start session")}
                 </Button>
               )}
               {session.status !== 'scheduled' && (
                 <Button size="lg" block onClick={() => setPhase(session.status === 'completed' ? 'wrap' : 'during')}>
-                  Continue to {session.status === 'completed' ? 'wrap up' : 'session'}
+                  {tr("Continue to")} {session.status === 'completed' ? tr("wrap up") : 'session'}
                 </Button>
               )}
               <Button variant="secondary" block onClick={onOpenClient}>
-                Open full client record
+                {tr("Open full client record")}
               </Button>
               {session.status === 'scheduled' && (
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button variant="ghost" size="sm" icon={<UserX className="h-4 w-4" />} onClick={markNoShow}>
-                    Client did not attend
+                    {tr("Client did not attend")}
                   </Button>
                   <Button variant="ghost" size="sm" icon={<XCircle className="h-4 w-4" />} onClick={cancel}>
-                    Cancel session
+                    {tr("Cancel session")}
                   </Button>
                 </div>
               )}
@@ -283,7 +282,7 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
         <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
           <div className="flex flex-col gap-6">
             <Card as="section" aria-labelledby="d-agenda" className="flex flex-col gap-3">
-              <SectionHeader id="d-agenda" title="Session agenda" size="md" subtitle={`${note.agendaDone.length} of ${SESSION_AGENDA.length} done`} />
+              <SectionHeader id="d-agenda" title={tr("Session agenda")} size="md" subtitle={tr("{length} of {length2} done", { length: note.agendaDone.length, length2: SESSION_AGENDA.length })} />
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
                 {SESSION_AGENDA.map(item => {
                   const done = note.agendaDone.includes(item);
@@ -300,8 +299,8 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             </Card>
 
             <Card as="section" aria-labelledby="d-risk" className="flex flex-col gap-3">
-              <SectionHeader id="d-risk" title="Safety check" size="md" subtitle="How would you rate their risk today?" />
-              <div className="grid grid-cols-3 gap-2" role="group" aria-label="Risk today">
+              <SectionHeader id="d-risk" title={tr("Safety check")} size="md" subtitle={tr("How would you rate their risk today?")} />
+              <div className="grid grid-cols-3 gap-2" role="group" aria-label={tr("Risk today")}>
                 {(['low', 'moderate', 'high'] as ClientRisk[]).map(r => (
                   <button
                     key={r}
@@ -326,16 +325,16 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
                         : 'border-line bg-surface text-ink hover:border-pri-text'
                     )}
                   >
-                    {RISK_INFO[r].label}
+                    {tr(RISK_INFO[r].label)}
                   </button>
                 ))}
               </div>
               {note.riskLevel === 'high' && (
                 <Notice tone="danger" icon={<ShieldAlert className="h-5 w-5" />}>
-                  Follow the crisis steps: ask directly about harm, agree a safety plan, involve their support person, and call 112 if there is immediate danger.{' '}
+                  {tr("Follow the crisis steps: ask directly about harm, agree a safety plan, involve their support person, and call 112 if there is immediate danger.")}
                   {onOpenSafety && (
                     <button type="button" onClick={onOpenSafety} className="font-bold underline cursor-pointer">
-                      Open safety map
+                      {tr("Open safety map")}
                     </button>
                   )}
                 </Notice>
@@ -343,8 +342,8 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             </Card>
 
             <Card as="section" aria-labelledby="d-mood" className="flex flex-col gap-3">
-              <SectionHeader id="d-mood" title="Mood you observed" size="md" />
-              <div className="grid grid-cols-5 gap-1.5" role="group" aria-label="Observed mood">
+              <SectionHeader id="d-mood" title={tr("Mood you observed")} size="md" />
+              <div className="grid grid-cols-5 gap-1.5" role="group" aria-label={tr("Observed mood")}>
                 {MOODS.map((m, i) => (
                   <button
                     key={m}
@@ -366,31 +365,31 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
 
           <div className="flex flex-col gap-6">
             <Card as="section" aria-labelledby="d-notes" className="flex flex-col gap-4">
-              <SectionHeader id="d-notes" title="Quick notes" size="md" subtitle="Only you can see these. They become the first part of your session note." />
+              <SectionHeader id="d-notes" title={tr("Quick notes")} size="md" subtitle={tr("Only you can see these. They become the first part of your session note.")} />
               <textarea
                 aria-labelledby="d-notes"
                 rows={10}
                 value={note.data}
                 onChange={e => setN({ data: e.target.value })}
-                placeholder="What the client says, what you notice, key moments…"
+                placeholder={tr("What the client says, what you notice, key moments…")}
                 className={textareaClass}
               />
-              <Field label="Homework for next time" htmlFor="d-hw" optional>
-                <input id="d-hw" value={note.homework || ''} onChange={e => setN({ homework: e.target.value })} placeholder="e.g. Thought record for any craving above 6" className={inputClass} />
+              <Field label={tr("Homework for next time")} htmlFor="d-hw" optional>
+                <input id="d-hw" value={note.homework || ''} onChange={e => setN({ homework: e.target.value })} placeholder={tr("e.g. Thought record for any craving above 6")} className={inputClass} />
               </Field>
             </Card>
 
             {session.status === 'in_progress' ? (
               <Button size="lg" block icon={<ClipboardCheck className="h-5 w-5" />} onClick={end}>
-                End session and write note
+                {tr("End session and write note")}
               </Button>
             ) : session.status === 'scheduled' ? (
               <Button size="lg" block icon={<Play className="h-5 w-5" />} onClick={start}>
-                Start session
+                {tr("Start session")}
               </Button>
             ) : (
               <Button size="lg" block onClick={() => setPhase('wrap')}>
-                Go to wrap up
+                {tr("Go to wrap up")}
               </Button>
             )}
           </div>
@@ -403,13 +402,13 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
           <Card as="section" aria-labelledby="w-note" className="flex flex-col gap-5">
             <SectionHeader
               id="w-note"
-              title="Session note"
+              title={tr("Session note")}
               size="md"
-              subtitle="DAP format: what happened, what you think, what comes next."
+              subtitle={tr("DAP format: what happened, what you think, what comes next.")}
               action={
                 note.signedAt && !editing ? (
                   <Button variant="secondary" size="sm" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(true)}>
-                    Edit
+                    {tr("Edit")}
                   </Button>
                 ) : undefined
               }
@@ -417,19 +416,19 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             {savedMsg && <Notice icon={<Check className="h-5 w-5" />}>{savedMsg}</Notice>}
             {session.status === 'scheduled' && (
               <Notice tone="info" icon={<FileText className="h-5 w-5" />}>
-                This session has not started yet. You can draft the note now and sign it after the session.
+                {tr("This session has not started yet. You can draft the note now and sign it after the session.")}
               </Notice>
             )}
 
             {editing ? (
               <>
-                <Field label="Data — what happened" htmlFor="w-d" hint="What the client said and did, and what you observed.">
+                <Field label={tr("Data — what happened")} htmlFor="w-d" hint={tr("What the client said and did, and what you observed.")}>
                   <textarea id="w-d" rows={5} value={note.data} onChange={e => setN({ data: e.target.value })} className={textareaClass} />
                 </Field>
-                <Field label="Assessment — what you think" htmlFor="w-a" hint="Your clinical view: progress, patterns, risk.">
+                <Field label={tr("Assessment — what you think")} htmlFor="w-a" hint={tr("Your clinical view: progress, patterns, risk.")}>
                   <textarea id="w-a" rows={4} value={note.assessment} onChange={e => setN({ assessment: e.target.value })} className={textareaClass} />
                 </Field>
-                <Field label="Plan — what comes next" htmlFor="w-p" hint="Focus for next session, referrals, anything to follow up.">
+                <Field label={tr("Plan — what comes next")} htmlFor="w-p" hint={tr("Focus for next session, referrals, anything to follow up.")}>
                   <textarea id="w-p" rows={3} value={note.plan} onChange={e => setN({ plan: e.target.value })} className={textareaClass} />
                 </Field>
               </>
@@ -451,32 +450,32 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
 
           <div className="flex flex-col gap-6">
             <Card as="section" aria-labelledby="w-out" className="flex flex-col gap-4">
-              <SectionHeader id="w-out" title="Outcome" size="md" />
+              <SectionHeader id="w-out" title={tr("Outcome")} size="md" />
               <div className="flex flex-wrap gap-2 text-[0.9375rem] text-ink-2">
                 <span>
-                  Risk: <RiskBadge risk={note.riskLevel} />
+                  {tr("Risk:")} <RiskBadge risk={note.riskLevel} />
                 </span>
                 <span>
-                  · Mood: <strong className="text-ink">{MOODS[note.moodRating - 1]}</strong>
+                  {tr("· Mood:")} <strong className="text-ink">{MOODS[note.moodRating - 1]}</strong>
                 </span>
               </div>
               {editing && (
-                <Field label="Homework" htmlFor="w-hw" optional hint="Added to the client’s homework list when you sign.">
+                <Field label={tr("Homework")} htmlFor="w-hw" optional hint={tr("Added to the client’s homework list when you sign.")}>
                   <input id="w-hw" value={note.homework || ''} onChange={e => setN({ homework: e.target.value })} className={inputClass} />
                 </Field>
               )}
               {!editing && note.homework && (
                 <p className="m-0 text-[0.9375rem] text-ink-2">
-                  <strong className="text-ink">Homework:</strong> {note.homework}
+                  <T text="<0>Homework:</0> {homework}" parts={[<strong className="text-ink" />]} vars={{ homework: note.homework }} />
                 </p>
               )}
               {editing && !note.signedAt && (
                 <div className="flex flex-col gap-3 rounded-xl border border-line p-4">
                   <label className="flex cursor-pointer items-center gap-3 text-[0.9375rem] font-semibold text-ink">
                     <input type="checkbox" checked={bookNext} onChange={e => setBookNext(e.target.checked)} className="h-5 w-5 cursor-pointer" />
-                    <CalendarPlus className="h-5 w-5 text-pri-text" aria-hidden="true" /> Book the next session
+                    <CalendarPlus className="h-5 w-5 text-pri-text" aria-hidden="true" /> {tr("Book the next session")}
                   </label>
-                  {bookNext && <input type="datetime-local" aria-label="Next session date and time" value={nextWhen} onChange={e => setNextWhen(e.target.value)} className={inputClass} />}
+                  {bookNext && <input type="datetime-local" aria-label={tr("Next session date and time")} value={nextWhen} onChange={e => setNextWhen(e.target.value)} className={inputClass} />}
                 </div>
               )}
             </Card>
@@ -484,10 +483,10 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
             {editing ? (
               <div className="flex flex-col gap-3">
                 <Button size="lg" block icon={<Check className="h-5 w-5" />} onClick={sign} disabled={!note.data.trim() || session.status === 'scheduled'}>
-                  Sign and save note
+                  {tr("Sign and save note")}
                 </Button>
                 <p className="m-0 text-center text-sm text-ink-3">
-                  {session.status === 'scheduled' ? 'You can sign once the session has taken place.' : 'Your draft saves automatically as you type.'}
+                  {session.status === 'scheduled' ? tr("You can sign once the session has taken place.") : tr("Your draft saves automatically as you type.")}
                 </p>
               </div>
             ) : (
@@ -500,12 +499,12 @@ export const SessionRoom: React.FC<Props> = ({ session, client, store, therapist
                     <Card className="flex items-center gap-3">
                       <CalendarPlus className="h-5 w-5 shrink-0 text-pri-text" aria-hidden="true" />
                       <p className="m-0 text-[0.9375rem] text-ink-2">
-                        Next session <strong className="text-ink">{fmtDayInline(nextS.start)}, {fmtTime(nextS.start)}</strong>
+                        {tr("Next session")} <strong className="text-ink">{fmtDayInline(nextS.start)}, {fmtTime(nextS.start)}</strong>
                       </p>
                     </Card>
                   ) : null;
                 })()}
-              <p className="m-0 text-sm text-ink-3">Signed {note.signedAt ? `${fmtDayInline(note.signedAt)} at ${fmtTime(note.signedAt)}` : ''}.</p>
+              <p className="m-0 text-sm text-ink-3">{tr("Signed")} {note.signedAt ? `${fmtDayInline(note.signedAt)} at ${fmtTime(note.signedAt)}` : ''}.</p>
               </>
             )}
           </div>

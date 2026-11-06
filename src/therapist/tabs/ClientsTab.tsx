@@ -12,6 +12,7 @@ import { ClientLine, RISK_INFO, RiskBadge, SessionRow, SharingNote, missedChecki
 import { TrendChart } from '../TrendChart';
 import { BookSessionModal } from './SessionsTab';
 
+import { t, T, msg } from '../../i18n';
 interface Props {
   therapist: TherapistProfile;
   store: TherapistStore;
@@ -51,33 +52,33 @@ export const ClientsTab: React.FC<Props> = props => {
     <div className="flex flex-col gap-6 animate-fadeIn">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Segmented<Filter>
-          label="Filter clients"
+          label={t("Filter clients")}
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'all', label: 'Active' },
-            { value: 'attention', label: `Needs attention (${store.data.clients.filter(c => c.status === 'active' && needsAttention(c)).length})` },
-            { value: 'paused', label: 'Paused or closed' },
+            { value: 'all', label: msg('Active') },
+            { value: 'attention', label: t('Needs attention ({count})', { count: store.data.clients.filter(c => c.status === 'active' && needsAttention(c)).length }) },
+            { value: 'paused', label: msg('Paused or closed') },
           ]}
         />
         <div className="relative sm:w-72">
           <label htmlFor="cl-search" className="sr-only">
-            Search clients
+            {t("Search clients")}
           </label>
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-3" aria-hidden="true" />
-          <input id="cl-search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name or focus" className={cx(inputClass, 'bg-surface pl-12')} />
+          <input id="cl-search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder={t("Search by name or focus")} className={cx(inputClass, 'bg-surface pl-12')} />
         </div>
       </div>
 
       {list.length === 0 ? (
         <Card className="flex flex-col items-start gap-3">
-          <p className="m-0 text-base font-bold text-ink">{store.data.clients.length === 0 ? 'No clients yet' : 'No clients match'}</p>
+          <p className="m-0 text-base font-bold text-ink">{store.data.clients.length === 0 ? t("No clients yet") : t("No clients match")}</p>
           <p className="m-0 text-[0.9375rem] text-ink-2">
-            {store.data.clients.length === 0 ? 'People who book you appear in Requests. Accept a request to add them here.' : 'Try another filter or search.'}
+            {store.data.clients.length === 0 ? t("People who book you appear in Requests. Accept a request to add them here.") : t("Try another filter or search.")}
           </p>
           {store.data.clients.length === 0 && (
             <Button variant="secondary" onClick={() => nav.go('requests')}>
-              Go to requests
+              {t("Go to requests")}
             </Button>
           )}
         </Card>
@@ -101,15 +102,15 @@ export const ClientsTab: React.FC<Props> = props => {
                   </span>
                   <span className="flex flex-wrap gap-2">
                     <RiskBadge risk={c.risk} />
-                    {!c.sharesCheckins && <Badge tone="muted">Check-ins private</Badge>}
+                    {!c.sharesCheckins && <Badge tone="muted">{t("Check-ins private")}</Badge>}
                   </span>
                   <span className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
                     <span>
-                      <span className="block text-ink-3">Next session</span>
-                      <span className="block font-bold text-ink">{next ? `${fmtDay(next.start)}, ${fmtTime(next.start)}` : 'Not booked'}</span>
+                      <T text="<0>Next session</0>" parts={[<span className="block text-ink-3" />]} />
+                      <span className="block font-bold text-ink">{next ? `${fmtDay(next.start)}, ${fmtTime(next.start)}` : t("Not booked")}</span>
                     </span>
                     <span>
-                      <span className="block text-ink-3">Last check-in</span>
+                      <T text="<0>Last check-in</0>" parts={[<span className="block text-ink-3" />]} />
                       <span className="block font-bold text-ink">{c.sharesCheckins ? ago(c.lastCheckin) : '—'}</span>
                     </span>
                   </span>
@@ -152,17 +153,17 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
   return (
     <div className="flex flex-col gap-6 animate-fadeIn">
       <button type="button" onClick={onBack} className="flex min-h-11 items-center gap-2 self-start text-[0.9375rem] font-bold text-pri-text hover:underline cursor-pointer">
-        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> All clients
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" /> {t("All clients")}
       </button>
 
       {client.risk === 'high' && (
         <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl bg-danger-soft px-4 py-3 text-danger-text">
           <p className="m-0 min-w-0 flex-1 text-[0.9375rem] font-semibold">
-            {client.nickname} is at high risk.{' '}
-            {client.locationConsent ? (client.lastLocation ? 'Their location is on the safety map.' : 'No location shared yet.') : 'They have not agreed to share their location.'}
+            {t("{nickname} is at high risk.", { nickname: client.nickname })}
+            {client.locationConsent ? (client.lastLocation ? t("Their location is on the safety map.") : t("No location shared yet.")) : t("They have not agreed to share their location.")}
           </p>
           <Button variant="danger" size="sm" onClick={() => nav.openSafety(client.id)}>
-            Open safety map
+            {t("Open safety map")}
           </Button>
         </div>
       )}
@@ -175,44 +176,44 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
               <h1 className="m-0 truncate text-xl font-bold text-ink sm:text-2xl">{client.nickname}</h1>
               <p className="m-0 text-[0.9375rem] text-ink-2">
                 {focusLabel(client.focus)}
-                {client.age ? ` · ${client.age} years` : ''} · with you since {new Date(client.startedAt).toLocaleDateString([], { month: 'long', year: 'numeric' })}
+                {client.age ? t(" · {age} years", { age: client.age }) : ''} {t("· with you since")} {new Date(client.startedAt).toLocaleDateString([], { month: 'long', year: 'numeric' })}
               </p>
               <SharingNote shares={client.sharesCheckins} className="mt-1" />
             </div>
           </div>
           <Button icon={<CalendarPlus className="h-5 w-5" />} onClick={() => setBookOpen(true)}>
-            Book session
+            {t("Book session")}
           </Button>
         </div>
         <dl className="m-0 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl bg-bg p-3.5">
-            <dt className="text-sm text-ink-3">Clean streak</dt>
-            <dd className="m-0 text-lg font-extrabold text-ink">{client.streakDays} days</dd>
+            <dt className="text-sm text-ink-3">{t("Clean streak")}</dt>
+            <dd className="m-0 text-lg font-extrabold text-ink">{t("{streakDays} days", { streakDays: client.streakDays })}</dd>
           </div>
           <div className="rounded-xl bg-bg p-3.5">
-            <dt className="text-sm text-ink-3">Risk</dt>
+            <dt className="text-sm text-ink-3">{t("Risk")}</dt>
             <dd className="m-0 mt-1">
               <RiskBadge risk={client.risk} />
             </dd>
           </div>
           <div className="rounded-xl bg-bg p-3.5">
-            <dt className="text-sm text-ink-3">Sessions</dt>
-            <dd className="m-0 text-lg font-extrabold text-ink">{sessions.filter(s => s.status === 'completed').length} done</dd>
+            <dt className="text-sm text-ink-3">{t("Sessions")}</dt>
+            <dd className="m-0 text-lg font-extrabold text-ink">{t("{length} done", { length: sessions.filter(s => s.status === 'completed').length })}</dd>
           </div>
           <div className="rounded-xl bg-bg p-3.5">
-            <dt className="text-sm text-ink-3">Cravings vs last week</dt>
-            <dd className="m-0 text-lg font-extrabold text-ink">{crTrend == null ? '—' : crTrend > 0.4 ? `Up ${crTrend.toFixed(1)}` : crTrend < -0.4 ? `Down ${Math.abs(crTrend).toFixed(1)}` : 'About the same'}</dd>
+            <dt className="text-sm text-ink-3">{t("Cravings vs last week")}</dt>
+            <dd className="m-0 text-lg font-extrabold text-ink">{crTrend == null ? '—' : crTrend > 0.4 ? t("Up {v0}", { v0: crTrend.toFixed(1) }) : crTrend < -0.4 ? t("Down {v0}", { v0: Math.abs(crTrend).toFixed(1) }) : t("About the same")}</dd>
           </div>
         </dl>
         <Tabs<Section>
-          label="Client record"
+          label={t("Client record")}
           value={section}
           onChange={setSection}
           tabs={[
-            { value: 'overview', label: 'Progress' },
-            { value: 'sessions', label: 'Sessions', badge: sessions.length },
-            { value: 'safety', label: 'Safety plan' },
-            { value: 'notes', label: 'Private notes' },
+            { value: 'overview', label: msg('Progress') },
+            { value: 'sessions', label: msg('Sessions'), badge: sessions.length },
+            { value: 'safety', label: msg('Safety plan') },
+            { value: 'notes', label: msg('Private notes') },
           ]}
         />
       </Card>
@@ -222,15 +223,15 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
       {section === 'overview' && (
         <div className="grid gap-6 lg:grid-cols-2">
           <Card as="section" aria-labelledby="c-trend" className="flex flex-col gap-5 lg:col-span-2">
-            <SectionHeader id="c-trend" title="Daily check-ins" size="md" subtitle="Last 14 days. Gaps are days without a check-in." />
+            <SectionHeader id="c-trend" title={t("Daily check-ins")} size="md" subtitle={t("Last 14 days. Gaps are days without a check-in.")} />
             {client.sharesCheckins ? (
               <div className="grid gap-6 sm:grid-cols-2">
-                <TrendChart title="Mood" values={client.mood} min={1} max={5} ticks={{ 1: 'Low', 3: 'Okay', 5: 'Great' }} describe={v => `Mood ${v} of 5`} summary="1 = very low, 5 = very good" />
-                <TrendChart title="Cravings" values={client.craving} min={0} max={10} ticks={{ 0: '0', 5: '5', 10: '10' }} describe={v => `Craving ${v} of 10`} summary="0 = none, 10 = overwhelming" />
+                <TrendChart title={t("Mood")} values={client.mood} min={1} max={5} ticks={{ 1: t('Low'), 3: t('Okay'), 5: t('Great') }} describe={v => t('Mood {v} of 5', { v })} summary={t('1 = very low, 5 = very good')} />
+                <TrendChart title={t("Cravings")} values={client.craving} min={0} max={10} ticks={{ 0: '0', 5: '5', 10: '10' }} describe={v => t('Craving {v} of 10', { v })} summary={t('0 = none, 10 = overwhelming')} />
               </div>
             ) : (
               <p className="m-0 rounded-xl bg-bg p-4 text-[0.9375rem] text-ink-2">
-                {client.nickname} keeps daily check-ins private. They can choose to share them from their own Settings.
+                {t("{nickname} keeps daily check-ins private. They can choose to share them from their own Settings.", { nickname: client.nickname })}
               </p>
             )}
           </Card>
@@ -238,28 +239,28 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
           <Card as="section" aria-labelledby="c-thoughts" className="flex flex-col gap-4 lg:col-span-2">
             <SectionHeader
               id="c-thoughts"
-              title="Thought records"
+              title={t("Thought records")}
               size="md"
-              subtitle="CBT thought records the client chose to share from AI therapy. Useful to review together in session."
+              subtitle={t("CBT thought records the client chose to share from AI therapy. Useful to review together in session.")}
             />
             {thoughts.length === 0 ? (
-              <p className="m-0 rounded-xl bg-bg p-4 text-[0.9375rem] text-ink-2">No shared thought records yet.</p>
+              <p className="m-0 rounded-xl bg-bg p-4 text-[0.9375rem] text-ink-2">{t("No shared thought records yet.")}</p>
             ) : (
               <ul className="m-0 grid list-none gap-3 p-0 md:grid-cols-2">
                 {thoughts.slice(0, 6).map(r => (
                   <li key={r.id} className="flex flex-col gap-1.5 rounded-xl border border-line p-4">
                     <p className="m-0 text-sm text-ink-3 first-letter:uppercase">
-                      {fmtDayInline(r.createdAt)} · {trapLabel(r.trap)} · {r.emotion || 'Feeling'}{' '}
+                      {fmtDayInline(r.createdAt)} · {trapLabel(r.trap)} · {r.emotion || t("Feeling")}{' '}
                       <strong className={cx(r.intensityAfter < r.intensityBefore ? 'text-pri-text' : 'text-warn')}>
                         {r.intensityBefore} → {r.intensityAfter}
                       </strong>
                     </p>
                     {r.situation && <p className="m-0 text-[0.9375rem] text-ink-2">{r.situation}</p>}
                     <p className="m-0 text-[0.9375rem] text-ink">
-                      <span className="font-bold">Thought:</span> {r.thought}
+                      <T text="<0>Thought:</0> {thought}" parts={[<span className="font-bold" />]} vars={{ thought: r.thought }} />
                     </p>
                     <p className="m-0 text-[0.9375rem] text-ink">
-                      <span className="font-bold">Fairer thought:</span> {r.balancedThought}
+                      <T text="<0>Fairer thought:</0> {balancedThought}" parts={[<span className="font-bold" />]} vars={{ balancedThought: r.balancedThought }} />
                     </p>
                   </li>
                 ))}
@@ -268,17 +269,17 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
           </Card>
 
           <Card as="section" aria-labelledby="c-goals" className="flex flex-col gap-4">
-            <SectionHeader id="c-goals" title="Goals" size="md" subtitle="Agreed together with the client." />
+            <SectionHeader id="c-goals" title={t("Goals")} size="md" subtitle={t("Agreed together with the client.")} />
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {client.goals.map(g => (
                 <li key={g} className="flex items-center gap-3 rounded-xl bg-bg px-4 py-2.5">
                   <span className="flex-1 text-[0.9375rem] text-ink">{g}</span>
-                  <button type="button" aria-label={`Remove goal: ${g}`} onClick={() => update({ goals: client.goals.filter(x => x !== g) })} className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-3 hover:bg-muted hover:text-danger-text cursor-pointer">
+                  <button type="button" aria-label={t("Remove goal: {g}", { g })} onClick={() => update({ goals: client.goals.filter(x => x !== g) })} className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-3 hover:bg-muted hover:text-danger-text cursor-pointer">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </li>
               ))}
-              {client.goals.length === 0 && <li className="text-[0.9375rem] text-ink-3">No goals yet.</li>}
+              {client.goals.length === 0 && <li className="text-[0.9375rem] text-ink-3">{t("No goals yet.")}</li>}
             </ul>
             <form
               className="flex gap-2"
@@ -290,17 +291,17 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
               }}
             >
               <label htmlFor="c-ng" className="sr-only">
-                New goal
+                {t("New goal")}
               </label>
-              <input id="c-ng" value={newGoal} onChange={e => setNewGoal(e.target.value)} placeholder="Add a goal" className={inputClass} />
+              <input id="c-ng" value={newGoal} onChange={e => setNewGoal(e.target.value)} placeholder={t("Add a goal")} className={inputClass} />
               <Button type="submit" variant="secondary" icon={<Plus className="h-5 w-5" />}>
-                Add
+                {t("Add")}
               </Button>
             </form>
           </Card>
 
           <Card as="section" aria-labelledby="c-hw" className="flex flex-col gap-4">
-            <SectionHeader id="c-hw" title="Homework" size="md" subtitle="The client sees these in their app." />
+            <SectionHeader id="c-hw" title={t("Homework")} size="md" subtitle={t("The client sees these in their app.")} />
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {client.homework.map(h => (
                 <li key={h.id}>
@@ -312,13 +313,13 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
                       className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className={cx('block text-[0.9375rem]', h.done ? 'text-ink-3 line-through' : 'text-ink')}>{h.text}</span>
-                      <span className="block text-sm text-ink-3">Set {fmtDayInline(h.setOn)}</span>
+                      <span className={cx('block text-[0.9375rem]', h.done ? 'text-ink-3 line-through' : 'text-ink')}>{t(h.text)}</span>
+                      <span className="block text-sm text-ink-3">{t("Set")} {fmtDayInline(h.setOn)}</span>
                     </span>
                   </label>
                 </li>
               ))}
-              {client.homework.length === 0 && <li className="text-[0.9375rem] text-ink-3">No homework set.</li>}
+              {client.homework.length === 0 && <li className="text-[0.9375rem] text-ink-3">{t("No homework set.")}</li>}
             </ul>
             <form
               className="flex gap-2"
@@ -330,11 +331,11 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
               }}
             >
               <label htmlFor="c-nh" className="sr-only">
-                New homework
+                {t("New homework")}
               </label>
-              <input id="c-nh" value={newHw} onChange={e => setNewHw(e.target.value)} placeholder="Add homework" className={inputClass} />
+              <input id="c-nh" value={newHw} onChange={e => setNewHw(e.target.value)} placeholder={t("Add homework")} className={inputClass} />
               <Button type="submit" variant="secondary" icon={<Plus className="h-5 w-5" />}>
-                Add
+                {t("Add")}
               </Button>
             </form>
           </Card>
@@ -344,9 +345,9 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
       {section === 'sessions' && (
         <div className="flex flex-col gap-6">
           <Card as="section" aria-labelledby="c-up" className="flex flex-col gap-2">
-            <SectionHeader id="c-up" title="Coming up" size="md" />
+            <SectionHeader id="c-up" title={t("Coming up")} size="md" />
             {upcoming.length === 0 ? (
-              <p className="m-0 text-[0.9375rem] text-ink-3">Nothing booked.</p>
+              <p className="m-0 text-[0.9375rem] text-ink-3">{t("Nothing booked.")}</p>
             ) : (
               <div className="-mx-3 flex flex-col divide-y divide-line">
                 {upcoming.map(s => (
@@ -356,28 +357,28 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
             )}
           </Card>
           <Card as="section" aria-labelledby="c-past" className="flex flex-col gap-3">
-            <SectionHeader id="c-past" title="Session history" size="md" />
+            <SectionHeader id="c-past" title={t("Session history")} size="md" />
             {past.length === 0 ? (
-              <p className="m-0 text-[0.9375rem] text-ink-3">No past sessions.</p>
+              <p className="m-0 text-[0.9375rem] text-ink-3">{t("No past sessions.")}</p>
             ) : (
               <ol className="m-0 flex list-none flex-col gap-3 p-0">
                 {past.map(s => (
                   <li key={s.id} className="rounded-xl border border-line p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="m-0 text-base font-bold text-ink">
-                        {fmtDateLong(s.start)} · {s.topic || 'Session'}
+                        {fmtDateLong(s.start)} · {s.topic || t("Session")}
                       </p>
                       <Button variant="link" onClick={() => nav.openSession(s.id)}>
-                        {s.note?.signedAt ? 'Open note' : s.status === 'completed' ? 'Finish note' : 'Open'}
+                        {s.note?.signedAt ? t("Open note") : s.status === 'completed' ? t("Finish note") : t("Open")}
                       </Button>
                     </div>
                     {s.note?.signedAt ? (
                       <p className="m-0 mt-1 text-[0.9375rem] leading-relaxed text-ink-2">
-                        <strong className="text-ink">Plan:</strong> {s.note.plan || '—'}
+                        <T text="<0>Plan:</0>" parts={[<strong className="text-ink" />]} /> {s.note.plan || '—'}
                       </p>
                     ) : (
                       <p className="m-0 mt-1 text-[0.9375rem] text-ink-3">
-                        {s.status === 'no_show' ? 'Did not attend' : s.status === 'cancelled' ? 'Cancelled' : 'Note not finished'}
+                        {s.status === 'no_show' ? t("Did not attend") : s.status === 'cancelled' ? t("Cancelled") : t("Note not finished")}
                       </p>
                     )}
                   </li>
@@ -392,12 +393,12 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
         <Card as="section" aria-labelledby="c-safe" className="flex flex-col gap-5">
           <SectionHeader
             id="c-safe"
-            title="Safety plan"
+            title={t("Safety plan")}
             size="md"
-            subtitle={plan.updatedAt ? `Last updated ${fmtDayInline(plan.updatedAt)}. Build it together with the client.` : 'Build it together with the client.'}
+            subtitle={plan.updatedAt ? t("Last updated {v0}. Build it together with the client.", { v0: fmtDayInline(plan.updatedAt) }) : t("Build it together with the client.")}
           />
           <fieldset className="m-0 border-0 p-0">
-            <legend className="mb-2 p-0 text-sm font-bold text-ink">Risk level</legend>
+            <legend className="mb-2 p-0 text-sm font-bold text-ink">{t("Risk level")}</legend>
             <div className="grid grid-cols-3 gap-2">
               {(['low', 'moderate', 'high'] as ClientRisk[]).map(r => (
                 <button
@@ -410,18 +411,18 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
                     client.risk === r ? 'border-pri bg-pri-soft text-pri-ink' : 'border-line bg-surface text-ink hover:border-pri-text'
                   )}
                 >
-                  {RISK_INFO[r].label}
+                  {t(RISK_INFO[r].label)}
                 </button>
               ))}
             </div>
           </fieldset>
-          <Field label="Warning signs" htmlFor="sp-w" hint="Thoughts, feelings or situations that come before a crisis or relapse.">
+          <Field label={t("Warning signs")} htmlFor="sp-w" hint={t("Thoughts, feelings or situations that come before a crisis or relapse.")}>
             <textarea id="sp-w" rows={3} value={plan.warningSigns} onChange={e => setPlan({ ...plan, warningSigns: e.target.value })} className={textareaClass} />
           </Field>
-          <Field label="What helps" htmlFor="sp-c" hint="Steps the client can take on their own.">
+          <Field label={t("What helps")} htmlFor="sp-c" hint={t("Steps the client can take on their own.")}>
             <textarea id="sp-c" rows={3} value={plan.copingSteps} onChange={e => setPlan({ ...plan, copingSteps: e.target.value })} className={textareaClass} />
           </Field>
-          <Field label="People who can help" htmlFor="sp-p" hint="Names only. Phone numbers stay in the client’s app.">
+          <Field label={t("People who can help")} htmlFor="sp-p" hint={t("Names only. Phone numbers stay in the client’s app.")}>
             <textarea id="sp-p" rows={2} value={plan.supportPeople} onChange={e => setPlan({ ...plan, supportPeople: e.target.value })} className={textareaClass} />
           </Field>
           <Button
@@ -430,33 +431,33 @@ const ClientDetail: React.FC<Props & { client: ClientRecord; onBack: () => void 
               const next = { ...plan, updatedAt: new Date().toISOString() };
               setPlan(next);
               update({ safetyPlan: next });
-              flash('Safety plan saved.');
+              flash(t('Safety plan saved.'));
             }}
           >
-            Save safety plan
+            {t("Save safety plan")}
           </Button>
         </Card>
       )}
 
       {section === 'notes' && (
         <Card as="section" aria-labelledby="c-notes" className="flex flex-col gap-5">
-          <SectionHeader id="c-notes" title="Private notes" size="md" subtitle="Only you can see these. They are not shared with the client." />
-          <textarea aria-labelledby="c-notes" rows={8} value={privateNote} onChange={e => setPrivateNote(e.target.value)} className={textareaClass} placeholder="Background, formulation, things to remember…" />
-          <Field label="Status" htmlFor="c-status">
+          <SectionHeader id="c-notes" title={t("Private notes")} size="md" subtitle={t("Only you can see these. They are not shared with the client.")} />
+          <textarea aria-labelledby="c-notes" rows={8} value={privateNote} onChange={e => setPrivateNote(e.target.value)} className={textareaClass} placeholder={t("Background, formulation, things to remember…")} />
+          <Field label={t("Status")} htmlFor="c-status">
             <select id="c-status" value={client.status} onChange={e => update({ status: e.target.value as ClientRecord['status'] })} className={inputClass}>
-              <option value="active">Active</option>
-              <option value="paused">Paused (taking a break)</option>
-              <option value="discharged">Closed (finished working together)</option>
+              <option value="active">{t("Active")}</option>
+              <option value="paused">{t("Paused (taking a break)")}</option>
+              <option value="discharged">{t("Closed (finished working together)")}</option>
             </select>
           </Field>
           <Button
             className="self-start"
             onClick={() => {
               update({ privateNote });
-              flash('Notes saved.');
+              flash(t('Notes saved.'));
             }}
           >
-            Save notes
+            {t("Save notes")}
           </Button>
         </Card>
       )}

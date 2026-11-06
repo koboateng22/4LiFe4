@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { Wifi, WifiOff } from 'lucide-react';
 import { cx } from './ui';
 
+import { t as tr } from '../i18n';
 export const ConnectionStatus: React.FC = () => {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
   const [justBack, setJustBack] = useState(false);
@@ -42,7 +43,7 @@ export const ConnectionStatus: React.FC = () => {
           )}
         >
           {online ? <Wifi className="h-4 w-4" aria-hidden="true" /> : <WifiOff className="h-4 w-4" aria-hidden="true" />}
-          {online ? 'Back online' : 'You’re offline. SOS, 112 and your safety plan still work.'}
+          {online ? tr("Back online") : tr("You’re offline. SOS, 112 and your safety plan still work.")}
         </p>
       )}
     </div>
