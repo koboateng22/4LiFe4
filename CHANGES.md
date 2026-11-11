@@ -1,3 +1,33 @@
+# 4Life — Groq first with Gemini as backup, floating side buttons, and the sign-in check (11 November 2026)
+
+**AI: Groq answers, Gemini takes over.** There was no Grok or xAI code anywhere in the project, in its history, migrations, settings or scripts, so there was nothing of it to remove. The AI layer (`server/core/ai.ts`) now has two providers, in an order set by `PRIMARY_AI_PROVIDER` / `FALLBACK_AI_PROVIDER`:
+- **Groq** answers first (`GROQ_API_KEY`, `GROQ_MODEL`, default `openai/gpt-oss-120b`), streamed. The gpt-oss models are asked to keep their reasoning short and out of the reply.
+- **Gemini** takes over automatically (`GEMINI_API_KEY`, `GEMINI_MODEL`, default `gemini-3.5-flash-lite`) when Groq is busy or failing, can't be reached, is too slow, is rate-limited or out of its daily quota, or sends nothing. It gets the same instructions and conversation, and only if nothing has been shown yet, so two answers are never mixed.
+- A refused key, a missing model or a bad request is reported, not worked around. Groq is retried once before Gemini; there are no retry loops.
+- The thought-record helper, the Village post check and the circle guide use the same order and fallback.
+- Each reply logs one line: who answered, what failed first and why, and the tokens used. The person's words and keys are never logged. `/api/health` shows which providers are on, their models, and the Supabase project ID.
+- The old OpenAI option is removed: the app has only the two free-tier providers now. `npm run ai:check` sends real conversations to Groq alone, Gemini alone and in the normal order.
+
+**Side navigation on computers.** The long panel is now a column of separate frosted glass buttons. Each shows its name beside it on hover, on keyboard focus (with a visible focus ring), or for a moment after a press on a touch screen. The current page has a tint, a soft ring and a small bar on its edge. It works in light, dark and system themes, with a solid fallback where blur isn't supported, and stays still if motion is reduced. Every destination is unchanged. On phones and tablets the drawer works as before. The collapse button is gone, since the column is always narrow.
+
+**Sign-in: is 4Life tied to another app?** No. Nothing in the code, migrations, functions or git history refers to another app. The live app uses one Supabase project, and it has 4Life's own tables and none from another app. What does go wrong is outside the code:
+- In that project's Auth settings, the **Site URL** is `https://4lifeee-4-life4.vercel.app`, which sits behind **Vercel Authentication**. The public address, `https://4lifeee.vercel.app`, is **not** on the **Redirect URLs** list.
+- So confirmation and password-reset links send people to a Vercel log-in page instead of 4Life.
+- Fix it in the dashboards (SUPABASE.md section 1, LAUNCH.md). Separately, the live site has no AI key set (`/api/health`: no Gemini key), which is why its chat gave built-in replies.
+
+# 4Life — the AI chat: real Gemini answers or an honest reason (8 November 2026)
+
+**Why the chat seemed broken.** Whenever Gemini couldn't answer, the server quietly sent one of four built-in replies instead. That covered a missing or refused key, a rate limit, a used-up free quota, busy servers, or a timeout. The app showed the reply as if the AI had written it, so people got the same generic text whatever they wrote, and only the server logs said why. When the request itself failed, the app showed another canned message in the AI's bubble, with no Try again.
+
+- **No made-up replies.** When there is no AI answer, the chat says what happened. It names the case: not set up, free daily limit used up (it resets each morning, Ghana time), too many people right now (wait N seconds), service busy, too slow, no connection, offline, message blocked, or sign-in needed. It offers **Try again** where that can help. A reply cut off half way keeps what arrived and says so.
+- **Try again** resends the same message once, with no duplicate, and is offered only on the latest message. A message whose reply failed is left out of the context sent later.
+- **Gemini errors are recognised.** A used-up daily free quota is told apart from a per-minute limit, and from a refused key, a missing model, busy servers and safety blocks. Busy servers and dropped connections are tried again up to twice, with growing waits. A short per-minute wait is tried once. A used-up quota or a bad key is never retried, and the app never switches to a paid service.
+- **Model.** The default is now `gemini-3.5-flash-lite`, Google's recommended fast model, on the free tier (checked 8 November 2026). It is set in one place and can be changed with `GEMINI_MODEL`, e.g. `gemini-3.8-flash`.
+- **Context.** Each message carries the most recent turns that fit in about 8,000 characters, so follow-ups make sense without re-sending the whole chat every time.
+- **The AI's instructions** now also say it cannot contact anyone, and must never claim it called or alerted emergency services, a counsellor or a support person. They also ask it to help notice triggers and patterns, and to point to a counsellor when that would help.
+- Server logs record only the failure type and status, never the person's words or the key.
+- `npm run ai:check` is now a real end-to-end test. It sends a message and a follow-up through the app's own chat code to Gemini, and checks that the answers stream and keep the context. New `npm run test:chat` checks the chat screen in Chrome against a fake server: streaming, context, one message per press, every failure message, Try again without duplicates, offline, long replies, reload and new conversation.
+
 # 4Life — honest data, theme in Settings, Learn videos, no demo in production, Google and phone sign-in (6 November 2026)
 
 **Fixed: made-up health data**

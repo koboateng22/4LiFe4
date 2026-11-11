@@ -528,6 +528,132 @@ p, li { text-wrap: pretty; }
 .glass-side { box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.8), inset 1px 0 0 rgba(255, 255, 255, 0.5), 10px 0 30px -24px rgba(2, 44, 34, 0.35); }
 .dark .glass-side { box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.07), 10px 0 30px -24px rgba(0, 0, 0, 0.6); }
 
+/* Side navigation (Sidebar.tsx). Phones and tablets: a drawer with labelled rows (styles above).
+   Computers: no panel at all, just a column of floating glass buttons; each shows its name in a
+   label beside it on hover, keyboard focus, or a press on a touch screen. */
+@media (min-width: 1024px) {
+  .side-rail {
+    background: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    pointer-events: none; /* only the buttons take clicks, so nothing behind the column is blocked */
+  }
+  .side-rail .rail-btn {
+    pointer-events: auto;
+    position: relative;
+    display: flex;
+    width: 3rem;
+    min-height: 0;
+    height: 3rem;
+    flex: none;
+    padding: 0;
+    gap: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in srgb, var(--line) 75%, rgba(255, 255, 255, 0.6));
+    color: var(--ink-2);
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.2) 100%),
+      color-mix(in srgb, var(--surface) 58%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 8px 22px -14px rgba(2, 44, 34, 0.45);
+    transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+  .side-rail .rail-btn:hover {
+    transform: translateY(-1px) scale(1.04);
+    color: var(--ink);
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.28) 100%),
+      color-mix(in srgb, var(--surface) 78%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 12px 26px -14px rgba(2, 44, 34, 0.5);
+  }
+  .side-rail .rail-btn:active { transform: scale(0.95); }
+  .side-rail .rail-btn[aria-current='page'] {
+    color: var(--pri-ink);
+    border-color: color-mix(in srgb, var(--pri) 38%, transparent);
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.18) 100%),
+      color-mix(in srgb, var(--pri-soft) 82%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 0 0 3px color-mix(in srgb, var(--pri) 13%, transparent), 0 10px 24px -14px rgba(4, 120, 87, 0.6);
+  }
+  /* the current page also gets a small bar on its outer edge */
+  .side-rail .rail-btn[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    left: -0.75rem;
+    top: 28%;
+    bottom: 28%;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--pri);
+  }
+  .dark .side-rail .rail-btn {
+    border-color: rgba(255, 255, 255, 0.1);
+    background:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05) 100%),
+      color-mix(in srgb, var(--surface) 62%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 22px -14px rgba(0, 0, 0, 0.8);
+  }
+  .dark .side-rail .rail-btn:hover { background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04) 50%, rgba(255, 255, 255, 0.07)), color-mix(in srgb, var(--surface) 85%, transparent); }
+  .dark .side-rail .rail-btn[aria-current='page'] {
+    color: #a7f3d0;
+    border-color: rgba(52, 211, 153, 0.4);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05)), color-mix(in srgb, #047857 42%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 3px rgba(52, 211, 153, 0.12), 0 10px 24px -14px rgba(0, 0, 0, 0.8);
+  }
+  .side-rail .rail-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  /* The name beside each button */
+  .side-rail .rail-label {
+    position: absolute;
+    left: calc(100% + 0.75rem);
+    top: 50%;
+    z-index: 60;
+    transform: translate(-4px, -50%);
+    overflow: visible;
+    white-space: nowrap;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--line);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+    box-shadow: 0 10px 24px -12px rgba(2, 44, 34, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  /* a short pause before it shows, so moving the mouse past the column doesn't flicker */
+  .side-rail .rail-btn:hover .rail-label,
+  .side-rail .rail-btn:focus-visible .rail-label,
+  .side-rail .rail-btn[data-peek] .rail-label {
+    opacity: 1;
+    transform: translate(0, -50%);
+    transition-delay: 0.12s;
+  }
+}
+/* Without blur support the buttons and labels are solid, so they stay readable */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (min-width: 1024px) {
+    .side-rail .rail-btn,
+    .side-rail .rail-label { background: var(--surface); }
+    .side-rail .rail-btn[aria-current='page'] { background: var(--pri-soft); }
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .side-rail .rail-btn,
+  .side-rail .rail-label { transition: none; }
+  .side-rail .rail-btn:hover,
+  .side-rail .rail-btn:active { transform: none; }
+}
+
 /* Clear glass buttons (top bar buttons and the selected side-menu item).
    No frosting: a light green tint, a glossy sheen, a bright rim and a soft shadow. */
 .glass-btn {

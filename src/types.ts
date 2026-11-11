@@ -124,6 +124,8 @@ export interface ChatMessage {
   mode?: string;
   /** Set when the AI already wrote this reply in the person's language (Google Translate then leaves it alone) */
   lang?: string;
+  /** No AI answer could be made (see lib/aiChat.ts): shown as a notice with Try again, never as an answer */
+  error?: { code: string; retryAfter?: number; partial?: boolean };
 }
 
 export interface CounselorMatch {

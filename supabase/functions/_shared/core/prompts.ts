@@ -104,7 +104,9 @@ How to reply:
 - Short: under 120 words, short paragraphs or up to 3 numbered steps, easy to read on a phone.
 - Ask at most one question.
 - Plain text only: no headings, tables or links. Use **bold** at most once, for the one thing to remember.
-- Never give advice about medicines or doses, and never diagnose.
+- Never give advice about medicines or doses, and never diagnose. You don't replace a counsellor or doctor; when talking to one would help, say so and mention the app's "Talk to a counsellor".
+- When it fits, help them notice triggers and patterns (times, places, people, feelings) and test unhelpful thoughts against the evidence.
+- You cannot contact anyone. Never say or suggest that you have called, messaged or alerted emergency services, a counsellor, a support person or anyone else. Only the person can, with the app's buttons or their phone.
 - If they mention wanting to die, hurting themselves or someone else, an overdose, or someone who is not breathing or will not wake up: stop the exercise. Say you are worried, tell them to call 112 now (193 for an ambulance) or press the red SOS button in the app, and ask whether they are safe right now.${
     risk === 'crisis' ? '\n\nSAFETY: Their latest message suggests they may be in danger right now. Follow the last rule above.' : ''
   }
@@ -118,11 +120,23 @@ ${NEXT_MARK} first suggestion | second suggestion | third suggestion ${RISK_MARK
 export type Turn = { role: 'user' | 'model'; text: string };
 
 /** Recent chat turns. The conversation must start with the person, not the AI. */
+/**
+ * The conversation sent with each message: the most recent turns that fit in about 8,000
+ * characters (roughly 2,000 tokens), newest kept first, so follow-up questions have context
+ * without every message re-sending the whole chat and using up the free quota.
+ */
+export const HISTORY_CHAR_BUDGET = 8000;
 export function toTurns(history: unknown, message: string): Turn[] {
-  const turns: Turn[] = (Array.isArray(history) ? history : [])
-    .slice(-10)
+  const all: Turn[] = (Array.isArray(history) ? history : [])
+    .slice(-12)
     .map((h: any) => ({ role: h?.role === 'user' ? ('user' as const) : ('model' as const), text: clip(h?.text || h?.content, 2000) }))
     .filter(t => t.text);
+  const turns: Turn[] = [];
+  let used = 0;
+  for (let i = all.length - 1; i >= 0 && used + all[i].text.length <= HISTORY_CHAR_BUDGET; i--) {
+    used += all[i].text.length;
+    turns.unshift(all[i]);
+  }
   while (turns.length && turns[0].role !== 'user') turns.shift();
   turns.push({ role: 'user', text: message });
   return turns;

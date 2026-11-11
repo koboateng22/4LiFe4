@@ -14,13 +14,24 @@ Prerequisite: Node.js 22 or newer.
 
 ```bash
 npm install
-cp .env.example .env.local   # add GEMINI_API_KEY for real AI replies
+cp .env.example .env.local   # add GROQ_API_KEY and GEMINI_API_KEY for real AI replies
 npm run dev                  # http://localhost:3000
 ```
 
 If port 3000 is busy, close the other server or pick another port: `npm run dev -- --port 3001`. The app, the API and live reload all use that one port, so it also works behind AI Studio's preview, tunnels and Codespaces.
 
-Without a Gemini key the app uses built-in replies. Without Supabase settings everything is stored on the device. To connect a database, see **SUPABASE.md**.
+Without Supabase settings everything is stored on the device. To connect a database, see **SUPABASE.md**.
+
+## The AI chat (Groq first, Gemini as backup)
+
+Groq answers every message. When Groq is busy or down, rate-limited, out of its daily quota, too slow, or sends nothing, the same message and conversation go to Google Gemini automatically. Nothing is shown before that happens, and the person does nothing. A refused key, a missing model or a bad request is reported instead, because it needs fixing. Both providers have free tiers with per-minute and per-day limits; neither is unlimited. The app never switches to a paid service by itself.
+
+1. **Groq key:** https://console.groq.com/keys → Create API Key. **Gemini key:** https://aistudio.google.com/apikey → Create API key.
+2. Put them in `.env.local` (never committed): `GROQ_API_KEY="…"` and `GEMINI_API_KEY="…"`. Optional: `GROQ_MODEL` (default `openai/gpt-oss-120b`), `GEMINI_MODEL` (default `gemini-3.5-flash-lite`), `PRIMARY_AI_PROVIDER` / `FALLBACK_AI_PROVIDER` (default `groq` / `gemini`; `none` switches the fallback off).
+3. Run `npm run ai:check`. It sends real messages through the app's own chat code: to Groq alone, to Gemini alone, then in the normal order, and checks that follow-ups keep the context.
+4. In Vercel: **Settings → Environment Variables**, add the same names for **Production** and **Preview**, then **Redeploy**. `https://<your-app>/api/health` then shows `groq: true`, `gemini: true` and both models (never the keys).
+
+Keys are read only by the server (`/api/chat` and the Supabase functions). Each reply writes one log line, `[ai] chat ok by=groq/<model>` or `by=gemini/<model> failed=groq:<reason> (fallback)`, with token counts but never the person's words. Without any key, or when both providers fail, the chat says what happened and offers **Try again** where that helps. It never makes up a reply. Google says free-tier Gemini prompts may be used to improve its products; for recovery conversations, consider paid tiers before launch (see LAUNCH.md).
 
 ## Deploy to Vercel
 
@@ -31,9 +42,10 @@ Without a Gemini key the app uses built-in replies. Without Supabase settings ev
    | --- | --- | --- |
    | `VITE_SUPABASE_URL` | your Supabase project URL (same value as in `.env.example`) | app + API |
    | `VITE_SUPABASE_ANON_KEY` | the Supabase publishable key (same value as in `.env.example`) | app + API |
-   | `GEMINI_API_KEY` | Gemini key for real AI replies | API only |
+   | `GROQ_API_KEY` | Groq key: the AI answers first | API only |
+   | `GEMINI_API_KEY` | Gemini key: takes over when Groq can't | API only |
    | `YOUTUBE_API_KEY` | optional: first aid videos inside the app | API only |
-   | `GEMINI_MODEL`, `REQUIRE_SIGN_IN`, `ALLOWED_ORIGINS`, `RATE_LIMIT_PER_MINUTE` | optional | API only |
+   | `GROQ_MODEL`, `GEMINI_MODEL`, `PRIMARY_AI_PROVIDER`, `FALLBACK_AI_PROVIDER`, `REQUIRE_SIGN_IN`, `ALLOWED_ORIGINS`, `RATE_LIMIT_PER_MINUTE` | optional | API only |
 
    Paste values without spaces or quotes. `VITE_` values are built into the app, so **redeploy after changing them**. Secrets (Gemini, YouTube, the service-role key) must never go in a `VITE_` variable.
 3. Deploy, then follow **LAUNCH.md**. Check `https://<your-app>.vercel.app/api/health`: it shows whether Gemini and YouTube are switched on (it never shows the keys).
@@ -77,7 +89,8 @@ Text is written in English in the code, and that English is its key: `t('Welcome
 
 ```bash
 npm run test:unit            # no database needed; also checks the Edge Functions are in sync
-npm run ai:check             # checks your Gemini key
+npm run ai:check             # real chat test: Groq, Gemini, and the fallback order (up to 6 requests)
+npm run test:chat            # the chat screen: streaming, errors, Try again (needs Chrome, no AI quota used)
 npm run test:i18n            # every language has every text
 npm run test:i18n:e2e        # each language in Chrome at phone size (needs Chrome)
 npm run test:theme           # theme only in Settings, light/dark/system, remembered (needs Chrome)

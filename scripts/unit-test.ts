@@ -20,7 +20,10 @@ import { cleanName, replyLanguage } from '../server/core/text';
 import { toTurns, asMode } from '../server/core/prompts';
 import { checkSignIn, rateLimiter } from '../server/core/guard';
 import { aiConfig } from '../server/core/ai';
-import { readChat, libraryVideos, __resetVideoLibrary } from '../server/core/handlers';
+import { readChat, libraryVideos, __resetVideoLibrary, runChat, moderate, supabaseProjectRef, health } from '../server/core/handlers';
+import { classifyGeminiError, classifyGroqError } from '../server/core/ai';
+import { describeFailure } from '../src/components/cbt/ChatFailureNotice';
+import { HISTORY_CHAR_BUDGET } from '../server/core/prompts';
 import { cleanVideoSearch, formatDuration, isoDurationSeconds } from '../src/lib/videoLibrary';
 import { RichText, toBlocks } from '../src/lib/richText';
 import { COUNTRIES, cleanCode, countryByCode, showPhone, toE164 } from '../src/lib/phone';
@@ -185,7 +188,10 @@ ok(levels.cravingLabel(9) === 'intense' && levels.cravingLabel(4) === 'mild' && 
   const c = readChat({ message: 'I took too many pills', stream: true });
   ok('input' in c && c.input.keywordRisk === 'crisis' && c.input.stream, 'crisis words are caught before the AI answers');
   ok(aiConfig(() => undefined).provider === null && aiConfig(n => (n === 'GEMINI_API_KEY' ? 'MY_GEMINI_API_KEY' : undefined)).provider === null, 'placeholder AI key counts as no key');
-  ok(aiConfig(n => (n === 'OPENAI_API_KEY' ? 'k' : undefined)).provider === 'openai', 'OpenAI is used when only its key is set');
+  ok(aiConfig(n => (n === 'GROQ_API_KEY' ? 'g' : n === 'GEMINI_API_KEY' ? 'm' : undefined)).providers.map(p => p.name).join() === 'groq,gemini', 'Groq answers first and Gemini is the fallback, by default');
+  ok(aiConfig(n => (n === 'GEMINI_API_KEY' ? 'm' : undefined)).provider === 'gemini' && aiConfig(n => (n === 'GROQ_API_KEY' ? 'g' : undefined)).providers.length === 1, 'a provider without a key is skipped');
+  ok(aiConfig(n => ({ GROQ_API_KEY: 'g', GEMINI_API_KEY: 'm', PRIMARY_AI_PROVIDER: 'gemini', FALLBACK_AI_PROVIDER: 'groq', GROQ_MODEL: 'llama-x' } as any)[n]).providers.map(p => `${p.name}:${p.model}`).join() === 'gemini:gemini-3.5-flash-lite,groq:llama-x', 'the order and the models come from settings, not code');
+  ok(aiConfig(n => ({ GROQ_API_KEY: 'g', GEMINI_API_KEY: 'm', FALLBACK_AI_PROVIDER: 'none' } as any)[n]).providers.length === 1 && aiConfig(n => (n === 'OPENAI_API_KEY' ? 'k' : undefined)).provider === null, 'the fallback can be switched off, and OpenAI is no longer used');
   const hit = rateLimiter(2);
   ok(hit('a').ok && hit('a').ok && !hit('a').ok && hit('b').ok, 'rate limit counts per visitor');
   const env = (vals: Record<string, string>) => (k: string) => vals[k];
@@ -332,5 +338,177 @@ ok(chatSystemPrompt({ currentCraving: 0 }, 'cbt', 'none').includes('latest cravi
   ok(needsAccountSetup({ nickname: 'member_1a2b3c4d', age: '' } as any) && !needsAccountSetup({ nickname: 'Kofi_W', age: 20 } as any), 'a first Google or phone sign-in is asked for a community name and age');
   ok(!needsAccountSetup({ nickname: 'Kofi_W', age: '' } as any), 'an older account without an age is never held back from the app (or its emergency help)');
   delete (globalThis as any).window;
+}
+// AI chat (Gemini): real answers or an honest reason, never a made-up reply
+{
+  const q = (quotaId: string, delay?: string) => JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded', details: [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId }] }, ...(delay ? [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: delay }] : [])] } });
+  ok(classifyGeminiError(429, q('GenerateRequestsPerDayPerProjectPerModel-FreeTier')).code === 'quota_exhausted', 'a used-up free daily quota is told apart…');
+  const perMin = classifyGeminiError(429, q('GenerateRequestsPerMinutePerProjectPerModel-FreeTier', '17s'));
+  ok(perMin.code === 'rate_limited' && perMin.retryAfter === 17, '…from a per-minute limit, with how long to wait');
+  ok(classifyGeminiError(400, JSON.stringify({ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', details: [{ reason: 'API_KEY_INVALID' }] } })).code === 'bad_key' && classifyGeminiError(403, '{}').code === 'bad_key', 'a refused key is recognised');
+  ok(classifyGeminiError(404, '{}').code === 'bad_model' && classifyGeminiError(503, '{}').code === 'overloaded' && classifyGeminiError(400, '{}').code === 'bad_request', 'a missing model, busy servers and bad requests are recognised');
+
+  const realFetch = globalThis.fetch;
+  const env = (k: string) => ({ GEMINI_API_KEY: 'test-key', GEMINI_MODEL: 'gemini-test-model' } as any)[k];
+  const input = (text: string, history: any[] = []) => (readChat({ message: text, mode: 'cbt', history, userProfile: { nickname: 'Kofi' }, stream: true }) as any).input;
+  const sse = (...chunks: string[]) => new Response(chunks.map(c => `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: c }] } }] })}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } });
+  let calls: any[] = [];
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    // No key: the reason, not a built-in reply
+    const noKey = await runChat(input('I feel low'), { env: () => undefined } as any, () => {});
+    ok(noKey.error?.code === 'not_configured' && noKey.reply === '', 'without a Gemini key the chat says it is not set up, and makes nothing up');
+
+    // A real streamed answer, with context sent
+    globalThis.fetch = (async (u: any, init: any) => (calls.push({ u: String(u), body: JSON.parse(init.body), key: init.headers['x-goog-api-key'] }), sse('That sounds hard. ', 'What happened today?\n<<NEXT>> I had a fight | I feel tired | Help me breathe <<RISK>> none'))) as any;
+    const deltas: string[] = [];
+    const hist = [{ role: 'user', content: 'I fought with my brother' }, { role: 'model', content: 'That sounds painful.' }];
+    const good = await runChat(input('He said I always fail', hist), { env } as any, (e, d: any) => e === 'delta' && deltas.push(d.text));
+    ok(!good.error && good.reply.includes('What happened today?') && good.suggestions.length === 3 && deltas.join('').startsWith('That sounds hard.'), 'a Gemini answer streams in, with its suggestions');
+    ok(calls[0].u.includes('/models/gemini-test-model:streamGenerateContent') && calls[0].key === 'test-key' && !calls[0].u.includes('test-key'), 'the model comes from GEMINI_MODEL, and the key goes in a header, never the address');
+    ok(calls[0].body.contents.length === 3 && calls[0].body.contents[0].parts[0].text === 'I fought with my brother' && calls[0].body.systemInstruction.parts[0].text.includes('You cannot contact anyone'), 'earlier turns go along for context, with the 4Life instructions');
+
+    // Busy servers are retried; a used-up quota is not
+    calls = [];
+    let n503 = 0;
+    globalThis.fetch = (async (u: any) => (calls.push(String(u)), n503++ < 2 ? new Response('{"error":{"code":503,"status":"UNAVAILABLE"}}', { status: 503 }) : sse('Okay.\n<<NEXT>> a | b | c <<RISK>> none'))) as any;
+    const retried = await runChat(input('hi'), { env } as any, () => {});
+    ok(!retried.error && calls.length === 3, 'when Google is busy the request is tried again, up to twice, and then answers');
+    calls = [];
+    globalThis.fetch = (async (u: any) => (calls.push(String(u)), new Response(q('GenerateRequestsPerDayPerProjectPerModel-FreeTier'), { status: 429 }))) as any;
+    const quota = await runChat(input('hi'), { env } as any, () => {});
+    ok(quota.error?.code === 'quota_exhausted' && calls.length === 1 && quota.reply === '', 'a used-up free quota is reported at once, never retried, and never handed to a paid service');
+    calls = [];
+    globalThis.fetch = (async (u: any) => (calls.push(String(u)), new Response('{"error":{"code":400,"message":"API key not valid","details":[{"reason":"API_KEY_INVALID"}]}}', { status: 400 }))) as any;
+    ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'bad_key' && calls.length === 1, 'a refused key fails once, with its reason');
+    globalThis.fetch = (async () => { throw new TypeError('fetch failed'); }) as any;
+    ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'network', 'no connection to Google is reported as such (after retries)');
+
+    // Part of a reply arrived, then the connection broke: kept, and marked as cut off
+    globalThis.fetch = (async () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: 'Let us breathe together. ' }] } }] })}\n\n`)); setTimeout(() => c.error(new Error('reset')), 20); } }), { headers: { 'Content-Type': 'text/event-stream' } })) as any;
+    const partial = await runChat(input('hi'), { env } as any, () => {});
+    ok(partial.reply.startsWith('Let us breathe') && partial.error?.partial === true, 'a reply cut off half way keeps what arrived and says it was cut off');
+    // Safety block
+    globalThis.fetch = (async () => new Response(`data: ${JSON.stringify({ promptFeedback: { blockReason: 'SAFETY' } })}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } })) as any;
+    ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'blocked', 'an answer stopped by the safety filters is reported, not replaced');
+  } finally {
+    globalThis.fetch = realFetch;
+    console.error = quiet;
+  }
+  // Context: only the most recent turns that fit the budget
+  const long = Array.from({ length: 12 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', content: `${i} ` + 'x'.repeat(1500) }));
+  const turns = toTurns(long, 'now');
+  const sent = turns.reduce((a, t) => a + t.text.length, 0) - 3;
+  ok(sent <= HISTORY_CHAR_BUDGET && turns[0].role === 'user' && turns[turns.length - 2].text.startsWith('11 ') && turns.at(-1)!.text === 'now', 'long chats send only the newest turns that fit the budget');
+  ok(describeFailure({ code: 'quota_exhausted' }).retry === false && describeFailure({ code: 'overloaded' }).retry === true && /seconds/.test(describeFailure({ code: 'rate_limited', retryAfter: 9 }).text), 'each failure has a plain message, and Try again only where it can help');
+}
+// Groq first, Gemini when Groq can't answer
+{
+  ok(classifyGroqError(429, '{"error":{"message":"Rate limit reached for model openai/gpt-oss-120b on requests per minute (RPM): Limit 30","type":"requests","code":"rate_limit_exceeded"}}', '7').code === 'rate_limited' && classifyGroqError(429, '{"error":{"message":"…on tokens per day (TPD): Limit 200000"}}').code === 'quota_exhausted', 'Groq per-minute limits and daily quotas are told apart');
+  ok(classifyGroqError(429, '{}', '7').retryAfter === 7 && classifyGroqError(401, '{"error":{"code":"invalid_api_key"}}').code === 'bad_key' && classifyGroqError(404, '{"error":{"code":"model_not_found"}}').code === 'bad_model' && classifyGroqError(498, '{}').code === 'overloaded' && classifyGroqError(503, '{}').code === 'overloaded', 'Groq errors are recognised (wait time, key, model, capacity, servers)');
+
+  const realFetch = globalThis.fetch;
+  const env = (k: string) => ({ GROQ_API_KEY: 'groq-key', GEMINI_API_KEY: 'gemini-key', GROQ_MODEL: 'groq-model', GEMINI_MODEL: 'gemini-model' } as any)[k];
+  const input = (text: string, history: any[] = []) => (readChat({ message: text, mode: 'cbt', history, userProfile: { nickname: 'Kofi' }, stream: true }) as any).input;
+  const groqSse = (...chunks: string[]) => new Response(chunks.map(c => `data: ${JSON.stringify({ choices: [{ delta: { content: c } }] })}\n\n`).join('') + `data: ${JSON.stringify({ choices: [{ delta: {} }], x_groq: { usage: { prompt_tokens: 120, completion_tokens: 40 } } })}\n\ndata: [DONE]\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
+  const geminiSse = (text: string) => new Response(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] })}\n\n`, { headers: { 'Content-Type': 'text/event-stream' } });
+  const reply = 'I hear you. What happened?\n<<NEXT>> a | b | c <<RISK>> none';
+  let calls: Array<{ host: string; body: any; auth: string }> = [];
+  const quiet = [console.error, console.info];
+  const logs: string[] = [];
+  console.error = (m: string) => logs.push(m);
+  console.info = (m: string) => logs.push(m);
+  const fake = (groq: () => Response | Promise<Response>, gemini: () => Response = () => geminiSse(reply)) =>
+    (globalThis.fetch = (async (u: any, init: any) => {
+      const host = new URL(String(u)).host;
+      calls.push({ host, body: JSON.parse(init.body), auth: init.headers.Authorization || init.headers['x-goog-api-key'] });
+      return host === 'api.groq.com' ? groq() : gemini();
+    }) as any);
+  try {
+    const hist = [{ role: 'user', content: 'I fought with my brother' }, { role: 'model', content: 'That sounds painful.' }];
+
+    // Groq answers: Gemini is never called
+    fake(() => groqSse('I hear you. ', 'What happened?\n<<NEXT>> a | b | c <<RISK>> none'));
+    const g = await runChat(input('He said I always fail', hist), { env } as any, () => {});
+    ok(!g.error && g.provider === 'groq' && g.model === 'groq-model' && g.reply.includes('What happened?'), 'Groq answers normal messages');
+    ok(calls.length === 1 && calls[0].host === 'api.groq.com' && calls[0].auth === 'Bearer groq-key' && calls[0].body.model === 'groq-model' && calls[0].body.stream === true, 'only Groq is called when it answers (key in a header, model from settings, streamed)');
+    ok(calls[0].body.reasoning_effort === undefined, 'models other than gpt-oss get no reasoning settings');
+    ok(calls[0].body.messages[0].role === 'system' && calls[0].body.messages[1].content === 'I fought with my brother' && calls[0].body.messages[2].role === 'assistant' && calls[0].body.messages.at(-1).content === 'He said I always fail', 'Groq gets the 4Life instructions and the conversation in order');
+    ok(logs.some(l => l.includes('[ai] chat ok by=groq/groq-model') && l.includes('tokens=120/40')) && !logs.some(l => l.includes('always fail')), 'the log says Groq answered and the tokens used, never the words');
+
+    calls = [];
+    const envOss = (k: string) => (k === 'GROQ_MODEL' ? 'openai/gpt-oss-120b' : env(k));
+    fake(() => groqSse('Okay.\n<<NEXT>> a | b | c <<RISK>> none'));
+    await runChat(input('hi'), { env: envOss } as any, () => {});
+    ok(calls[0].body.reasoning_effort === 'low' && calls[0].body.include_reasoning === false && calls[0].body.reasoning_format === undefined, 'gpt-oss gets short reasoning, kept out of the reply');
+
+    // Groq busy → Gemini, with the same conversation
+    calls = []; logs.length = 0;
+    fake(() => new Response('{"error":{"message":"Service unavailable"}}', { status: 503 }));
+    const fb = await runChat(input('He said I always fail', hist), { env } as any, () => {});
+    const gem = calls.filter(c => c.host.includes('googleapis'));
+    ok(!fb.error && fb.provider === 'gemini' && fb.model === 'gemini-model' && fb.reply.includes('What happened?'), 'when Groq is down, Gemini answers instead, without the person doing anything');
+    ok(calls.filter(c => c.host === 'api.groq.com').length === 2 && gem.length === 1, 'Groq is tried once more, then Gemini once (no retry loops)');
+    ok(gem[0].body.contents.length === 3 && gem[0].body.contents[0].parts[0].text === 'I fought with my brother' && gem[0].body.contents[2].parts[0].text === 'He said I always fail' && gem[0].body.systemInstruction.parts[0].text === calls[0].body.messages[0].content, 'Gemini gets the same instructions and conversation');
+    ok(logs.some(l => l.includes('by=gemini/gemini-model failed=groq:overloaded(503)') && l.includes('(fallback)')), 'the log records the fallback and why');
+
+    // Each reason that should hand over to Gemini
+    for (const [why, res] of [
+      ['a Groq rate limit', () => new Response('{"error":{"message":"Rate limit reached … requests per minute (RPM)"}}', { status: 429, headers: { 'retry-after': '40' } })],
+      ['a used-up Groq daily quota', () => new Response('{"error":{"message":"Rate limit reached … tokens per day (TPD)"}}', { status: 429 })],
+      ['no connection to Groq', () => { throw new TypeError('fetch failed'); }],
+      ['an empty Groq answer', () => new Response('data: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } })],
+    ] as Array<[string, () => Response]>) {
+      calls = [];
+      fake(res);
+      const r = await runChat(input('hi'), { env } as any, () => {});
+      ok(!r.error && r.provider === 'gemini', `${why} hands over to Gemini`);
+    }
+
+    // Reasons that must be fixed, not worked around: no fallback, a clear error
+    for (const [why, res, code] of [
+      ['a refused Groq key', () => new Response('{"error":{"code":"invalid_api_key"}}', { status: 401 }), 'bad_key'],
+      ['a Groq model that does not exist', () => new Response('{"error":{"code":"model_not_found"}}', { status: 404 }), 'bad_model'],
+      ['a malformed request', () => new Response('{"error":{"message":"bad"}}', { status: 400 }), 'bad_request'],
+    ] as Array<[string, () => Response, string]>) {
+      calls = [];
+      fake(res);
+      const r = await runChat(input('hi'), { env } as any, () => {});
+      ok(r.error?.code === code && calls.length === 1 && calls[0].host === 'api.groq.com', `${why} is reported (${code}), without calling Gemini`);
+    }
+
+    // Both fail
+    calls = [];
+    fake(() => new Response('{}', { status: 503 }), () => new Response('{"error":{"code":503}}', { status: 503 }));
+    const both = await runChat(input('hi'), { env } as any, () => {});
+    ok(both.error?.code === 'overloaded' && both.reply === '' && calls.length === 5, 'when both are down: a clear error, no made-up reply, and a fixed number of tries');
+    fake(() => new Response('{}', { status: 503 }), () => new Response('{"error":{"code":401}}', { status: 401 }));
+    ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'bad_key', "a refused Gemini key behind a failing Groq is reported as the key problem");
+    fake(() => new Response('{}', { status: 503 }), () => new Response(JSON.stringify({ error: { code: 429, details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } }), { status: 429 }));
+    ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'quota_exhausted', 'Groq down and the Gemini free quota used up: said plainly');
+
+    // Groq stops half way: no switch to Gemini (that would mix two answers); what arrived is kept
+    calls = [];
+    fake(() => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'Let us breathe. ' } }] })}\n\n`)); setTimeout(() => c.error(new Error('reset')), 20); } }), { headers: { 'Content-Type': 'text/event-stream' } }));
+    const half = await runChat(input('hi'), { env } as any, () => {});
+    ok(half.reply.startsWith('Let us breathe') && half.error?.partial && !calls.some(c => c.host.includes('googleapis')), 'a Groq reply cut off half way is kept and marked, and Gemini is not mixed in');
+
+    // The other AI features use the same order and fallback
+    calls = [];
+    fake(() => new Response('{}', { status: 503 }), () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"allowed":true,"reason":"","risk":"none"}' }] } }] })));
+    const mod = await moderate({ text: 'Day 5 sober and proud of it.' }, { env } as any);
+    ok((mod.body as any).ok === true && (mod.body as any).checkedBy === 'ai' && calls.some(c => c.host === 'api.groq.com') && calls.some(c => c.host.includes('googleapis')), 'post checks also go to Groq first and Gemini when Groq is down');
+  } finally {
+    globalThis.fetch = realFetch;
+    [console.error, console.info] = quiet;
+  }
+}
+// Which Supabase project the server uses is visible in /api/health (ID only, never a key)
+ok(supabaseProjectRef(n => (n === 'VITE_SUPABASE_URL' ? ' https://yveydudfixqifxxbfvpr.supabase.co/ ' : undefined)) === 'yveydudfixqifxxbfvpr' && supabaseProjectRef(() => undefined) === null, 'the Supabase project ID is read from the address');
+{
+  const h = health({ env: (n: string) => ({ VITE_SUPABASE_URL: 'https://abc.supabase.co', VITE_SUPABASE_ANON_KEY: 'sb_publishable_secretish', GROQ_API_KEY: 'gk-123', GEMINI_API_KEY: 'gm-456' } as any)[n] } as any).body as any;
+  const text = JSON.stringify(h);
+  ok(h.supabaseProject === 'abc' && h.groq && h.gemini && h.ai.primary === 'groq' && !/sb_publishable|gk-123|gm-456/.test(text), 'health shows the project and which AI providers are on, never a key');
 }
 console.log(`All ${n} unit checks passed`);

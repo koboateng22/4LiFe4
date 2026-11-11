@@ -450,7 +450,7 @@ export default function App() {
             onOpenCalm={() => setIsCalmOpen(true)}
           />
 
-          <div className={cx('flex min-w-0 flex-1 flex-col transition-[padding] duration-300', isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-[272px]')}>
+          <div className="flex min-w-0 flex-1 flex-col lg:pl-24">
             <TopBar
               title={tr(pageTitle)}
               shortTitle={profile.language && profile.language !== 'en' ? undefined : nav.id === 'chat' ? tr("AI Therapy") : nav.id === 'community' ? tr("Village") : undefined}

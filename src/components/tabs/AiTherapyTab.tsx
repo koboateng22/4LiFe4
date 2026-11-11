@@ -2,8 +2,9 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { UserProfile, ChatMessage } from '../../types';
 import { Card, ChoiceCard, Button, IconButton, Modal, Notice, Switch, textareaClass, cx } from '../ui';
 import { Send, Volume2, VolumeX, Shield, Check, Copy, Waves, Lightbulb, Wind, Lock, Mic, Leaf, Square, RotateCcw, Phone, NotebookPen, Trash2, Timer, Flag, X, History } from 'lucide-react';
-import { streamChat } from '../../lib/aiChat';
-import { localiseOfflineReply } from '../../lib/aiFallback';
+import { ChatError, streamChat } from '../../lib/aiChat';
+import { localiseSuggestions } from '../../lib/aiFallback';
+import { ChatFailureNotice } from '../cbt/ChatFailureNotice';
 import { assessRisk, maxRisk, type RiskLevel } from '../../lib/safety';
 import { trapLabel, type ThoughtRecord, type TherapyMode } from '../../lib/cbt';
 import { clearChat, deleteThoughtRecord, listThoughtRecords, loadChat, saveChat, setThoughtShared, type UrgeRatings } from '../../lib/cbtStore';
@@ -191,9 +192,13 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
 
     const userMsg: ChatMessage = { id: 'u_' + Date.now(), sender: 'user', text, timestamp: timeNow() };
     const replyId = 'ai_' + Date.now();
+    // Earlier turns give the AI context (the server keeps the most recent that fit its budget).
+    // A message whose reply failed, and the failure notice, are left out.
+    const failedUser = new Set<string>();
+    messages.forEach((m, i) => m.error && messages[i - 1]?.sender === 'user' && failedUser.add(messages[i - 1].id));
     const history = messages
-      .filter(m => m.id !== 'greeting' && m.text)
-      .slice(-10)
+      .filter(m => m.id !== 'greeting' && m.text && !m.error && !failedUser.has(m.id))
+      .slice(-12)
       .map(m => ({ role: m.sender === 'user' ? ('user' as const) : ('model' as const), content: m.text }));
 
     setMessages(prev => [...prev, userMsg, { id: replyId, sender: 'ai', mode: activeMode, text: '', timestamp: timeNow() }]);
@@ -211,24 +216,35 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
         controller.signal
       );
       raiseRisk(done.risk);
-      // Built-in replies (no AI available) come in English; show them in the app's language
-      const shown = localiseOfflineReply({ text: done.reply, model: done.model, risk: done.risk, mode: activeMode, name: profile.nickname || profile.name || t('friend'), suggestions: done.suggestions });
-      update({ text: shown.text, model: done.model, lang: done.language, suggestedActions: shown.suggestions });
-      speakText(shown.text);
+      if (done.error) {
+        // No AI answer: say what happened (keeping any part of the reply that arrived). Nothing is made up.
+        update({ text: done.reply || '', model: done.model, error: done.error, suggestedActions: undefined });
+      } else {
+        update({ text: done.reply, model: done.model, lang: done.language, suggestedActions: localiseSuggestions(done.suggestions) });
+        speakText(done.reply);
+      }
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         setMessages(prev => prev.map(m => (m.id === replyId ? { ...m, text: m.text ? m.text + ' …' : t('Stopped.') } : m)));
       } else {
-        console.error('Chat error:', err);
-        update({
-          text: t("I couldn't reach the server just now, {name}. While you wait: breathe in for 4 and out for 6, five times. Urges rise and pass like a wave.\n\nIf you're not safe, call 112 or press SOS.", { name: profile.nickname || t('friend') }),
-          suggestedActions: undefined,
-        });
+        update({ error: err instanceof ChatError ? err.failure : { code: 'unknown' }, suggestedActions: undefined });
       }
     } finally {
       setIsLoading(false);
       abortRef.current = null;
     }
+  };
+
+  /** Try a failed message again: the failed reply and its message are replaced, never duplicated */
+  const retryFailed = (failedId: string) => {
+    if (isLoading) return;
+    const i = messages.findIndex(m => m.id === failedId);
+    const original = messages[i - 1];
+    if (i < 1 || original?.sender !== 'user') return;
+    const before = messages.slice(0, i - 1);
+    setMessages(before);
+    // after the state above is applied, send the same words again (failed turns never go in the history)
+    setTimeout(() => handleSendMessage(original.text), 0);
   };
 
   const toggleListening = () => {
@@ -572,6 +588,8 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
                         // Long words and web addresses wrap instead of running out of the bubble
                         'max-w-full px-4 py-3.5 text-base leading-relaxed [overflow-wrap:anywhere] sm:px-[1.125rem]',
                         isUser && 'whitespace-pre-wrap',
+                        // a failed reply with nothing in it shows only the notice below
+                        msg.error && !msg.text && 'hidden',
                         isUser ? 'rounded-2xl rounded-tr-md bg-pri text-[#fff]' : 'rounded-2xl rounded-tl-md border border-line bg-surface text-ink'
                       )}
                       translate={isUser || msg.lang ? 'no' : undefined}
@@ -588,6 +606,10 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
                         ))}
                       {streaming && msg.text && <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-pri align-[-2px]" aria-hidden="true" />}
                     </div>
+                    {msg.error && !streaming && (
+                      // Try again only on the latest message, so nothing after it is lost
+                      <ChatFailureNotice failure={msg.error} onRetry={idx === messages.length - 1 ? () => retryFailed(msg.id) : undefined} busy={isLoading} />
+                    )}
                     {!streaming && (
                       <div className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
                         <span>{msg.timestamp}</span>

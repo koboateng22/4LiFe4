@@ -13,7 +13,7 @@ import { trailerStreamer } from './aiTrailer.ts';
 import { TESTING_QUESTIONS, THINKING_TRAPS, guessTrap, isTrapId, type TherapyMode } from './cbt.ts';
 import { firstAidTopic } from './firstAid.ts';
 import { cleanVideoSearch, isoDurationSeconds, videoCategory, type LibraryVideo } from './videoLibrary.ts';
-import { aiConfig, generateJson, generateText, streamChat, type Env } from './ai.ts';
+import { AiError, aiConfig, generateJson, generateText, streamChat, type AiErrorCode, type AiRun, type Env, type ProviderName } from './ai.ts';
 import {
   CRISIS_SUGGESTIONS,
   FALLBACK_SUGGESTIONS,
@@ -23,11 +23,11 @@ import {
   circleGuidePrompt,
   crisisReply,
   moderationPrompt,
-  offlineReply,
   thoughtRecordPrompt,
   toTurns,
 } from './prompts.ts';
 import { cleanName, clip, replyLanguage } from './text.ts';
+import { supabaseSettings } from './guard.ts';
 
 export interface Ctx {
   env: Env;
@@ -48,7 +48,31 @@ const bad = (error: string, status = 400): Result => ({ status, body: { error } 
  * ===================================================================== */
 export function health(ctx: Ctx): Result {
   const ai = aiConfig(ctx.env);
-  return ok({ ok: true, ai: ai.provider || 'built-in replies', gemini: ai.provider === 'gemini', model: ai.model, youtube: !!youtubeKey(ctx.env) });
+  const on = (name: 'groq' | 'gemini') => ai.providers.find(x => x.name === name);
+  return ok({
+    ok: true,
+    // which provider answers first, which one takes over, and whether each has a key (never the keys)
+    ai: { primary: ai.primary, fallback: ai.fallback, answering: ai.provider || 'none' },
+    groq: !!on('groq'),
+    gemini: !!on('gemini'),
+    models: Object.fromEntries(ai.providers.map(x => [x.name, x.model])),
+    youtube: !!youtubeKey(ctx.env),
+    // Which Supabase project this server signs people in against (the project ID is public: it is in
+    // the app's address list anyway). Compare it with the 4Life project in the Supabase dashboard.
+    supabaseProject: supabaseProjectRef(ctx.env),
+  });
+}
+
+/** "https://abcd1234.supabase.co" → "abcd1234"; null when no Supabase is set (device mode) */
+export function supabaseProjectRef(env: Env): string | null {
+  const url = supabaseSettings(env).url;
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname;
+    return host.endsWith('.supabase.co') ? host.split('.')[0] : host;
+  } catch {
+    return 'invalid URL';
+  }
 }
 
 /* =====================================================================
@@ -72,6 +96,13 @@ export interface ChatDone {
   model: string;
   mode: TherapyMode;
   language?: string;
+  /**
+   * Set when no AI answer could be made. The app shows what happened (and a Try again button)
+   * instead of an answer; nothing is made up. `partial` means part of the reply already arrived.
+   */
+  error?: { code: AiErrorCode; retryAfter?: number; partial?: boolean };
+  /** Which provider answered (groq, or gemini when it took over) */
+  provider?: ProviderName;
 }
 
 /** Checks the request. Returns an error to send, or the cleaned-up input. */
@@ -100,28 +131,44 @@ export function readChat(body: any): { error: Result } | { input: ChatInput } {
 export async function runChat(input: ChatInput, ctx: Ctx, send: (event: 'meta' | 'delta', data: unknown) => void, signal?: AbortSignal): Promise<ChatDone> {
   const ai = aiConfig(ctx.env);
   const language = replyLanguage(input.profile)?.code;
-  const done = (reply: string, suggestions: string[], risk: RiskLevel, model: string): ChatDone => ({
+  const run: AiRun = { usage: {}, failed: [] };
+  // One log line per reply, for monitoring: who answered, what failed first, tokens. Never the person's words or a key.
+  const log = (outcome: string) => {
+    const failed = run.failed.map(f => `${f.provider}:${f.code}${f.status ? `(${f.status})` : ''}`).join(',');
+    const tokens = run.usage.input || run.usage.output ? ` tokens=${run.usage.input ?? '?'}/${run.usage.output ?? '?'}` : '';
+    (outcome === 'ok' ? console.info : console.error)(`[ai] chat ${outcome} by=${run.provider ? `${run.provider}/${run.model}` : 'none'}${failed ? ` failed=${failed}` : ''}${run.failed.length && outcome === 'ok' ? ' (fallback)' : ''}${tokens}`);
+  };
+  const done = (reply: string, suggestions: string[], risk: RiskLevel): ChatDone => ({
     reply,
     suggestions: risk === 'crisis' ? CRISIS_SUGGESTIONS : suggestions.length ? suggestions : FALLBACK_SUGGESTIONS[input.mode],
     risk,
-    model,
+    model: run.model || ai.model,
+    provider: run.provider,
     mode: input.mode,
-    language: model.includes('offline') ? undefined : language,
+    language,
   });
-  const offline = () => {
-    const reply = input.keywordRisk === 'crisis' ? crisisReply(input.name) : offlineReply(input.mode, input.name);
-    send('delta', { text: reply });
-    return done(reply, [], input.keywordRisk, `${ai.model} (offline)`);
+  // No answer could be made: say why. (Emergency options still appear in the app from the keyword check.)
+  const failedWith = (e: AiError, shown = ''): ChatDone => {
+    log(`failed:${e.code}`);
+    return {
+      reply: shown,
+      suggestions: [],
+      risk: input.keywordRisk,
+      model: run.model || ai.model,
+      provider: run.provider,
+      mode: input.mode,
+      error: { code: e.code, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}), ...(shown ? { partial: true } : {}) },
+    };
   };
 
   send('meta', { risk: input.keywordRisk });
-  if (!ai.provider) return offline();
+  if (!ai.provider) return failedWith(new AiError('No AI key is set on the server', 'not_configured'));
 
   const streamer = trailerStreamer();
   let shown = '';
   try {
     const system = chatSystemPrompt(input.profile, input.mode, input.keywordRisk);
-    for await (const chunk of streamChat(ai, system, toTurns(input.history, input.text), signal)) {
+    for await (const chunk of streamChat(ai, system, toTurns(input.history, input.text), signal, run)) {
       // Everything except the hidden last line (suggestions and risk) is sent as it arrives
       const visible = streamer.push(chunk);
       if (visible) {
@@ -131,14 +178,14 @@ export async function runChat(input: ChatInput, ctx: Ctx, send: (event: 'meta' |
     }
     const parsed = streamer.finish();
     if (parsed.rest) send('delta', { text: parsed.rest });
-    if (!parsed.reply) return offline();
-    return done(parsed.reply, parsed.suggestions, maxRisk(input.keywordRisk, parsed.risk), ai.model);
+    if (!parsed.reply) return failedWith(new AiError('The AI sent no answer', 'empty'));
+    log('ok');
+    return done(parsed.reply, parsed.suggestions, maxRisk(input.keywordRisk, parsed.risk));
   } catch (error) {
-    if (signal?.aborted) return done(shown.trim(), [], input.keywordRisk, ai.model);
-    console.error('Chat error:', error);
-    // If part of the reply already reached the person, keep it rather than replacing it
-    if (shown.trim()) return done(shown.trim(), [], input.keywordRisk, ai.model);
-    return offline();
+    if (signal?.aborted) return done(shown.trim(), [], input.keywordRisk);
+    const e = error instanceof AiError ? error : new AiError(String((error as Error)?.message || error).slice(0, 200), 'unknown');
+    // Part of the reply already reached the person: keep it, and say it was cut off
+    return failedWith(e, shown.trim());
   }
 }
 

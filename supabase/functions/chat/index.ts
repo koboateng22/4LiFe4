@@ -6,12 +6,15 @@
  * Response: when stream === true → server-sent events:
  *             event: meta   data: { risk }                 (instant keyword check)
  *             event: delta  data: { text }                 (more of the reply)
- *             event: done   data: { reply, suggestions, risk, model, mode, language }
+ *             event: done   data: { reply, suggestions, risk, model, mode, language, error? }
  *           otherwise → the same "done" object as JSON.
+ *           `error: { code, retryAfter?, partial? }` means no AI answer could be made (no key, key refused,
+ *           rate limit, free quota used up, busy, timeout…); the app shows the reason and Try again.
  *
- * Secrets: GEMINI_API_KEY (or OPENAI_API_KEY), optional GEMINI_MODEL / OPENAI_MODEL,
+ * Secrets: GROQ_API_KEY (answers first) and GEMINI_API_KEY (takes over when Groq can't), optional
+ * GROQ_MODEL / GEMINI_MODEL / PRIMARY_AI_PROVIDER / FALLBACK_AI_PROVIDER,
  * REQUIRE_SIGN_IN (default true here), RATE_LIMIT_PER_MINUTE.
- * Without an AI key, built-in replies are used so the chat still answers.
+ * Without an AI key the chat answers with error not_configured; it never makes up a reply.
  */
 import { corsHeaders } from '../_shared/cors.ts';
 import { ctx, fromResult, json, serveFunction } from '../_shared/http.ts';

@@ -18,8 +18,9 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 
 1. **Create a project** at [supabase.com](https://supabase.com). Pick the region closest to your users. For Ghana that is currently a European region, so check the latency.
 2. **Auth settings** (Authentication → URL Configuration):
-   - Set **Site URL** to where the app runs, e.g. `http://localhost:3000`, and later your real domain.
-   - Add the same address under **Redirect URLs**. Confirmation and password-reset links point there.
+   - Set **Site URL** to the app's **public** address, the one people use (for 4Life: `https://4lifeee.vercel.app`). Never a Vercel address that is behind Vercel Authentication (Deployment Protection): people who open an email link would get a Vercel log-in page instead of 4Life.
+   - Add every address the app runs at under **Redirect URLs**: `https://4lifeee.vercel.app/**`, `http://localhost:3000/**`, and preview addresses if you test sign-in there (e.g. `https://*-<your-team>.vercel.app/**`). The app asks Supabase to send people back to the page they came from; Supabase does that only for addresses on this list, and sends everyone else to the Site URL.
+   - Check: `https://<your-app>/api/health` shows `supabaseProject`. It must be the ID in this project's address (Project Settings → General).
    - Keep **Confirm email** switched on (Authentication → Providers → Email). The app shows a "Check your email" screen after sign-up.
    - **Send real email.** Supabase's built-in sender only reaches your own team and is heavily rate-limited, so people can't confirm their accounts. Using Resend: verify your domain in Resend, then go to Authentication → Emails → SMTP Settings and set host `smtp.resend.com`, port `465`, username `resend`, password = your Resend API key, and a sender address on the verified domain. Saving the key with `supabase secrets set` does **not** do this: those secrets only reach Edge Functions, and no 4Life function sends email.
 3. **Create the database.** Either:
@@ -214,11 +215,11 @@ After changing anything in `server/core` or those `src/lib` files, run `npm run 
 ```bash
 supabase login
 supabase link --project-ref <your-project-ref>
-supabase secrets set GEMINI_API_KEY=… YOUTUBE_API_KEY=…   # YouTube is optional
+supabase secrets set GROQ_API_KEY=… GEMINI_API_KEY=… YOUTUBE_API_KEY=…   # YouTube is optional
 supabase functions deploy                                  # deploys every function
 ```
 
-Optional secrets: `GEMINI_MODEL`, `OPENAI_API_KEY` and `OPENAI_MODEL` (used only when there is no Gemini key), `RATE_LIMIT_PER_MINUTE` (default 30), `REQUIRE_SIGN_IN`. Supabase provides `SUPABASE_URL` and `SUPABASE_ANON_KEY` itself.
+Optional secrets: `GROQ_MODEL`, `GEMINI_MODEL`, `PRIMARY_AI_PROVIDER` / `FALLBACK_AI_PROVIDER` (default groq, then gemini), `RATE_LIMIT_PER_MINUTE` (default 30), `REQUIRE_SIGN_IN`. Supabase provides `SUPABASE_URL` and `SUPABASE_ANON_KEY` itself.
 
 **Sign-in.** `supabase/config.toml` turns off the gateway's JWT check (`verify_jwt = false`) because the app's publishable key (`sb_publishable_…`) is not a JWT. Each function checks the person's access token itself (`server/core/guard.ts`). Unlike the Vercel API, the AI functions **require sign-in by default** because their address is public; set the secret `REQUIRE_SIGN_IN=false` to open them.
 

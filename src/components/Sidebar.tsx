@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ActiveTab, UserProfile } from '../types';
 import { NAV_ITEMS, NAV_GROUP_LABELS, NavGroup } from '../navigation';
 import { Avatar, cx, IconButton } from './ui';
-import { ChevronLeft, ChevronRight, X, Phone, Leaf, Search, Wind } from 'lucide-react';
+import { X, Phone, Leaf, Search, Wind } from 'lucide-react';
 
 import { t } from '../i18n';
 interface SidebarProps {
   activeTab: ActiveTab;
   onNavigate: (tab: ActiveTab) => void;
-  isCollapsed: boolean;
-  onToggleCollapsed: () => void;
+  /** No longer used: the computer menu is a column of buttons now, with nothing to collapse */
+  isCollapsed?: boolean;
+  onToggleCollapsed?: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   profile: UserProfile;
@@ -32,26 +33,25 @@ export const BrandMark: React.FC<{ compact?: boolean }> = ({ compact }) => (
 
 /**
  * The one place for navigation.
- * Desktop: a fixed column that can shrink to icons. Mobile: a drawer opened from the top bar or "More".
+ * Computers (1024 px and wider): a column of floating glass buttons on the left, each with its
+ * name in a label beside it on hover or keyboard focus (and briefly on a press, for touch screens).
+ * Phones and tablets: the same items as a drawer with labelled rows, opened from the top bar or "More".
+ * Styles: .side-rail / .rail-btn / .rail-label in index.css.
  */
-export const Sidebar: React.FC<SidebarProps> = ({
-  activeTab,
-  onNavigate,
-  isCollapsed,
-  onToggleCollapsed,
-  isOpenMobile,
-  onCloseMobile,
-  profile,
-  onOpenSos,
-  onOpenSearch,
-  onOpenCalm,
-}) => {
-  const lang = profile.language;
-  const collapsed = isCollapsed && !isOpenMobile;
-
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, isOpenMobile, onCloseMobile, profile, onOpenSos, onOpenSearch, onOpenCalm }) => {
   const go = (tab: ActiveTab) => {
     onNavigate(tab);
     onCloseMobile();
+  };
+
+  // Touch screens have no hover: a press shows the name for a moment
+  const peekTimer = useRef<number>();
+  const peek = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType !== 'touch') return;
+    const el = e.currentTarget;
+    el.setAttribute('data-peek', '');
+    window.clearTimeout(peekTimer.current);
+    peekTimer.current = window.setTimeout(() => el.removeAttribute('data-peek'), 1200);
   };
 
   const groups: NavGroup[] = ['home', 'support'];
@@ -66,20 +66,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         key={id}
         type="button"
         onClick={() => go(id)}
+        onPointerDown={peek}
         aria-current={active ? 'page' : undefined}
-        title={collapsed ? t(label) : undefined}
+        aria-label={label}
         className={cx(
-          'flex min-h-11 w-full items-center gap-3 rounded-xl text-left text-[0.9375rem] transition-colors cursor-pointer',
-          collapsed ? 'justify-center px-0' : 'px-3',
+          'rail-btn flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-[0.9375rem] transition-colors cursor-pointer',
           active ? 'glass-btn glass-btn-on font-bold text-pri-ink' : 'font-semibold text-ink-2 hover:bg-pri-soft/40 hover:text-ink'
         )}
       >
         <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-        {collapsed ? (
-          <span className="sr-only">{t(label)}</span>
-        ) : (
-          <span className="truncate">{t(label)}</span>
-        )}
+        <span className="rail-label truncate" aria-hidden="true">
+          {label}
+        </span>
       </button>
     );
   };
@@ -95,30 +93,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         id="main-navigation"
         aria-label={t("Main navigation")}
         className={cx(
-          'glass-bar glass-side fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col border-r transition-[transform,width] duration-300 lg:z-30',
-          collapsed ? 'w-20' : 'w-[272px]',
+          'side-rail glass-bar glass-side fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[272px] flex-col border-r transition-transform duration-300 lg:z-30 lg:w-24 lg:items-center lg:py-5',
           isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Brand row */}
-        <div className={cx('flex items-center gap-2 px-4 pb-4 pt-5', collapsed ? 'flex-col' : 'justify-between')}>
-          <button type="button" onClick={() => go('dashboard')} className="rounded-xl cursor-pointer" aria-label={t("4Life home")}>
-            <BrandMark compact={collapsed} />
+        {/* Brand row (on computers: the logo, as the way home) */}
+        <div className="flex items-center justify-between gap-2 px-4 pb-4 pt-5 lg:p-0 lg:pb-6">
+          <button type="button" onClick={() => go('dashboard')} className="rounded-xl cursor-pointer lg:pointer-events-auto" aria-label={t("4Life home")}>
+            <span className="lg:hidden">
+              <BrandMark />
+            </span>
+            <span className="hidden lg:block">
+              <BrandMark compact />
+            </span>
           </button>
           <span className="lg:hidden">
             <IconButton label={t("Close menu")} variant="ghost" onClick={onCloseMobile}>
               <X className="h-5 w-5" />
             </IconButton>
           </span>
-          <span className="hidden lg:block">
-            <IconButton label={collapsed ? t("Expand menu") : t("Collapse menu")} variant="ghost" onClick={onToggleCollapsed}>
-              {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-            </IconButton>
-          </span>
         </div>
 
         {/* Sections */}
-        <nav className="flex-1 overflow-y-auto overscroll-contain px-3" aria-label={t("Sections")}>
+        <nav className="flex-1 overflow-y-auto overscroll-contain px-3 lg:flex lg:flex-none lg:flex-col lg:items-center lg:overflow-visible lg:px-0" aria-label={t("Sections")}>
           {onOpenSearch && (
             <button
               type="button"
@@ -135,23 +132,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const items = NAV_ITEMS.filter(n => n.group === group);
             const heading = NAV_GROUP_LABELS[group];
             return (
-              <div key={group} className="mb-2">
-                {heading &&
-                  (collapsed ? (
-                    <div className="mx-3 my-3 h-px bg-line" aria-hidden="true" />
-                  ) : (
-                    <p className="mx-3 mb-1.5 mt-4 text-xs font-bold text-ink-3">{t(heading)}</p>
-                  ))}
-                <div className="flex flex-col gap-0.5">
-                  {items.map(item => renderNav(item.id))}
-                </div>
+              <div key={group} className="mb-2 lg:mb-0 lg:flex lg:flex-col lg:items-center">
+                {heading && (
+                  <>
+                    <p className="mx-3 mb-1.5 mt-4 text-xs font-bold text-ink-3 lg:hidden">{t(heading)}</p>
+                    {/* on computers a short line separates the groups */}
+                    <div className="mx-auto my-3 hidden h-px w-6 bg-line lg:block" aria-hidden="true" />
+                  </>
+                )}
+                <div className="flex flex-col gap-0.5 lg:items-center lg:gap-2.5">{items.map(item => renderNav(item.id))}</div>
               </div>
             );
           })}
         </nav>
 
         {/* Bottom: settings, profile, and crisis line */}
-        <div className="flex flex-col gap-1 border-t border-line px-3 pb-4 pt-3">
+        <div className="flex flex-col gap-1 border-t border-line px-3 pb-4 pt-3 lg:mt-auto lg:items-center lg:gap-2.5 lg:border-0 lg:p-0">
           {renderNav('profile_settings')}
 
           {onOpenCalm && (
@@ -181,22 +177,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {t("Get help now (SOS)")}
           </button>
 
+          {/* The person (opens Settings): a row in the drawer, a round button on computers */}
           <button
             type="button"
             onClick={() => go('profile_settings')}
-            className={cx(
-              'mt-2 flex items-center gap-3 rounded-xl bg-muted p-3 text-left hover:brightness-95 cursor-pointer',
-              collapsed && 'justify-center p-2'
-            )}
-            title={collapsed ? profile.name : undefined}
+            onPointerDown={peek}
+            aria-label={profile.name || profile.nickname}
+            className="rail-btn mt-2 flex items-center gap-3 rounded-xl bg-muted p-3 text-left hover:brightness-95 cursor-pointer lg:mt-0"
           >
-            <Avatar name={profile.name || profile.nickname} solid size={40} />
-            {!collapsed && (
-              <span className="min-w-0">
-                <span className="block truncate text-[0.9375rem] font-bold text-ink">{profile.name}</span>
-                <span className="block truncate text-xs text-ink-3">{profile.nickname}</span>
-              </span>
-            )}
+            <Avatar name={profile.name || profile.nickname} solid size={36} />
+            <span className="rail-label min-w-0" aria-hidden="true">
+              <span className="block truncate text-[0.9375rem] font-bold text-ink lg:text-sm">{profile.name}</span>
+              <span className="block truncate text-xs text-ink-3 lg:hidden">{profile.nickname}</span>
+            </span>
           </button>
         </div>
       </aside>

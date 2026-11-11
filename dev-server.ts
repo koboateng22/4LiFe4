@@ -10,6 +10,7 @@ import http from "http";
 import path from "path";
 import express from "express";
 import app from "./server/app.js";
+import { aiConfig } from "./server/core/ai.js";
 
 /** Reads "--port 3001" style flags. The last one wins, so `npm run dev -- --port 3001` works. */
 function getArg(flag: string): string | null {
@@ -19,7 +20,7 @@ function getArg(flag: string): string | null {
 // AI Studio dev environment runs an internal proxy on port 8080, so the server must bind to port 3000.
 const PORT = Number(getArg("--port")) || (process.env.PORT && process.env.PORT !== "8080" ? Number(process.env.PORT) : 3000);
 const HOST = getArg("--host") || process.env.HOST || "0.0.0.0";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const AI = aiConfig((name) => process.env[name]);
 
 // Start Server with Vite
 async function startServer() {
@@ -64,9 +65,9 @@ async function startServer() {
     console.log(`4Life Server running on http://${HOST}:${PORT}`);
     console.log(`Open http://localhost:${PORT} in your browser`);
     console.log(
-      process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "MY_GEMINI_API_KEY"
-        ? `Gemini AI: on (${GEMINI_MODEL})`
-        : "Gemini AI: off — add GEMINI_API_KEY to .env.local for real AI replies (built-in replies are used for now)"
+      AI.providers.length
+        ? `AI: ${AI.providers.map((p) => `${p.name} (${p.model})`).join(", then ")}`
+        : "AI: off — add GROQ_API_KEY (and GEMINI_API_KEY as backup) to .env.local; until then the chat says it isn't set up"
     );
   });
 }
