@@ -248,6 +248,13 @@ export default function App() {
   useLocationRequests(profile, isAuthenticated);
   const incident = useIncident(profile, isAuthenticated);
 
+  // Back from an email link or Google sign-in: open the section the person was heading for (a 4Life section only)
+  const nextSection = session.nextSection;
+  useEffect(() => {
+    if (isAuthenticated && !therapist && nextSection) navigate(nextSection);
+  }, [isAuthenticated, therapist, nextSection, navigate]);
+
+
   const handleOnboardingComplete = (_selectedTriage?: TriageCategory, directAction?: string) => {
     setIsOnboarded(true);
     if (directAction === 'chat' || directAction === 'community' || directAction === 'emergency_map') navigate(directAction);

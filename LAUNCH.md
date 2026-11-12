@@ -14,10 +14,11 @@ Work through this before you share the link with real users.
 
 - [ ] Environment variables set for Production and Preview (see README): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GROQ_API_KEY` and `GEMINI_API_KEY` (the AI: Groq first, Gemini as backup), and optionally `YOUTUBE_API_KEY` (first aid and Learn videos), `VIDEO_DAILY_UNITS`, `VITE_AUTH_GOOGLE` / `VITE_AUTH_PHONE` (only after the set-up in SUPABASE.md, section 6), `GROQ_MODEL`, `GEMINI_MODEL`, `PRIMARY_AI_PROVIDER`, `FALLBACK_AI_PROVIDER`, `REQUIRE_SIGN_IN`, `ALLOWED_ORIGINS`, `RATE_LIMIT_PER_MINUTE`.
 - [ ] Supabase: migration `20261106000009_theme_system.sql` applied (the "System default" theme is refused by the database without it).
+- [ ] Supabase: migration `20261112000010_scheduling.sql` applied (therapist services, breaks and days off, real free times for booking, no double-booking). Without it the therapist workspace can't load its services and days off, and clients can't see free times.
 - [ ] Node.js version: leave Project Settings on 24.x (Node 20 no longer deploys). `package.json` asks for 22 or newer, which Vercel maps to 24.
 - [ ] Framework preset shows **Vite** (set in `vercel.json`).
 - [ ] Optional: in **Firewall**, add a rate-limit rule for `/api/chat`. The app's own limit counts per server instance, so a firewall rule is the stronger brake.
-- [ ] Supabase: migrations applied. Authentication → URL Configuration: **Site URL** is the public address (`https://4lifeee.vercel.app`), not a protected Vercel address, and **Redirect URLs** include `https://4lifeee.vercel.app/**` and `http://localhost:3000/**` (needed for confirmation and password-reset emails). See SUPABASE.md, section 1.
+- [ ] Supabase: migrations applied. Authentication → URL Configuration: **Site URL** is the public address (`https://4lifeee.vercel.app`), not a protected Vercel address, and **Redirect URLs** include `https://4lifeee.vercel.app/auth/callback**` and `http://localhost:3000/auth/callback**`. In Vercel, `VITE_APP_URL=https://4lifeee.vercel.app` (needed for confirmation and password-reset emails). See SUPABASE.md, section 1.
 - [ ] Vercel → Settings → Deployment Protection: the public production address must open without a Vercel log-in. `https://<your-app>/api/health` shows the right `supabaseProject`.
 - [ ] Supabase: custom SMTP set under Authentication → Emails (see SUPABASE.md, step 2), then sign up with a new address outside your team and confirm that the email arrives and its link opens the Vercel site.
 
@@ -29,6 +30,7 @@ npm run lint          # type check
 npm run test:unit
 npm run test:i18n     # every language has every text
 npm run test:account-db
+npm run test:schedule-db  # free times, breaks, days off, services, no double-booking
 npm run test:demo-build   # no demo accounts in a production build
 npm audit --omit=dev  # no high or critical
 npm run build

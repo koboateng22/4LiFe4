@@ -11,9 +11,12 @@ import type {
   SessionRequest,
   TherapistData,
   TherapistProfile,
+  TherapyService,
   TherapySession,
+  TimeOffEntry,
   Weekday,
 } from './types';
+import type { Busy, Hours } from '../lib/schedule';
 import { msg } from '../i18n';
 
 /* ---------- Option lists ---------- */
@@ -474,6 +477,25 @@ export const loadTherapistData = (therapist: TherapistProfile): TherapistData =>
 
 export const saveTherapistData = (therapist: TherapistProfile, data: TherapistData) =>
   writeJSON(dataKey(therapist.id), { ...data, seededOn: new Date().toDateString() });
+
+/**
+ * Device mode: what the booking screen needs about a counsellor on this device: their hours, days
+ * off, booked sessions and services. A sample counsellor with no workspace here gets ordinary
+ * weekday hours, so booking can still be tried.
+ */
+export function deviceBooking(therapistId: string): { hours: Hours; timeOff: TimeOffEntry[]; busy: Busy[]; services: TherapyService[] } {
+  const acct = getTherapistAccounts().find(a => a.id === therapistId);
+  const stored = readJSON<Partial<TherapistData> | null>(dataKey(therapistId), null);
+  const hours: Hours = acct
+    ? { days: acct.days, startTime: acct.startTime, endTime: acct.endTime, sessionLength: acct.sessionLength, breakStart: acct.breakStart, breakEnd: acct.breakEnd }
+    : { days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], startTime: '09:00', endTime: '17:00', sessionLength: 50 };
+  return {
+    hours,
+    timeOff: stored?.timeOff || [],
+    busy: (stored?.sessions || []).filter(x => x.status === 'scheduled' || x.status === 'in_progress').map(x => ({ start: x.start, durationMin: x.durationMin })),
+    services: (stored?.services || []).filter(x => x.active),
+  };
+}
 
 /** Requests made from the client app (Book a counselor) addressed to this therapist. */
 export const getSharedRequests = (therapistId: string): SessionRequest[] =>

@@ -3,6 +3,7 @@
  * Only used when isRemote is true. Row Level Security decides what comes back:
  * a therapist only ever receives their own linked clients' shared data.
  */
+import { authRedirectUrl } from '../authRedirect';
 import { asThemePref, type ThemePref } from '../theme';
 import { db } from '../supabase';
 import type { ThoughtRecord } from '../cbt';
@@ -14,6 +15,8 @@ import type {
   SessionNote,
   SessionRequest,
   TherapistData,
+  TherapyService,
+  TimeOffEntry,
   TherapistProfile,
   TherapySession,
 } from '../../therapist/types';
@@ -26,7 +29,7 @@ export async function signUpTherapist(email: string, password: string, t: Omit<T
     email: email.trim().toLowerCase(),
     password,
     options: {
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: authRedirectUrl(),
       data: {
         role: 'therapist',
         nickname: (t.name.split(' ')[0] + '_' + Math.random().toString(36).slice(2, 6)).toLowerCase(),
@@ -91,6 +94,8 @@ export async function loadTherapistProfile(id: string): Promise<TherapistProfile
     startTime: String(t.start_time).slice(0, 5),
     endTime: String(t.end_time).slice(0, 5),
     sessionLength: t.session_length,
+    breakStart: t.break_start ? String(t.break_start).slice(0, 5) : null,
+    breakEnd: t.break_end ? String(t.break_end).slice(0, 5) : null,
     feeGHS: Number(t.fee_ghs),
     slidingScale: t.sliding_scale,
     acceptingClients: t.accepting_clients,
@@ -113,6 +118,8 @@ const THERAPIST_COLUMNS: Partial<Record<keyof TherapistProfile, string>> = {
   startTime: 'start_time',
   endTime: 'end_time',
   sessionLength: 'session_length',
+  breakStart: 'break_start',
+  breakEnd: 'break_end',
   feeGHS: 'fee_ghs',
   slidingScale: 'sliding_scale',
   acceptingClients: 'accepting_clients',
@@ -177,6 +184,7 @@ const toSession = (s: any, note?: any): TherapySession => ({
   status: s.status,
   topic: s.topic || undefined,
   startedAt: s.started_at || undefined,
+  serviceId: s.service_id || undefined,
   note: note ? toNote(note) : undefined,
 });
 
@@ -192,6 +200,7 @@ const toRequest = (r: any): SessionRequest => ({
   sharesCheckins: r.shares_checkins,
   createdAt: r.created_at,
   status: r.status === 'withdrawn' ? 'declined' : r.status,
+  serviceId: r.service_id || undefined,
   snapshot: r.snapshot ? { streakDays: r.snapshot.streak_days, mood: r.snapshot.mood || [], craving: r.snapshot.craving || [] } : undefined,
 });
 
@@ -200,14 +209,19 @@ export async function loadTherapistData(therapistId: string): Promise<TherapistD
   const since = new Date();
   since.setDate(since.getDate() - 13);
 
-  const [links, sessions, notes, requests, escalations] = await Promise.all([
+  const [links, sessions, notes, requests, escalations, services, timeOff] = await Promise.all([
     db().from('care_links').select('*').eq('therapist_id', therapistId),
     db().from('sessions').select('*').eq('therapist_id', therapistId).order('starts_at'),
     db().from('session_notes').select('*').eq('therapist_id', therapistId),
     db().from('session_requests').select('*').eq('therapist_id', therapistId).order('created_at', { ascending: false }).limit(100),
     db().from('escalations').select('*').eq('therapist_id', therapistId).order('created_at'),
+    db().from('therapist_services').select('*').eq('therapist_id', therapistId).order('sort').order('created_at'),
+    db().from('therapist_time_off').select('*').eq('therapist_id', therapistId).order('starts_on'),
   ]);
   for (const r of [links, sessions, notes, requests, escalations]) if (r.error) throw r.error;
+  // Services and days off come from migration 0010. Until it is applied the rest of the workspace still loads.
+  const missing = (e: any) => !!e && (e.code === '42P01' || e.code === 'PGRST205' || /does not exist|could not find the table/i.test(e.message || ''));
+  for (const r of [services, timeOff]) if (r.error && !missing(r.error)) throw r.error;
 
   const clientIds = (links.data || []).map((l: any) => l.client_id);
   let profiles: any[] = [], checkins: any[] = [], goals: any[] = [], homework: any[] = [], plans: any[] = [], privates: any[] = [], sos: any[] = [], thoughts: any[] = [];
@@ -276,7 +290,48 @@ export async function loadTherapistData(therapistId: string): Promise<TherapistD
     sessions: (sessions.data || []).map((s: any) => toSession(s, notesBySession.get(s.id))),
     requests: (requests.data || []).map(toRequest),
     handledShared: [],
+    services: (services.data || []).map(toService),
+    timeOff: (timeOff.data || []).map((o: any): TimeOffEntry => ({ id: o.id, startsOn: o.starts_on, endsOn: o.ends_on, note: o.note || '' })),
   };
+}
+
+const toService = (s: any): TherapyService => ({
+  id: s.id,
+  name: s.name,
+  description: s.description || '',
+  durationMin: s.duration_min,
+  feeGHS: Number(s.fee_ghs),
+  formats: s.formats || [],
+  active: !!s.active,
+});
+
+/* ---------- Services and days off (RLS: only the therapist's own) ---------- */
+
+export async function saveService(therapistId: string, svc: TherapyService) {
+  check(
+    await db().from('therapist_services').upsert({
+      id: svc.id,
+      therapist_id: therapistId,
+      name: svc.name.trim(),
+      description: svc.description.trim(),
+      duration_min: svc.durationMin,
+      fee_ghs: svc.feeGHS,
+      formats: svc.formats,
+      active: svc.active,
+    })
+  );
+}
+
+export async function deleteService(id: string) {
+  check(await db().from('therapist_services').delete().eq('id', id));
+}
+
+export async function addTimeOff(therapistId: string, o: TimeOffEntry) {
+  check(await db().from('therapist_time_off').insert({ id: o.id, therapist_id: therapistId, starts_on: o.startsOn, ends_on: o.endsOn, note: o.note.trim() }));
+}
+
+export async function removeTimeOff(id: string) {
+  check(await db().from('therapist_time_off').delete().eq('id', id));
 }
 
 const rowToThought = (r: any): ThoughtRecord => ({
@@ -395,6 +450,9 @@ export async function updateSession(sessionId: string, patch: Partial<TherapySes
   if (patch.status) row.status = patch.status;
   if (patch.startedAt) row.started_at = patch.startedAt;
   if ('topic' in patch) row.topic = patch.topic || null;
+  // Moving a session: the database refuses a time that overlaps another session
+  if (patch.start) row.starts_at = patch.start;
+  if (patch.durationMin) row.duration_min = patch.durationMin;
   if (patch.status === 'completed') row.ended_at = new Date().toISOString();
   if (Object.keys(row).length) check(await db().from('sessions').update(row).eq('id', sessionId));
   // Drafts only — signing goes through signSessionNote()

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Clock, Inbox, X } from 'lucide-react';
+import { BriefcaseMedical, Check, Clock, Inbox, X } from 'lucide-react';
 import { Avatar, Badge, Button, Card, Field, Modal, Notice, Segmented, inputClass } from '../../components/ui';
 import type { SessionRequest, TherapistProfile } from '../types';
 import type { TherapistStore } from '../useTherapistStore';
 import type { TherapistNav } from '../TherapistApp';
 import { FORMAT_LABEL, ago, fmtDay, fmtTime, focusLabel, toLocalInput } from '../data';
 import { FormatIcon, SharingNote, avg } from '../parts';
+import { clash, isWorkingTime } from '../../lib/schedule';
 
 import { t, T, msg } from '../../i18n';
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
 
 const DECLINE_REASONS = [msg('My schedule is full right now'), msg('This is outside my area of practice'), msg('I may not be the right fit'), msg('Other reason')];
 
-export const RequestsTab: React.FC<Props> = ({ store, nav }) => {
+export const RequestsTab: React.FC<Props> = ({ therapist, store, nav }) => {
   const [view, setView] = useState<'new' | 'done'>('new');
   const [accepting, setAccepting] = useState<SessionRequest | null>(null);
   const [declining, setDeclining] = useState<SessionRequest | null>(null);
@@ -27,6 +28,18 @@ export const RequestsTab: React.FC<Props> = ({ store, nav }) => {
   const fresh = store.requests.filter(r => r.status === 'new');
   const handled = store.requests.filter(r => r.status !== 'new');
   const list = view === 'new' ? fresh : handled;
+
+  /** The service asked for (name and length), if any */
+  const serviceOf = (r: SessionRequest) => {
+    const sv = (store.data.services || []).find(x => x.id === r.serviceId);
+    return r.serviceId || r.serviceName ? { name: sv?.name || r.serviceName || '', min: sv?.durationMin || r.serviceMin || therapist.sessionLength } : null;
+  };
+  const acceptLen = accepting ? serviceOf(accepting)?.min || therapist.sessionLength : therapist.sessionLength;
+  const acceptAt = new Date(when);
+  const acceptValid = !isNaN(acceptAt.getTime());
+  const acceptClash =
+    acceptValid && !!clash(acceptAt.toISOString(), acceptLen, store.data.sessions.filter(x => x.status === 'scheduled' || x.status === 'in_progress'));
+  const acceptOutside = acceptValid && !isWorkingTime(acceptAt, therapist, store.data.timeOff || []);
 
   const openAccept = (r: SessionRequest) => {
     setWhen(toLocalInput(r.preferredTime));
@@ -91,6 +104,12 @@ export const RequestsTab: React.FC<Props> = ({ store, nav }) => {
                       <FormatIcon format={r.format} className="h-4 w-4 text-ink-3" />
                       {FORMAT_LABEL[r.format]}
                     </span>
+                    {serviceOf(r)?.name && (
+                      <span className="inline-flex items-center gap-2">
+                        <BriefcaseMedical className="h-4 w-4 text-ink-3" aria-hidden="true" />
+                        <strong className="text-ink">{serviceOf(r)!.name}</strong> · {t("{n} min", { n: serviceOf(r)!.min })}
+                      </span>
+                    )}
                     <SharingNote shares={r.sharesCheckins} />
                   </div>
 
@@ -130,8 +149,9 @@ export const RequestsTab: React.FC<Props> = ({ store, nav }) => {
               {t("Cancel")}
             </Button>
             <Button
+              disabled={!acceptValid || acceptClash}
               onClick={() => {
-                if (!accepting) return;
+                if (!accepting || !acceptValid || acceptClash) return;
                 store.resolveRequest(accepting, 'accepted', new Date(when).toISOString());
                 setDone(t('{name} is now your client. Their first session is booked for {day}, {time}.', { name: accepting.clientNickname, day: fmtDay(new Date(when).toISOString()), time: fmtTime(new Date(when).toISOString()) }));
                 setAccepting(null);
@@ -147,6 +167,12 @@ export const RequestsTab: React.FC<Props> = ({ store, nav }) => {
           <Field label={t("First session")} htmlFor="ac-when">
             <input id="ac-when" type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} className={inputClass} />
           </Field>
+          <p className="m-0 text-sm text-ink-3">{t("Length: {n} minutes", { n: acceptLen })}</p>
+          {acceptClash ? (
+            <Notice tone="danger">{t("That time overlaps another session. Please choose another time.")}</Notice>
+          ) : (
+            acceptOutside && <Notice tone="warn">{t("This is outside your usual hours.")} {t("You can still book it.")}</Notice>
+          )}
         </div>
       </Modal>
 

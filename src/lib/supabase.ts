@@ -84,6 +84,8 @@ export function friendlyError(e: unknown): string {
   if (/invalid phone|phone.*invalid|unsupported phone/i.test(raw)) return msg('Please check the phone number, including the country.');
   // Google sign-in
   if (/provider is not enabled|unsupported provider/i.test(raw)) return msg('This way of signing in is not switched on yet. Please use your email and password.');
+  if (/overlaps another session/i.test(raw)) return msg('That time overlaps another session. Please choose another time.');
+  if (/not offered by this therapist/i.test(raw)) return msg('That service is not available any more. Please choose another.');
   if (/rate limit/i.test(raw)) return msg('Too many tries. Please wait a minute and try again.');
   if (/Failed to fetch|NetworkError|network/i.test(raw)) return msg('Could not reach the server. Check your internet connection.');
   if (/licen[cs]e/i.test(raw)) return msg('Please add your licensing body and licence number.');

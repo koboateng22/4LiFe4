@@ -1,12 +1,14 @@
 import { newId } from '../../lib/supabase';
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CalendarPlus } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, XCircle } from 'lucide-react';
 import { Button, Card, Field, Modal, Segmented, inputClass } from '../../components/ui';
-import type { SessionFormat, SessionType, TherapistProfile, TherapySession, Weekday } from '../types';
+import type { SessionFormat, SessionType, TherapistProfile, TherapySession } from '../types';
 import type { TherapistStore } from '../useTherapistStore';
 import type { TherapistNav } from '../TherapistApp';
-import { FORMAT_LABEL, SESSION_TYPE_LABEL, WEEKDAYS, at, fmtDateLong, toLocalInput } from '../data';
+import { FORMAT_LABEL, SESSION_TYPE_LABEL, at, fmtDateLong, toLocalInput } from '../data';
 import { SessionRow, needsNote } from '../parts';
+import { ScheduleCalendar } from './ScheduleCalendar';
+import { clash as findClash, isWorkingTime } from '../../lib/schedule';
 
 import { t as tr, msg } from '../../i18n';
 interface Props {
@@ -15,7 +17,7 @@ interface Props {
   nav: TherapistNav;
 }
 
-type View = 'upcoming' | 'past' | 'notes';
+type View = 'calendar' | 'upcoming' | 'past' | 'notes';
 
 const groupByDay = (list: TherapySession[]) => {
   const groups: Array<{ day: string; items: TherapySession[] }> = [];
@@ -29,8 +31,13 @@ const groupByDay = (list: TherapySession[]) => {
 };
 
 export const SessionsTab: React.FC<Props> = ({ therapist, store, nav }) => {
-  const [view, setView] = useState<View>('upcoming');
+  const [view, setView] = useState<View>('calendar');
   const [bookOpen, setBookOpen] = useState(false);
+  const [bookAt, setBookAt] = useState<string | undefined>();
+  const book = (startIso?: string) => {
+    setBookAt(startIso);
+    setBookOpen(true);
+  };
   const { sessions, clients } = store.data;
   const clientOf = (id: string) => clients.find(c => c.id === id);
 
@@ -56,17 +63,20 @@ export const SessionsTab: React.FC<Props> = ({ therapist, store, nav }) => {
           value={view}
           onChange={setView}
           options={[
+            { value: 'calendar', label: msg('Calendar') },
             { value: 'upcoming', label: tr('Coming up ({count})', { count: upcoming.length }) },
             { value: 'past', label: msg('Past') },
             { value: 'notes', label: tr('Notes to finish ({count})', { count: notes.length }) },
           ]}
         />
-        <Button icon={<CalendarPlus className="h-5 w-5" />} onClick={() => setBookOpen(true)} disabled={clients.length === 0}>
+        <Button icon={<CalendarPlus className="h-5 w-5" />} onClick={() => book()} disabled={clients.length === 0}>
           {tr("Book a session")}
         </Button>
       </div>
 
-      {list.length === 0 ? (
+      {view === 'calendar' ? (
+        <ScheduleCalendar therapist={therapist} store={store} nav={nav} onBook={iso => clients.length > 0 && book(iso)} />
+      ) : list.length === 0 ? (
         <Card className="flex flex-col items-start gap-2">
           <p className="m-0 text-base font-bold text-ink">
             {view === 'notes' ? tr("All your notes are finished.") : view === 'past' ? tr("No past sessions yet.") : tr("No sessions booked.")}
@@ -88,19 +98,26 @@ export const SessionsTab: React.FC<Props> = ({ therapist, store, nav }) => {
         ))
       )}
 
-      <BookSessionModal isOpen={bookOpen} onClose={() => setBookOpen(false)} therapist={therapist} store={store} />
+      <BookSessionModal isOpen={bookOpen} onClose={() => setBookOpen(false)} therapist={therapist} store={store} startAt={bookAt} />
     </div>
   );
 };
 
-/** Book a session for an existing client. Warns (but allows) times outside your hours or overlapping another session. */
+/**
+ * Book a session for an existing client. Warns (but allows) a time outside your hours; a time that
+ * overlaps another session can't be booked (the database refuses it too).
+ */
 export const BookSessionModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   therapist: TherapistProfile;
   store: TherapistStore;
   clientId?: string;
-}> = ({ isOpen, onClose, therapist, store, clientId }) => {
+  /** Start here (from a click on the calendar) */
+  startAt?: string;
+}> = ({ isOpen, onClose, therapist, store, clientId, startAt }) => {
+  const services = (store.data.services || []).filter(x => x.active);
+  const [serviceId, setServiceId] = useState('');
   const active = store.data.clients.filter(c => c.status !== 'discharged');
   const [client, setClient] = useState(clientId || active[0]?.id || '');
   const [when, setWhen] = useState(toLocalInput(at(1, Number(therapist.startTime.split(':')[0]) || 10)));
@@ -112,28 +129,31 @@ export const BookSessionModal: React.FC<{
   React.useEffect(() => {
     if (isOpen && clientId) setClient(clientId);
   }, [isOpen, clientId]);
+  React.useEffect(() => {
+    if (isOpen && startAt) setWhen(toLocalInput(startAt));
+  }, [isOpen, startAt]);
 
-  const warnings = useMemo(() => {
+  const chooseService = (id: string) => {
+    setServiceId(id);
+    const sv = services.find(x => x.id === id);
+    if (sv) {
+      setLength(sv.durationMin);
+      if (!sv.formats.includes(format)) setFormat(sv.formats[0]);
+    }
+  };
+
+  const { warnings, overlap } = useMemo(() => {
     const out: string[] = [];
     const d = new Date(when);
-    if (isNaN(d.getTime())) return out;
-    const day = WEEKDAYS[(d.getDay() + 6) % 7] as Weekday;
-    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    if (!therapist.days.includes(day) || hm < therapist.startTime || hm >= therapist.endTime) out.push(tr('This is outside your usual hours.'));
-    const start = d.getTime();
-    const end = start + length * 60000;
-    const clash = store.data.sessions.find(s => {
-      if (s.status === 'cancelled') return false;
-      const a = new Date(s.start).getTime();
-      return start < a + s.durationMin * 60000 && end > a;
-    });
-    if (clash) out.push(tr('This overlaps another session.'));
-    if (start < Date.now()) out.push(tr('This time is in the past.'));
-    return out;
-  }, [when, length, store.data.sessions, therapist]);
+    if (isNaN(d.getTime())) return { warnings: out, overlap: false };
+    if (!isWorkingTime(d, therapist, store.data.timeOff || [])) out.push(tr('This is outside your usual hours.'));
+    if (d.getTime() < Date.now()) out.push(tr('This time is in the past.'));
+    const busy = store.data.sessions.filter(s => s.status === 'scheduled' || s.status === 'in_progress');
+    return { warnings: out, overlap: !!findClash(d.toISOString(), length, busy) };
+  }, [when, length, store.data.sessions, store.data.timeOff, therapist]);
 
   const save = () => {
-    if (!client) return;
+    if (!client || overlap) return;
     store.addSession({
       id: newId(),
       clientId: client,
@@ -143,6 +163,7 @@ export const BookSessionModal: React.FC<{
       type,
       status: 'scheduled',
       topic: topic.trim() || undefined,
+      serviceId: serviceId || undefined,
     });
     onClose();
   };
@@ -158,7 +179,7 @@ export const BookSessionModal: React.FC<{
           <Button variant="ghost" onClick={onClose}>
             {tr("Cancel")}
           </Button>
-          <Button onClick={save} disabled={!client}>
+          <Button onClick={save} disabled={!client || overlap}>
             {tr("Book session")}
           </Button>
         </div>
@@ -177,16 +198,34 @@ export const BookSessionModal: React.FC<{
         <Field label={tr("Date and time")} htmlFor="bk-when">
           <input id="bk-when" type="datetime-local" value={when} onChange={e => setWhen(e.target.value)} className={inputClass} />
         </Field>
-        {warnings.length > 0 && (
+        {overlap && (
+          <div className="flex items-start gap-2.5 rounded-xl bg-danger-soft px-4 py-3 text-[0.9375rem] text-danger-text" role="alert">
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <span>{tr("That time overlaps another session. Please choose another time.")}</span>
+          </div>
+        )}
+        {!overlap && warnings.length > 0 && (
           <div className="flex items-start gap-2.5 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn" role="status">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
             <span>{warnings.join(' ')} {tr("You can still book it.")}</span>
           </div>
         )}
+        {services.length > 0 && (
+          <Field label={tr("Service")} htmlFor="bk-svc" optional>
+            <select id="bk-svc" value={serviceId} onChange={e => chooseService(e.target.value)} className={inputClass}>
+              <option value="">{tr("No particular service")}</option>
+              {services.map(sv => (
+                <option key={sv.id} value={sv.id}>
+                  {sv.name} · {tr("{n} min", { n: sv.durationMin })}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Field label={tr("Length")} htmlFor="bk-len">
             <select id="bk-len" value={length} onChange={e => setLength(Number(e.target.value))} className={inputClass}>
-              {[30, 50, 60, 90].map(m => (
+              {[...new Set([30, 50, 60, 90, length])].sort((a, b) => a - b).map(m => (
                 <option key={m} value={m}>
                   {tr("{m} minutes", { m })}
                 </option>

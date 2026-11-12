@@ -39,6 +39,9 @@ export interface TherapistProfile {
   startTime: string; // '09:00'
   endTime: string; // '17:00'
   sessionLength: number; // minutes
+  /** A daily break, e.g. '13:00'–'14:00' (both or neither) */
+  breakStart?: string | null;
+  breakEnd?: string | null;
   feeGHS: number;
   slidingScale: boolean;
   acceptingClients: boolean;
@@ -121,8 +124,30 @@ export interface SessionNote {
   signedAt?: string; // set when the note is finished
 }
 
+/** Something a therapist offers clients: a kind of session with its length, fee and formats. */
+export interface TherapyService {
+  id: string;
+  name: string;
+  description: string;
+  durationMin: number;
+  feeGHS: number;
+  formats: SessionFormat[];
+  /** Shown to clients when booking */
+  active: boolean;
+}
+
+/** Days with no bookings (holidays, training), from and to inclusive, as YYYY-MM-DD */
+export interface TimeOffEntry {
+  id: string;
+  startsOn: string;
+  endsOn: string;
+  note: string;
+}
+
 export interface TherapySession {
   id: string;
+  /** The service booked, when there is one */
+  serviceId?: string;
   clientId: string;
   start: string; // ISO
   durationMin: number;
@@ -147,6 +172,11 @@ export interface SessionRequest {
   sharesCheckins: boolean;
   createdAt: string; // ISO
   status: 'new' | 'accepted' | 'declined';
+  /** The service asked for, if the counsellor offers services */
+  serviceId?: string;
+  /** Its name and length, kept with the request on this device (Supabase mode looks it up) */
+  serviceName?: string;
+  serviceMin?: number;
   /** Optional snapshot of the client's recent check-ins, only when they agreed to share. */
   snapshot?: { streakDays: number; mood: Array<number | null>; craving: Array<number | null> };
 }
@@ -159,6 +189,8 @@ export interface TherapistData {
   handledShared: string[];
   /** Ids of SOS events from the client app already added to records */
   handledSos?: string[];
+  services?: TherapyService[];
+  timeOff?: TimeOffEntry[];
 }
 
 /** Sent from the client app when someone presses SOS (stored on this device in the prototype). */
@@ -169,4 +201,4 @@ export interface SosEvent {
   location?: ClientLocation;
 }
 
-export type TherapistTab = 'today' | 'safety' | 'sessions' | 'clients' | 'requests' | 'availability' | 'resources' | 'profile';
+export type TherapistTab = 'today' | 'safety' | 'sessions' | 'clients' | 'requests' | 'availability' | 'services' | 'resources' | 'profile';

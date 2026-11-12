@@ -1,4 +1,5 @@
 import { markWelcomePending } from '../WelcomeTour';
+import { authRedirectUrl } from '../../lib/authRedirect';
 import React, { useState } from 'react';
 import type { ThemePref } from '../../lib/theme';
 import { DEMO_ENABLED } from '../../lib/demo';
@@ -592,7 +593,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         setForgotSuccess(tr('Please enter the email address you signed up with.'));
         return;
       }
-      const { error } = await db().auth.resetPasswordForEmail(emailToReset, { redirectTo: window.location.origin });
+      const { error } = await db().auth.resetPasswordForEmail(emailToReset, { redirectTo: authRedirectUrl() });
       setForgotSuccess(
         error ? friendlyError(error) : tr('If an account exists for {email}, we have sent a link to set a new password. Check your email.', { email: emailToReset })
       );

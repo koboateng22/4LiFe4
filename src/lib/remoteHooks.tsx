@@ -4,6 +4,7 @@
  * requests during a crisis, and setting a new password from a reset link.
  * Each one does nothing in device mode.
  */
+import { leaveCallback, readCallback } from './authRedirect';
 import React, { useEffect, useRef, useState } from 'react';
 import type { UserProfile } from '../types';
 import type { TherapistProfile } from '../therapist/types';
@@ -28,6 +29,8 @@ export function useRemoteSession(opts: {
   const [checking, setChecking] = useState(isRemote);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [linkError] = useState(() => (isRemote ? emailLinkError(window.location.hash, window.location.search) : ''));
+  // Arriving back from an email link or Google: the section to open once signed in (see lib/authRedirect.ts)
+  const [callback] = useState(() => (typeof window !== 'undefined' ? readCallback() : { isCallback: false, next: null }));
   const ref = useRef(opts);
   ref.current = opts;
 
@@ -36,10 +39,12 @@ export function useRemoteSession(opts: {
     let alive = true;
     // A slow connection must not hold back the app (and its emergency help). A restore that finishes later still signs in.
     const stopWaiting = setTimeout(() => setChecking(false), RESTORE_WAIT_MS);
-    if (linkError) window.history.replaceState(null, '', window.location.pathname);
+    if (linkError) window.history.replaceState(null, '', callback.isCallback ? '/' : window.location.pathname);
     (async () => {
       try {
+        // supabase-js has already read the sign-in from the link (detectSessionInUrl) before this resolves
         const user = await clientApi.getSignedInUser();
+        if (callback.isCallback) leaveCallback();
         if (!user || !alive) return;
         if (user.role === 'therapist') ref.current.onTherapist(await loadTherapistProfile(user.id));
         else ref.current.onClient(await clientApi.loadClientProfile(user.id, ref.current.base));
@@ -60,7 +65,7 @@ export function useRemoteSession(opts: {
     };
   }, []);
 
-  return { checking, linkError, passwordRecovery, closePasswordRecovery: () => setPasswordRecovery(false) };
+  return { checking, linkError, passwordRecovery, closePasswordRecovery: () => setPasswordRecovery(false), nextSection: callback.next };
 }
 
 /** Save the client's profile and support contacts a moment after they change. */

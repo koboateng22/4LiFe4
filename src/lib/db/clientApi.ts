@@ -2,10 +2,11 @@
  * Everything the client (person in recovery) app reads and writes in Supabase.
  * Only used when isRemote is true.
  */
+import { authRedirectUrl } from '../authRedirect';
 import { asThemePref } from '../theme';
 import { db } from '../supabase';
 import type { CounselorMatch, UserContact, UserProfile } from '../../types';
-import type { ClientLocation, SessionFormat } from '../../therapist/types';
+import type { ClientLocation, SessionFormat, TherapyService } from '../../therapist/types';
 import { hasOpenAlert } from '../incident';
 import { focusLabel } from '../../therapist/data';
 import { parseAge } from '../age';
@@ -112,7 +113,7 @@ export async function signIn(email: string, password: string) {
 export async function signInWithGoogle() {
   const { error } = await db().auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/`, queryParams: { prompt: 'select_account' } },
+    options: { redirectTo: authRedirectUrl(), queryParams: { prompt: 'select_account' } },
   });
   if (error) throw error;
 }
@@ -139,7 +140,7 @@ export async function resendConfirmation(email: string) {
   const { error } = await db().auth.resend({
     type: 'signup',
     email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: window.location.origin },
+    options: { emailRedirectTo: authRedirectUrl() },
   });
   if (error) throw error;
 }
@@ -158,7 +159,7 @@ export async function signUpClient(
     email: email.trim().toLowerCase(),
     password,
     options: {
-      emailRedirectTo: window.location.origin,
+      emailRedirectTo: authRedirectUrl(),
       data: {
         role: 'client',
         display_name: details.name,
@@ -266,6 +267,37 @@ export async function listCounsellors(): Promise<CounselorMatch[]> {
   }));
 }
 
+/** The services a counsellor offers now (only active ones are visible to clients) */
+export async function listServices(therapistId: string): Promise<TherapyService[]> {
+  const { data, error } = await db()
+    .from('therapist_services')
+    .select('id,name,description,duration_min,fee_ghs,formats,active')
+    .eq('therapist_id', therapistId)
+    .eq('active', true)
+    .order('sort')
+    .order('created_at');
+  if (error) throw error;
+  return (data || []).map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description || '',
+    durationMin: s.duration_min,
+    feeGHS: Number(s.fee_ghs),
+    formats: s.formats || [],
+    active: true,
+  }));
+}
+
+/**
+ * The times this counsellor is really free in the next two weeks, worked out by the database from
+ * their hours, break, days off and booked sessions (whose sessions they are is never revealed).
+ */
+export async function freeTimes(therapistId: string, durationMin?: number): Promise<string[]> {
+  const { data, error } = await db().rpc('therapist_free_slots', { p_therapist: therapistId, p_days: 14, p_duration: durationMin ?? null });
+  if (error) throw error;
+  return ((data as unknown as string[]) || []).map(x => new Date(x).toISOString());
+}
+
 export async function requestSession(args: {
   therapistId: string;
   preferredTime: string;
@@ -273,9 +305,11 @@ export async function requestSession(args: {
   message: string;
   sharesCheckins: boolean;
   focus: string;
+  serviceId?: string | null;
 }) {
   const { error } = await db().from('session_requests').insert({
     therapist_id: args.therapistId,
+    ...(args.serviceId ? { service_id: args.serviceId } : {}),
     preferred_time: args.preferredTime,
     format: args.format,
     message: args.message.slice(0, 600),

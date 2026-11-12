@@ -3,7 +3,7 @@ import { LivingBackground } from '../components/LivingBackground';
 import { useMovingBackground, useScrolled } from '../lib/motion';
 import { CommandPalette, PaletteTrigger, usePaletteShortcut, type PaletteItem } from '../components/CommandPalette';
 import { RibbonLoader } from '../components/RibbonMark';
-import { Phone, Sparkles, UserRound, Search, Palette } from 'lucide-react';
+import { Phone, Sparkles, UserRound, Search, Palette, BriefcaseMedical } from 'lucide-react';
 import {
   CalendarDays, Clock, Home, Inbox, LifeBuoy, LogOut, Menu, Moon, MoreHorizontal, Sun, UserCog, Users, X, Leaf, ShieldAlert, Map as MapIcon, Siren, ArrowRight,
 } from 'lucide-react';
@@ -18,6 +18,7 @@ import { SessionsTab } from './tabs/SessionsTab';
 import { ClientsTab } from './tabs/ClientsTab';
 import { RequestsTab } from './tabs/RequestsTab';
 import { AvailabilityTab } from './tabs/AvailabilityTab';
+import { ServicesTab } from './tabs/ServicesTab';
 import { ResourcesTab } from './tabs/ResourcesTab';
 import { TherapistProfileTab } from './tabs/TherapistProfileTab';
 import { SessionRoom } from './SessionRoom';
@@ -44,6 +45,7 @@ const NAV: NavDef[] = [
   { id: 'clients', label: msg('Clients'), short: msg('Clients'), subtitle: msg('The people you are supporting'), icon: Users, group: 'main' },
   { id: 'requests', label: msg('Requests'), short: msg('Requests'), subtitle: msg('People asking to work with you'), icon: Inbox, group: 'main' },
   { id: 'availability', label: msg('Availability'), short: msg('Hours'), subtitle: msg('When clients can book you'), icon: Clock, group: 'practice' },
+  { id: 'services', label: msg('Services'), short: msg('Services'), subtitle: msg('What you offer, how long, and the price'), icon: BriefcaseMedical, group: 'practice' },
   { id: 'resources', label: msg('Crisis and resources'), short: msg('Resources'), subtitle: msg('Crisis steps, worksheets and referrals'), icon: LifeBuoy, group: 'practice' },
   { id: 'profile', label: msg('Profile and settings'), short: msg('Profile'), subtitle: msg('What clients see, and your account'), icon: UserCog, group: 'account' },
 ];
@@ -359,7 +361,10 @@ export const TherapistApp: React.FC<TherapistAppProps> = ({ therapist, setTherap
               {tab === 'sessions' && <SessionsTab therapist={therapist} store={store} nav={nav} />}
               {tab === 'clients' && <ClientsTab therapist={therapist} store={store} nav={nav} clientId={clientId} setClientId={setClientId} />}
               {tab === 'requests' && <RequestsTab therapist={therapist} store={store} nav={nav} />}
-              {tab === 'availability' && <AvailabilityTab therapist={therapist} onSave={updateTherapist} />}
+              {tab === 'availability' && (
+                <AvailabilityTab therapist={therapist} onSave={updateTherapist} timeOff={store.data.timeOff || []} onAddTimeOff={store.addTimeOff} onRemoveTimeOff={store.removeTimeOff} />
+              )}
+              {tab === 'services' && <ServicesTab therapist={therapist} store={store} />}
               {tab === 'resources' && <ResourcesTab />}
               {tab === 'profile' && <TherapistProfileTab therapist={therapist} onSave={updateTherapist} onLogout={onLogout} theme={theme} onChangeTheme={onChangeTheme} />}
             </div>

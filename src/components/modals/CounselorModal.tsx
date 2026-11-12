@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CounselorMatch, UserProfile } from '../../types';
-import { addSharedRequest } from '../../therapist/data';
+import { addSharedRequest, deviceBooking } from '../../therapist/data';
+import type { SessionFormat, TherapyService } from '../../therapist/types';
 import { friendlyError, isRemote } from '../../lib/supabase';
-import { requestSession } from '../../lib/db/clientApi';
+import { freeTimes, listServices, requestSession } from '../../lib/db/clientApi';
+import { freeSlots } from '../../lib/schedule';
 import { Modal, Button, Avatar, Notice, cx } from '../ui';
-import { Phone, Video, Check } from 'lucide-react';
+import { Phone, Video, Check, Users, MessageSquare } from 'lucide-react';
 
 import { t, T } from '../../i18n';
 interface CounselorModalProps {
@@ -14,38 +16,122 @@ interface CounselorModalProps {
   profile?: UserProfile;
 }
 
-/** Bookable times: the next few working slots from now. */
-const makeSlots = () => {
-  const out: Array<{ label: string; iso: string }> = [];
-  const hours = [10, 14, 16];
-  for (let day = 0; out.length < 4 && day < 7; day++) {
-    for (const h of hours) {
-      const d = new Date();
-      d.setDate(d.getDate() + day);
-      d.setHours(h, 0, 0, 0);
-      if (d.getTime() < Date.now() + 2 * 3600000 || d.getDay() === 0) continue;
-      const dayLabel = day === 0 ? 'Today' : day === 1 ? 'Tomorrow' : d.toLocaleDateString([], { weekday: 'long' });
-      out.push({ label: `${dayLabel}, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, iso: d.toISOString() });
-      if (out.length === 4) break;
-    }
-  }
-  return out;
+const FORMAT_ICON: Record<SessionFormat, React.ReactNode> = {
+  voice: <Phone className="h-5 w-5" aria-hidden="true" />,
+  video: <Video className="h-5 w-5" aria-hidden="true" />,
+  in_person: <Users className="h-5 w-5" aria-hidden="true" />,
+  chat: <MessageSquare className="h-5 w-5" aria-hidden="true" />,
 };
+const FORMAT_NAME: Record<SessionFormat, string> = { voice: 'Voice call', video: 'Video call', in_person: 'In person', chat: 'Text chat' };
 
+const localDay = (iso: string) => new Date(iso).toDateString();
+const dayName = (iso: string) => {
+  const d = new Date(iso);
+  const today = new Date();
+  const tomorrow = new Date(Date.now() + 86400000);
+  if (d.toDateString() === today.toDateString()) return t('Today');
+  if (d.toDateString() === tomorrow.toDateString()) return t('Tomorrow');
+  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+};
+const timeName = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+/**
+ * Book a session: the counsellor's services (if they list any) and the times they are really free —
+ * their working days and hours, minus their break, days off and booked sessions. In Supabase mode
+ * the database works the times out; it also refuses a booked time when the request is accepted.
+ */
 export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpen, onClose, profile }) => {
-  const [slots] = useState(makeSlots);
-  const [selectedSlot, setSelectedSlot] = useState<string>(slots[1]?.label || slots[0]?.label || '');
+  const [services, setServices] = useState<TherapyService[]>([]);
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [times, setTimes] = useState<string[] | null>(null); // null while loading
+  const [timesError, setTimesError] = useState('');
+  const [day, setDay] = useState('');
+  const [selectedIso, setSelectedIso] = useState('');
   const [message, setMessage] = useState('');
   const [shareCheckins, setShareCheckins] = useState(true);
-  const [sessionType, setSessionType] = useState<'voice' | 'video'>('voice');
+  const [sessionType, setSessionType] = useState<SessionFormat>('voice');
   const [isBooked, setIsBooked] = useState(false);
   const [bookError, setBookError] = useState('');
   const [sending, setSending] = useState(false);
+  const [tries, setTries] = useState(0);
+  const [servicesFor, setServicesFor] = useState<string | null>(null); // whose services are loaded
+
+  const service = services.find(x => x.id === serviceId) || null;
+  const formats: SessionFormat[] = service ? service.formats : ['voice', 'video'];
+  const counsellorId = isOpen ? counselor?.id : undefined;
+
+  // The counsellor's services, when the screen opens
+  useEffect(() => {
+    if (!counsellorId) return;
+    let live = true;
+    setServices([]);
+    setServiceId(null);
+    setServicesFor(null);
+    const done = (list: TherapyService[]) => {
+      if (!live) return;
+      setServices(list);
+      setServiceId(list[0]?.id ?? null);
+      setServicesFor(counsellorId);
+    };
+    if (isRemote) listServices(counsellorId).then(done).catch(() => done([]));
+    else done(deviceBooking(counsellorId).services);
+    return () => {
+      live = false;
+    };
+  }, [counsellorId]);
+
+  // Free times for the chosen service's length (once the services are known, so they are fetched once)
+  const duration = service?.durationMin;
+  useEffect(() => {
+    if (!counsellorId || servicesFor !== counsellorId) return;
+    let live = true;
+    setTimes(null);
+    setTimesError('');
+    const done = (list: string[]) => {
+      if (!live) return;
+      setTimes(list);
+      setDay(list[0] ? localDay(list[0]) : '');
+      setSelectedIso(list[0] || '');
+    };
+    if (isRemote) {
+      freeTimes(counsellorId, duration)
+        .then(done)
+        .catch(e => live && (setTimes([]), setTimesError(friendlyError(e))));
+    } else {
+      const b = deviceBooking(counsellorId);
+      done(freeSlots(b.hours, b.timeOff, b.busy, { durationMin: duration }).map(d => d.toISOString()));
+    }
+    return () => {
+      live = false;
+    };
+  }, [counsellorId, servicesFor, duration, tries]);
+
+  // Keep the talking format one the service offers
+  useEffect(() => {
+    if (!formats.includes(sessionType)) setSessionType(formats[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId, services]);
+
+  const days = useMemo(() => {
+    const out: Array<{ key: string; first: string; count: number }> = [];
+    for (const iso of times || []) {
+      const key = localDay(iso);
+      const last = out[out.length - 1];
+      if (last?.key === key) last.count++;
+      else out.push({ key, first: iso, count: 1 });
+    }
+    return out;
+  }, [times]);
+  const dayTimes = (times || []).filter(iso => localDay(iso) === day);
 
   if (!isOpen || !counselor) return null;
 
+  const selectedSlot = selectedIso ? `${dayName(selectedIso)}, ${timeName(selectedIso)}` : '';
+  const fee = service ? service.feeGHS : counselor.feeGHS;
+  const feeUSD = Math.max(1, Math.round(fee / 15));
+
   const handleConfirmBooking = async () => {
-    const slot = slots.find(s => s.label === selectedSlot) || slots[0];
+    if (!selectedIso) return;
     setBookError('');
     if (isRemote) {
       // Sent to the counsellor's workspace; the database adds your check-ins only if you chose to share
@@ -53,11 +139,12 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
       try {
         await requestSession({
           therapistId: counselor.id,
-          preferredTime: slot.iso,
+          preferredTime: selectedIso,
           format: sessionType,
           message: message.trim(),
           sharesCheckins: shareCheckins,
           focus: profile?.currentTriage || 'general',
+          serviceId: service?.id ?? null,
         });
       } catch (e) {
         setBookError(friendlyError(e));
@@ -78,13 +165,16 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
       therapistId: counselor.id,
       clientNickname: profile?.nickname || 'Anonymous',
       focus: profile?.currentTriage || 'general',
-      preferredTime: slot.iso,
-      preferredLabel: slot.label,
+      preferredTime: selectedIso,
+      preferredLabel: selectedSlot,
       format: sessionType,
       message: message.trim(),
       sharesCheckins: shareCheckins,
       createdAt: new Date().toISOString(),
       status: 'new',
+      serviceId: service?.id,
+      serviceName: service?.name,
+      serviceMin: service?.durationMin,
       snapshot:
         shareCheckins && profile
           ? { streakDays: profile.sobrietyStreakDays, mood: [], craving: profile.currentCraving >= 1 ? [profile.currentCraving] : [] }
@@ -110,8 +200,8 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
       title={t("Book a session")}
       size="sm"
       footer={
-        <Button block size="lg" onClick={handleConfirmBooking} disabled={isBooked || sending} icon={isBooked ? <Check className="h-5 w-5" /> : undefined} className="disabled:opacity-100">
-          {isBooked ? t("Request sent") : t("Request {selectedSlot}", { selectedSlot })}
+        <Button block size="lg" onClick={handleConfirmBooking} disabled={isBooked || sending || !selectedIso} icon={isBooked ? <Check className="h-5 w-5" /> : undefined} className={isBooked ? 'disabled:opacity-100' : undefined}>
+          {isBooked ? t("Request sent") : selectedIso ? t("Request {selectedSlot}", { selectedSlot }) : t("Choose a time")}
         </Button>
       }
     >
@@ -125,28 +215,88 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
           </div>
         </div>
 
+        {services.length > 0 && (
+          <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
+            <legend className="mb-2.5 text-sm font-bold text-ink">{t("Choose a service")}</legend>
+            <div className="flex flex-col gap-2">
+              {services.map(sv => (
+                <button
+                  key={sv.id}
+                  type="button"
+                  aria-pressed={serviceId === sv.id}
+                  onClick={() => setServiceId(sv.id)}
+                  className={cx(
+                    'flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-xl border-2 px-4 py-3 text-left',
+                    serviceId === sv.id ? 'border-pri bg-pri-soft' : 'border-line bg-surface hover:border-pri-text'
+                  )}
+                >
+                  <span className="text-[0.9375rem] font-bold text-ink">{sv.name}</span>
+                  <span className="text-sm text-ink-2">
+                    {t("{n} min", { n: sv.durationMin })} · {sv.feeGHS > 0 ? t("GHS {fee}", { fee: sv.feeGHS }) : t("Free")}
+                  </span>
+                  {sv.description && <span className="text-sm text-ink-3">{sv.description}</span>}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
         <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
           <legend className="mb-2.5 text-sm font-bold text-ink">{t("Choose a time")}</legend>
-          <div className="grid grid-cols-2 gap-2.5">
-            {slots.map(({ label }) => (
-              <button key={label} type="button" aria-pressed={selectedSlot === label} onClick={() => setSelectedSlot(label)} className={option(selectedSlot === label)}>
-                {t(label)}
+          {times === null ? (
+            <p className="m-0 text-[0.9375rem] text-ink-3" role="status">{t("Finding free times…")}</p>
+          ) : timesError ? (
+            <Notice tone="warn">
+              {t(timesError)}{' '}
+              <button type="button" onClick={() => setTries(n => n + 1)} className="cursor-pointer font-bold text-pri-text underline">
+                {t("Try again")}
               </button>
-            ))}
-          </div>
+            </Notice>
+          ) : !times.length ? (
+            <Notice tone="info">{t("No free times in the next two weeks. Please try another counsellor or check back later.")}</Notice>
+          ) : (
+            <>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label={t("Days")}>
+                {days.map(d => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    aria-pressed={day === d.key}
+                    onClick={() => {
+                      setDay(d.key);
+                      setSelectedIso(d.first);
+                    }}
+                    className={cx(
+                      'flex min-h-12 shrink-0 cursor-pointer flex-col items-center justify-center rounded-xl border-2 px-3 py-1.5 text-sm font-semibold',
+                      day === d.key ? 'border-pri bg-pri-soft text-pri-ink' : 'border-line bg-surface text-ink hover:border-pri-text'
+                    )}
+                  >
+                    <span>{dayName(d.first)}</span>
+                    <span className="text-xs font-medium text-ink-3">{t("{n} free", { n: d.count })}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2.5">
+                {dayTimes.map(iso => (
+                  <button key={iso} type="button" aria-pressed={selectedIso === iso} onClick={() => setSelectedIso(iso)} className={option(selectedIso === iso)}>
+                    {timeName(iso)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </fieldset>
 
         <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
           <legend className="mb-2.5 text-sm font-bold text-ink">{t("How would you like to talk?")}</legend>
           <div className="grid grid-cols-2 gap-2.5">
-            <button type="button" aria-pressed={sessionType === 'voice'} onClick={() => setSessionType('voice')} className={option(sessionType === 'voice')}>
-              <Phone className="h-5 w-5" aria-hidden="true" /> {t("Voice call")}
-            </button>
-            <button type="button" aria-pressed={sessionType === 'video'} onClick={() => setSessionType('video')} className={option(sessionType === 'video')}>
-              <Video className="h-5 w-5" aria-hidden="true" /> {t("Video call")}
-            </button>
+            {formats.map(f => (
+              <button key={f} type="button" aria-pressed={sessionType === f} onClick={() => setSessionType(f)} className={option(sessionType === f)}>
+                {FORMAT_ICON[f]} {t(FORMAT_NAME[f])}
+              </button>
+            ))}
           </div>
-          <p className="m-0 text-sm text-ink-3">{t("Voice calls work better on slow connections.")}</p>
+          {formats.includes('voice') && <p className="m-0 text-sm text-ink-3">{t("Voice calls work better on slow connections.")}</p>}
         </fieldset>
 
         <div className="flex flex-col gap-2">
@@ -174,9 +324,9 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
 
         <div className="flex items-center justify-between rounded-2xl border border-line px-4 py-3.5">
           <div>
-            <p className="m-0 text-sm text-ink-3">{t("Subsidised price")}</p>
+            <p className="m-0 text-sm text-ink-3">{service ? t("Price") : t("Subsidised price")}</p>
             <p className="m-0 text-xl font-extrabold text-ink">
-              <T text="GHS {feeGHS} <0>(about ${feeUSD})</0>" parts={[<span className="text-sm font-medium text-ink-3" />]} vars={{ feeGHS: counselor.feeGHS, feeUSD: counselor.feeUSD }} />
+              <T text="GHS {feeGHS} <0>(about ${feeUSD})</0>" parts={[<span className="text-sm font-medium text-ink-3" />]} vars={{ feeGHS: fee, feeUSD }} />
             </p>
           </div>
           <T text="<0>per session</0>" parts={[<span className="text-sm text-ink-3" />]} />

@@ -1,3 +1,29 @@
+# 4Life — therapist workspace: calendar, services, breaks and days off (12 November 2026)
+
+This is part 1 of the therapist workspace work. Part 2 covers the Today dashboard, a notification centre and client-management polish.
+
+**Two faults fixed:**
+- **Booking ignored the therapist's hours.** The client's booking screen offered 10:00, 14:00 and 16:00 every day except Sunday, whatever the therapist had set. It now offers only real free times: the therapist's days and hours, minus their break, days off and booked sessions, at least 2 hours ahead. In Supabase mode the database works these out (`therapist_free_slots`); on a device without Supabase the same rules run in the browser (`src/lib/schedule.ts`).
+- **Nothing stopped double-booking.** The database now refuses any booked session that overlaps another for the same therapist, however it is written (accepting a request, booking, moving). It uses a per-therapist lock, so two requests at the same moment can't both get the time. The screens check first and say so plainly.
+
+**New in the therapist workspace:**
+- **Calendar** in Sessions, with Day, Week and Month views. Working hours are plain; closed hours, the break and days off are shaded; a line marks now. Click a session for its details, then open it, move it (an overlap is refused) or cancel it (with a confirmation). Click a free time to book a session there. On phones it opens on the day. The Coming up, Past and Notes to finish lists are unchanged.
+- **Services** (new section): add, edit, pause or delete services, each with a name, description, length (15–180 minutes), price and ways to meet. Clients choose one when they book; its length decides which times are free, and accepting books that length. Paused services can't be chosen, and booked sessions are kept.
+- **Availability**: an optional daily break, and days off (one day or a range, with a private note). Booking a session for a client now refuses an overlapping time (it used to allow it with a warning), and can be for a service.
+- **Requests** show the service asked for and its length, and accepting a time that clashes isn't possible.
+
+**Apply migration `20261112000010_scheduling.sql`.** It is forward-only: new columns, two new tables with access rules, the overlap check, the free-times function and the request-service check. Existing sessions are not re-checked, so it applies cleanly.
+
+Tests: `npm run test:schedule-db` (23 database checks, including that the database and the browser agree on free times to the minute), `npm run test:therapist-schedule` (33 checks in Chrome, covering the whole flow from the therapist's set-up to a client's booking and back), and more unit checks. Every new text is in all 27 languages.
+
+# 4Life — sign-in always comes back to 4Life (11 November 2026)
+
+- **Every sign-in link now returns to 4Life's own callback page,** `/auth/callback`: confirm sign-up, send the link again, reset password, and Google. They used to use whatever address the person was on, so a link started from a preview or protected Vercel address pointed back there.
+- **Trusted addresses only.** The public site (`VITE_APP_URL`), localhost, and any extra preview addresses in `VITE_AUTH_REDIRECT_ORIGINS` are used as they are. Anything else falls back to `VITE_APP_URL` (`src/lib/authRedirect.ts`).
+- **The callback page** waits for Supabase to finish the sign-in, then goes back to the plain address (so the tokens leave the address bar and a refresh starts normally). It opens the section the person was heading for, such as a home-screen shortcut to Instant EMS, and only if it is a real 4Life section. Addresses in a link are never followed. Expired or used links show their message and also leave the callback address.
+- **The live problem needs one dashboard change.** Checked today, the live Supabase project sends every link, including `https://4lifeee.vercel.app/auth/callback`, to its Site URL `https://4lifeee-4-life4.vercel.app`, which shows a Vercel log-in. Set Site URL and Redirect URLs as in SUPABASE.md, section 1, and `VITE_APP_URL` in Vercel.
+- New `npm run test:auth-redirect`: the callback in Chrome against a pretend Supabase, covering confirmation, the intended section, refresh, an expired link, an outside address, and a protected address. There are also more unit checks.
+
 # 4Life — Groq first with Gemini as backup, floating side buttons, and the sign-in check (11 November 2026)
 
 **AI: Groq answers, Gemini takes over.** There was no Grok or xAI code anywhere in the project, in its history, migrations, settings or scripts, so there was nothing of it to remove. The AI layer (`server/core/ai.ts`) now has two providers, in an order set by `PRIMARY_AI_PROVIDER` / `FALLBACK_AI_PROVIDER`:

@@ -26,11 +26,13 @@ import { describeFailure } from '../src/components/cbt/ChatFailureNotice';
 import { HISTORY_CHAR_BUDGET } from '../server/core/prompts';
 import { cleanVideoSearch, formatDuration, isoDurationSeconds } from '../src/lib/videoLibrary';
 import { RichText, toBlocks } from '../src/lib/richText';
+import { __setAuthEnv, authRedirectUrl, intendedSection, readCallback, safeNext, trustedOrigins } from '../src/lib/authRedirect';
 import { COUNTRIES, cleanCode, countryByCode, showPhone, toE164 } from '../src/lib/phone';
 import { friendlyError, __useTestClient } from '../src/lib/supabase';
 import * as clientApiForAuth from '../src/lib/db/clientApi';
 import { needsAccountSetup } from '../src/components/auth/FinishSetup';
 import { chatSystemPrompt } from '../server/core/prompts';
+import { clash, daySlots, freeSlots, isWorkingTime, overlaps } from '../src/lib/schedule';
 
 // A small in-memory localStorage, so the on-device parts can be tested here
 const mem = new Map<string, string>();
@@ -323,6 +325,7 @@ ok(chatSystemPrompt({ currentCraving: 0 }, 'cbt', 'none').includes('latest cravi
       signInWithOtp: async (a: any) => (calls.push(['otp', a]), { error: null }),
       verifyOtp: async (a: any) => (calls.push(['verify', a]), a.token === '123456' ? { data: { user: { id: 'u-phone' } }, error: null } : { data: {}, error: { message: 'Token has expired or is invalid' } }),
       signInWithOAuth: async (a: any) => (calls.push(['oauth', a]), { error: null }),
+      resend: async (a: any) => (calls.push(['resend', a]), { error: null }),
       signOut: async () => ({ error: null }),
     },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role: 'client' }, error: null }) }) }) }),
@@ -334,7 +337,9 @@ ok(chatSystemPrompt({ currentCraving: 0 }, 'cbt', 'none').includes('latest cravi
   ok((await clientApiForAuth.verifyPhoneCode('+233241234567', '123456')).id === 'u-phone', 'the right code signs the person in, checked by Supabase');
   ok(await clientApiForAuth.verifyPhoneCode('+233241234567', '000000').then(() => false, e => /expired/i.test(friendlyError(e))), 'a wrong or expired code is refused with a plain message');
   await clientApiForAuth.signInWithGoogle();
-  ok(calls.at(-1)[1].provider === 'google' && calls.at(-1)[1].options.redirectTo === 'https://4life.example/', 'Google sign-in comes back to this app');
+  ok(calls.at(-1)[1].provider === 'google' && calls.at(-1)[1].options.redirectTo === 'https://4life.example/auth/callback', 'Google sign-in comes back to the 4Life callback page');
+  await clientApiForAuth.resendConfirmation('kofi@it.test');
+  ok(calls.at(-1)[0] === 'resend' && calls.at(-1)[1].options.emailRedirectTo === 'https://4life.example/auth/callback', '"send the link again" also points to the 4Life callback page');
   ok(needsAccountSetup({ nickname: 'member_1a2b3c4d', age: '' } as any) && !needsAccountSetup({ nickname: 'Kofi_W', age: 20 } as any), 'a first Google or phone sign-in is asked for a community name and age');
   ok(!needsAccountSetup({ nickname: 'Kofi_W', age: '' } as any), 'an older account without an age is never held back from the app (or its emergency help)');
   delete (globalThis as any).window;
@@ -510,5 +515,37 @@ ok(supabaseProjectRef(n => (n === 'VITE_SUPABASE_URL' ? ' https://yveydudfixqifx
   const h = health({ env: (n: string) => ({ VITE_SUPABASE_URL: 'https://abc.supabase.co', VITE_SUPABASE_ANON_KEY: 'sb_publishable_secretish', GROQ_API_KEY: 'gk-123', GEMINI_API_KEY: 'gm-456' } as any)[n] } as any).body as any;
   const text = JSON.stringify(h);
   ok(h.supabaseProject === 'abc' && h.groq && h.gemini && h.ai.primary === 'groq' && !/sb_publishable|gk-123|gm-456/.test(text), 'health shows the project and which AI providers are on, never a key');
+}
+// Sign-in links always come back to 4Life's own callback page, on a 4Life address
+{
+  __setAuthEnv({ VITE_APP_URL: 'https://4lifeee.vercel.app/', VITE_AUTH_REDIRECT_ORIGINS: 'https://4life-preview.vercel.app, javascript:alert(1), http://evil.example' });
+  ok(trustedOrigins().includes('https://4lifeee.vercel.app') && trustedOrigins().includes('https://4life-preview.vercel.app') && trustedOrigins().includes('http://localhost:3000') && !trustedOrigins().some(o => /evil|javascript/.test(o)), 'trusted addresses: the 4Life site, listed previews and localhost; never plain http sites or scripts');
+  ok(authRedirectUrl(null, 'https://4lifeee.vercel.app') === 'https://4lifeee.vercel.app/auth/callback' && authRedirectUrl(null, 'http://localhost:3000') === 'http://localhost:3000/auth/callback', 'links go to /auth/callback on the address the person is on, when it is a 4Life one');
+  ok(authRedirectUrl(null, 'https://4lifeee-4-life4.vercel.app') === 'https://4lifeee.vercel.app/auth/callback' && authRedirectUrl(null, 'https://afriversity.example') === 'https://4lifeee.vercel.app/auth/callback', 'from any other address (a protected Vercel address, another site) links go to the public 4Life site');
+  ok(authRedirectUrl('chat', 'https://4lifeee.vercel.app') === 'https://4lifeee.vercel.app/auth/callback?next=chat' && authRedirectUrl('https://evil.example' as any, 'https://4lifeee.vercel.app') === 'https://4lifeee.vercel.app/auth/callback', 'the page to open afterwards is kept, but only a 4Life section, never an address');
+  ok(safeNext('emergency_map') === 'emergency_map' && safeNext('//evil.example') === null && safeNext('javascript:alert(1)') === null && safeNext(undefined) === null, 'only real 4Life sections are accepted from a link');
+  ok(intendedSection('?go=ems') === 'emergency_map' && intendedSection('?go=craving') === 'chat' && intendedSection('?next=learn') === 'learn' && intendedSection('?next=https://evil.example') === null, 'a home-screen shortcut is remembered through the sign-in');
+  ok(readCallback({ pathname: '/auth/callback/', search: '?next=community' }).next === 'community' && readCallback({ pathname: '/auth/callback', search: '?next=//evil' }).next === null && !readCallback({ pathname: '/', search: '' }).isCallback, 'the callback page is recognised, and its next section checked');
+  __setAuthEnv({});
+  ok(authRedirectUrl(null, 'https://somewhere.vercel.app') === 'https://somewhere.vercel.app/auth/callback', 'without VITE_APP_URL set, links use the current address (set it for production)');
+}
+// Scheduling: the rules the calendar, the booking screen and the database share
+{
+  const hours = { days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as any, startTime: '09:00', endTime: '17:00', sessionLength: 50, breakStart: '13:00', breakEnd: '14:00' };
+  const mon = new Date('2026-11-16T00:00:00Z'); // a Monday
+  const hhmm = (d: Date) => d.toISOString().slice(11, 16);
+  const slots = daySlots(mon, hours).map(hhmm);
+  ok(JSON.stringify(slots) === JSON.stringify(['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00']), `a day's times: 50-minute sessions, 10 minutes apart, none in the break (${slots.join(' ')})`);
+  ok(daySlots(new Date('2026-11-15T00:00:00Z'), hours).length === 0, 'no times on a day the therapist does not work');
+  ok(daySlots(mon, { ...hours, breakStart: null, breakEnd: null }).map(hhmm).includes('13:00'), 'without a break, the middle of the day is bookable');
+  ok(daySlots(mon, hours, 90).map(hhmm).join(' ') === '09:00 10:40 14:00', 'a longer service gets fewer, longer times, all ending by closing time');
+  const from = new Date('2026-11-16T08:00:00Z');
+  const free = freeSlots(hours, [{ id: 'o', startsOn: '2026-11-17', endsOn: '2026-11-18' }], [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }], { from, days: 3 }).map(d => d.toISOString());
+  ok(!free.some(x => x.startsWith('2026-11-17') || x.startsWith('2026-11-18')), 'days off are never offered');
+  ok(!free.includes('2026-11-16T11:00:00.000Z') && free.includes('2026-11-16T12:00:00.000Z'), 'a booked time is not offered; the next one is');
+  ok(!free.includes('2026-11-16T09:00:00.000Z') && free[0] === '2026-11-16T10:00:00.000Z', 'at least 2 hours notice: nothing sooner is offered');
+  ok(overlaps(0, 50, 50 * 60000, 50) === false && overlaps(0, 50, 49 * 60000, 50) === true, 'sessions that touch end to start do not clash; any overlap does');
+  ok(!!clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }]) && !clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }], '2026-11-16T11:00:00Z'), 'a clash is found, and a session moving within its own time does not clash with itself');
+  ok(isWorkingTime(new Date('2026-11-16T10:00:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-16T13:30:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-17T10:00:00Z'), hours, [{ id: 'o', startsOn: '2026-11-17', endsOn: '2026-11-17' }]) && !isWorkingTime(new Date('2026-11-16T18:00:00Z'), hours, []), 'the calendar shades breaks, days off and closed hours');
 }
 console.log(`All ${n} unit checks passed`);

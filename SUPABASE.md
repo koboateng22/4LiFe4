@@ -19,7 +19,12 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 1. **Create a project** at [supabase.com](https://supabase.com). Pick the region closest to your users. For Ghana that is currently a European region, so check the latency.
 2. **Auth settings** (Authentication → URL Configuration):
    - Set **Site URL** to the app's **public** address, the one people use (for 4Life: `https://4lifeee.vercel.app`). Never a Vercel address that is behind Vercel Authentication (Deployment Protection): people who open an email link would get a Vercel log-in page instead of 4Life.
-   - Add every address the app runs at under **Redirect URLs**: `https://4lifeee.vercel.app/**`, `http://localhost:3000/**`, and preview addresses if you test sign-in there (e.g. `https://*-<your-team>.vercel.app/**`). The app asks Supabase to send people back to the page they came from; Supabase does that only for addresses on this list, and sends everyone else to the Site URL.
+   - Under **Redirect URLs**, add 4Life's callback page on each address the app runs at:
+     - `https://4lifeee.vercel.app/auth/callback**`
+     - `http://localhost:3000/auth/callback**`
+     - a preview address only if you test sign-in there, and also list it in `VITE_AUTH_REDIRECT_ORIGINS`.
+   - Every sign-in link (confirm sign-up, send the link again, reset password, Google) asks Supabase to return to `/auth/callback` on a 4Life address (`src/lib/authRedirect.ts`). Supabase does that only for addresses on this list and sends everything else to the Site URL. Nothing outside 4Life belongs on the list.
+   - In Vercel set `VITE_APP_URL=https://4lifeee.vercel.app` (then redeploy). Links started from any other address, such as a protected or preview Vercel address, go to that public address instead.
    - Check: `https://<your-app>/api/health` shows `supabaseProject`. It must be the ID in this project's address (Project Settings → General).
    - Keep **Confirm email** switched on (Authentication → Providers → Email). The app shows a "Check your email" screen after sign-up.
    - **Send real email.** Supabase's built-in sender only reaches your own team and is heavily rate-limited, so people can't confirm their accounts. Using Resend: verify your domain in Resend, then go to Authentication → Emails → SMTP Settings and set host `smtp.resend.com`, port `465`, username `resend`, password = your Resend API key, and a sender address on the verified domain. Saving the key with `supabase secrets set` does **not** do this: those secrets only reach Edge Functions, and no 4Life function sends email.
@@ -72,7 +77,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 | People | `profiles` (everyone), `therapists` (public profile), `therapist_credentials` (licence details: owner and admins only), `support_contacts` (client only) |
 | The link | `care_links`: client ↔ therapist, with the client's sharing choice and the therapist's risk level. **Every sharing rule checks this table.** |
 | Client data | `checkins`, `goals`, `homework`, `safety_plans` |
-| Therapy | `session_requests`, `sessions`, `session_notes` (therapist only), `session_note_versions`, `private_notes` (therapist only) |
+| Therapy | `session_requests`, `sessions`, `session_notes` (therapist only), `session_note_versions`, `private_notes` (therapist only), `therapist_services` (what a therapist offers: length, price, ways to meet), `therapist_time_off` (days off: therapist only) |
 | Emergencies | `sos_events`, `location_requests`, `escalations` (append-only) |
 | AI therapy | `thought_records` (client-owned; a linked therapist sees only records marked shared). AI chat conversations are **not** stored — they stay on the phone. |
 | Global Village | `village_posts`, `village_replies`, `village_support`, `village_reports`, `village_blocks`, `village_circles`, `circle_messages` |
@@ -97,6 +102,9 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 - After a note is signed, every later change to it keeps the previous version.
 - The escalation record, note versions and the audit log cannot be edited or deleted, not even by the database owner.
 - An SOS sets risk to high for every active therapist of that client and starts their escalation record.
+- **No double-booking.** A therapist can never have two booked sessions at the same time. The database checks every new or moved session, whoever writes it, under a lock per therapist so two requests at the same moment can't both get the time (`sessions_no_overlap`). Accepting a request at a time that is taken is refused, and the request stays open.
+- **Free times come from the database.** `therapist_free_slots` works out a verified therapist's free times from their days and hours, minus their daily break, days off and booked sessions, at least 2 hours ahead, with 10 minutes between sessions. Clients get only the times, never whose sessions fill the others. A request can name only an active service of that therapist.
+- Days off are seen only by the therapist. Clients see a therapist's active services, as they see the directory.
 
 ### Global Village rules in the database
 - Every post, reply and circle message is signed with the author's own community name — nobody can post as someone else.
@@ -134,7 +142,8 @@ Keep `CHECKED_HOTLINES` in `src/lib/ems.ts` (used offline and without Supabase) 
 
 | Function | Who | What it does |
 |---|---|---|
-| `accept_session_request(p_request, p_starts_at)` | therapist | Links the client and books the first session |
+| `accept_session_request(p_request, p_starts_at)` | therapist | Links the client and books the first session (for the requested service's length) |
+| `therapist_free_slots(p_therapist, p_days, p_duration)` | anyone signed in | A therapist's free start times for the next `p_days` days (at most 60) |
 | `decline_session_request(p_request, p_reason)` | therapist | Closes the request (the reason is not shown to the client) |
 | `sign_session_note(p_session, p_next_starts_at)` | therapist | See above |
 | `export_my_data()` | anyone signed in | Everything stored about them, as JSON (Settings → Download my data) |
@@ -245,7 +254,7 @@ buttons appear only when switched on, because without this set-up they would jus
    - Authorised JavaScript origins: your site, e.g. `https://4life.app` (and `http://localhost:3000` for development).
    - Authorised redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback` (shown in step 3).
 3. Supabase → Authentication → Providers → Google: turn on, paste the client ID and secret.
-4. Supabase → Authentication → URL Configuration: Site URL = your site; add it (and any preview URLs) to Redirect URLs.
+4. Supabase → Authentication → URL Configuration: as in section 1 (Site URL = `https://4lifeee.vercel.app`, Redirect URLs = `…/auth/callback**`). Two different stops: Google sends people to Supabase's callback (`https://<project-ref>.supabase.co/auth/v1/callback`, set in Google Cloud), then Supabase sends them on to 4Life's `/auth/callback` (set here).
 5. In the app's settings (Vercel): `VITE_AUTH_GOOGLE=true`, then redeploy.
 
 A Google sign-in with the same confirmed email as an existing account signs in to that account

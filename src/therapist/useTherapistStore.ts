@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ClientLocation, ClientRecord, SessionNote, SessionRequest, TherapistData, TherapistProfile, TherapySession } from './types';
+import type { ClientLocation, ClientRecord, SessionNote, SessionRequest, TherapistData, TherapistProfile, TherapyService, TherapySession, TimeOffEntry } from './types';
+import { clash } from '../lib/schedule';
 import { getSharedRequests, getSosEvents, loadTherapistData, saveTherapistData } from './data';
 import { friendlyError, isRemote, newId } from '../lib/supabase';
 import * as api from '../lib/db/therapistApi';
@@ -135,6 +136,58 @@ export function useTherapistStore(therapist: TherapistProfile) {
     [remote]
   );
 
+  /**
+   * Move a session to another time (and length). Checked here against the other booked sessions so
+   * the therapist hears straight away; the database checks again for everyone (no double-booking).
+   * Returns an error message, or null when it was moved.
+   */
+  const moveSession = useCallback(
+    (id: string, start: string, durationMin: number): string | null => {
+      const busy = data.sessions.filter(s => s.id !== id && (s.status === 'scheduled' || s.status === 'in_progress'));
+      if (clash(start, durationMin, busy)) return friendlyError(new Error('This time overlaps another session'));
+      updateSession(id, { start, durationMin });
+      return null;
+    },
+    [data.sessions, updateSession]
+  );
+
+  /* ---------- Services and days off ---------- */
+
+  const saveService = useCallback(
+    (svc: TherapyService) => {
+      setData(d => {
+        const list = d.services || [];
+        return { ...d, services: list.some(x => x.id === svc.id) ? list.map(x => (x.id === svc.id ? svc : x)) : [...list, svc] };
+      });
+      remote(() => api.saveService(therapist.id, svc));
+    },
+    [remote, therapist.id]
+  );
+
+  const deleteService = useCallback(
+    (id: string) => {
+      setData(d => ({ ...d, services: (d.services || []).filter(x => x.id !== id) }));
+      remote(() => api.deleteService(id));
+    },
+    [remote]
+  );
+
+  const addTimeOff = useCallback(
+    (o: TimeOffEntry) => {
+      setData(d => ({ ...d, timeOff: [...(d.timeOff || []), o].sort((a, b) => a.startsOn.localeCompare(b.startsOn)) }));
+      remote(() => api.addTimeOff(therapist.id, o));
+    },
+    [remote, therapist.id]
+  );
+
+  const removeTimeOff = useCallback(
+    (id: string) => {
+      setData(d => ({ ...d, timeOff: (d.timeOff || []).filter(x => x.id !== id) }));
+      remote(() => api.removeTimeOff(id));
+    },
+    [remote]
+  );
+
   /** Add a step to the client's escalation record. */
   const logEscalation = useCallback(
     (clientId: string, action: string, note?: string) => {
@@ -222,6 +275,15 @@ export function useTherapistStore(therapist: TherapistProfile) {
         remote(() => (status === 'accepted' ? api.acceptRequest(req.id, time || req.preferredTime) : api.declineRequest(req.id, reason)), true);
         return;
       }
+      // Device mode keeps the same rule as the database: no two sessions at once
+      const length = req.serviceMin || data.services?.find(x => x.id === req.serviceId)?.durationMin || therapist.sessionLength;
+      if (status === 'accepted') {
+        const busy = data.sessions.filter(s => s.status === 'scheduled' || s.status === 'in_progress');
+        if (clash(time || req.preferredTime, length, busy)) {
+          setSyncError(friendlyError(new Error('This time overlaps another session')));
+          return;
+        }
+      }
       setData(d => {
         const isShared = !d.requests.some(r => r.id === req.id);
         const requestsNext = isShared ? [...d.requests, { ...req, status }] : d.requests.map(r => (r.id === req.id ? { ...r, status } : r));
@@ -254,7 +316,8 @@ export function useTherapistStore(therapist: TherapistProfile) {
           id: newId(),
           clientId,
           start: time || req.preferredTime,
-          durationMin: therapist.sessionLength,
+          durationMin: length,
+          serviceId: req.serviceId,
           format: req.format,
           type: existing ? 'follow_up' : 'intake',
           status: 'scheduled',
@@ -269,7 +332,7 @@ export function useTherapistStore(therapist: TherapistProfile) {
         };
       });
     },
-    [remote, therapist.sessionLength]
+    [remote, therapist.sessionLength, data.sessions, data.services]
   );
 
   return {
@@ -282,6 +345,11 @@ export function useTherapistStore(therapist: TherapistProfile) {
     updateClient,
     addSession,
     updateSession,
+    moveSession,
+    saveService,
+    deleteService,
+    addTimeOff,
+    removeTimeOff,
     resolveRequest,
     logEscalation,
     setLocation,
