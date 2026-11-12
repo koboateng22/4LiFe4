@@ -110,7 +110,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <IconButton label={t("Search")} onClick={onOpenSearch} className="glass-btn sm:hidden">
+        <IconButton label={t("Search 4Life")} onClick={onOpenSearch} className="glass-btn sm:hidden">
           <Search className="h-5 w-5 text-pri-text" />
         </IconButton>
         <span className="hidden xl:block"><PaletteTrigger onClick={onOpenSearch} className="glass-btn w-60" /></span>
