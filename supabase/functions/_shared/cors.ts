@@ -11,4 +11,6 @@ export const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, accept, x-region',
   'Access-Control-Max-Age': '86400',
+  // lets the app read whether this server has an AI key (see AI_HEADER in core/ai.ts)
+  'Access-Control-Expose-Headers': 'x-4life-ai',
 };

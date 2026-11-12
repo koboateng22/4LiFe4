@@ -5,7 +5,9 @@
  *   1. /api/... on this site: the Vercel function, or `npm run dev`
  *   2. a Supabase Edge Function (supabase/functions/<name>)
  * The app calls /api first and uses the Supabase function when /api is missing or
- * down. Set VITE_API_BACKEND=supabase to try Supabase first.
+ * down, or (for the AI routes) has no AI key. Set VITE_API_BACKEND=supabase to try
+ * Supabase first. If neither backend has an AI key, the first one's honest
+ * "not set up" answer is shown.
  *
  * When the person is signed in, their access token goes with the request so the
  * backend can check who is calling.
@@ -40,6 +42,9 @@ async function accessToken(): Promise<string | undefined> {
   }
 }
 
+/** An AI route on a backend with no AI key says so in this header (see AI_HEADER in server/core/ai.ts) */
+const noAi = (res: Response) => (res.headers.get('x-4life-ai') || '').toLowerCase() === 'off';
+
 /** True when a response can't be the API's answer (a static host's page, or a server error). */
 function unavailable(res: Response): boolean {
   if (UNAVAILABLE.has(res.status)) return true;
@@ -71,12 +76,21 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
 
   let last: Response | null = null;
   let lastError: unknown = null;
+  // A backend with no AI key: its honest answer ("not set up") is kept, and the other backend is asked
+  let withoutAi: Response | null = null;
   for (const attempt of attempts) {
     try {
       const pending = attempt();
       if (!pending) continue;
       const res = await pending;
-      if (!unavailable(res)) return res;
+      if (noAi(res)) {
+        withoutAi ??= res;
+        continue;
+      }
+      if (!unavailable(res)) {
+        withoutAi?.body?.cancel().catch(() => {}); // the other backend answered: drop the "not set up" one
+        return res;
+      }
       last = res;
     } catch (e: any) {
       // Stop button or closed screen: don't try the other backend
@@ -84,6 +98,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       lastError = e; // network error: try the other backend
     }
   }
+  if (withoutAi) return withoutAi;
   if (last) return last;
   throw lastError || new TypeError('The service could not be reached');
 }

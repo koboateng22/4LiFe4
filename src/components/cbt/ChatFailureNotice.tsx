@@ -10,6 +10,13 @@ import { t, msg } from '../../i18n';
 
 /** The message for each reason, and whether trying again could help */
 export function describeFailure(f: ChatFailure): { text: string; retry: boolean } {
+  // Both the main AI service and its backup were tried, for a reason that passes
+  if (f.backupFailed && ['rate_limited', 'quota_exhausted', 'overloaded', 'timeout', 'network', 'empty'].includes(f.code)) {
+    return {
+      text: msg('Both our main AI service and its backup are unavailable right now. Please try again in a few minutes. Breathing, the thought record and SOS still work.'),
+      retry: true,
+    };
+  }
   switch (f.code) {
     case 'not_configured':
       return { text: msg("The AI companion isn't set up on this server yet, so it can't answer. The other tools on this page still work."), retry: false };

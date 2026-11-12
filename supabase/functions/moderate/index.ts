@@ -8,4 +8,4 @@
 import { ctx, fromResult, serveFunction } from '../_shared/http.ts';
 import { moderate } from '../_shared/core/handlers.ts';
 
-serveFunction({ method: 'POST', protected: true }, async (_req, body) => fromResult(await moderate(body, ctx)));
+serveFunction({ method: 'POST', protected: true, ai: true }, async (_req, body) => fromResult(await moderate(body, ctx)));

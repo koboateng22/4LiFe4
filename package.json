@@ -25,6 +25,7 @@
     "test:demo-build": "tsx scripts/demo-build-test.ts",
     "test:learn": "tsx scripts/learn-e2e.ts",
     "test:chat": "tsx scripts/chat-e2e.ts",
+    "test:ai-backend": "tsx scripts/ai-backend-e2e.ts",
     "test:sidebar": "tsx scripts/sidebar-e2e.ts",
     "test:auth-redirect": "tsx scripts/auth-redirect-e2e.ts",
     "i18n:extract": "tsx scripts/i18n-extract.ts",

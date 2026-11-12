@@ -53,6 +53,14 @@ const read = (env: Env, name: string) => {
 const asProvider = (v: string, fallback: ProviderName | null): ProviderName | null =>
   v === 'none' ? null : (PROVIDERS as string[]).includes(v) ? (v as ProviderName) : fallback;
 
+/**
+ * Every AI response carries this header: "on" when this server has an AI key, "off" when it has none.
+ * The app can reach two backends (this site's /api and the Supabase functions). When one answers "off",
+ * the app asks the other, so a key set on only one of them still serves everyone.
+ */
+export const AI_HEADER = 'X-4Life-AI';
+export const aiHeaderValue = (env: Env): 'on' | 'off' => (aiConfig(env).providers.length ? 'on' : 'off');
+
 export function aiConfig(env: Env): AiConfig {
   const primary = asProvider(read(env, 'PRIMARY_AI_PROVIDER').toLowerCase(), 'groq') || 'groq';
   let fallback = asProvider(read(env, 'FALLBACK_AI_PROVIDER').toLowerCase(), 'gemini');

@@ -488,6 +488,7 @@ ok(chatSystemPrompt({ currentCraving: 0 }, 'cbt', 'none').includes('latest cravi
     fake(() => new Response('{}', { status: 503 }), () => new Response('{"error":{"code":503}}', { status: 503 }));
     const both = await runChat(input('hi'), { env } as any, () => {});
     ok(both.error?.code === 'overloaded' && both.reply === '' && calls.length === 5, 'when both are down: a clear error, no made-up reply, and a fixed number of tries');
+    ok(both.error?.backupFailed === true && describeFailure(both.error as any).text.startsWith('Both our main AI service and its backup'), 'when both are down the person is told the main service and its backup both failed');
     fake(() => new Response('{}', { status: 503 }), () => new Response('{"error":{"code":401}}', { status: 401 }));
     ok((await runChat(input('hi'), { env } as any, () => {})).error?.code === 'bad_key', "a refused Gemini key behind a failing Groq is reported as the key problem");
     fake(() => new Response('{}', { status: 503 }), () => new Response(JSON.stringify({ error: { code: 429, details: [{ violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] }] } }), { status: 429 }));
@@ -547,5 +548,39 @@ ok(supabaseProjectRef(n => (n === 'VITE_SUPABASE_URL' ? ' https://yveydudfixqifx
   ok(overlaps(0, 50, 50 * 60000, 50) === false && overlaps(0, 50, 49 * 60000, 50) === true, 'sessions that touch end to start do not clash; any overlap does');
   ok(!!clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }]) && !clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }], '2026-11-16T11:00:00Z'), 'a clash is found, and a session moving within its own time does not clash with itself');
   ok(isWorkingTime(new Date('2026-11-16T10:00:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-16T13:30:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-17T10:00:00Z'), hours, [{ id: 'o', startsOn: '2026-11-17', endsOn: '2026-11-17' }]) && !isWorkingTime(new Date('2026-11-16T18:00:00Z'), hours, []), 'the calendar shades breaks, days off and closed hours');
+}
+// Two backends: each AI answer says whether its server has an AI key, so the app can use the one that does
+{
+  const { aiHeaderValue, AI_HEADER } = await import('../server/core/ai');
+  ok(AI_HEADER === 'X-4Life-AI' && aiHeaderValue(() => undefined) === 'off' && aiHeaderValue(n => (n === 'GROQ_API_KEY' ? 'g' : undefined)) === 'on' && aiHeaderValue(n => (n === 'GEMINI_API_KEY' ? 'm' : undefined)) === 'on', 'the AI header is "off" only when the server has neither key');
+  const saved = { g: process.env.GROQ_API_KEY, m: process.env.GEMINI_API_KEY, r: process.env.REQUIRE_SIGN_IN };
+  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+  process.env.REQUIRE_SIGN_IN = 'false';
+  const { default: app } = await import('../server/app');
+  const srv = (app as any).listen(0);
+  await new Promise(r => srv.once('listening', r));
+  const base = `http://127.0.0.1:${(srv.address() as any).port}`;
+  try {
+    const chat = await fetch(`${base}/api/chat`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: 'hello', mode: 'cbt' }) });
+    const body: any = await chat.json();
+    ok(chat.status === 200 && chat.headers.get('x-4life-ai') === 'off' && body.error?.code === 'not_configured' && body.reply === '', '/api/chat on a server without keys says "off" in its header and "not set up" in its answer (no made-up reply)');
+    const sug = await fetch(`${base}/api/cbt/suggest`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ thought: 'I always fail' }) });
+    ok(sug.headers.get('x-4life-ai') === 'off', 'the other AI routes carry the header too');
+    const h = await fetch(`${base}/api/health`);
+    ok(!h.headers.get('x-4life-ai'), 'routes that are not AI do not');
+  } finally {
+    srv.close();
+    if (saved.g !== undefined) process.env.GROQ_API_KEY = saved.g;
+    if (saved.m !== undefined) process.env.GEMINI_API_KEY = saved.m;
+    if (saved.r === undefined) delete process.env.REQUIRE_SIGN_IN;
+    else process.env.REQUIRE_SIGN_IN = saved.r;
+  }
+}
+// The chat's disclosure names the real providers and the real storage
+{
+  const en = JSON.parse(execFileSync('cat', ['src/locales/en/chat.json']).toString());
+  const key = Object.keys(en).find(k => k.startsWith('{aiName} is an AI'))!;
+  ok(/Groq, our main AI provider/.test(key) && /Google Gemini if Groq can’t answer/.test(key) && /saved only on this device/.test(key) && !/powered by Google Gemini/.test(key), 'the chat disclosure says Groq first, Gemini as backup, and that chats stay on the device');
 }
 console.log(`All ${n} unit checks passed`);

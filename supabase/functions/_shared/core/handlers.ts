@@ -100,7 +100,7 @@ export interface ChatDone {
    * Set when no AI answer could be made. The app shows what happened (and a Try again button)
    * instead of an answer; nothing is made up. `partial` means part of the reply already arrived.
    */
-  error?: { code: AiErrorCode; retryAfter?: number; partial?: boolean };
+  error?: { code: AiErrorCode; retryAfter?: number; partial?: boolean; backupFailed?: boolean };
   /** Which provider answered (groq, or gemini when it took over) */
   provider?: ProviderName;
 }
@@ -157,7 +157,13 @@ export async function runChat(input: ChatInput, ctx: Ctx, send: (event: 'meta' |
       model: run.model || ai.model,
       provider: run.provider,
       mode: input.mode,
-      error: { code: e.code, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}), ...(shown ? { partial: true } : {}) },
+      error: {
+        code: e.code,
+        ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}),
+        ...(shown ? { partial: true } : {}),
+        // the main provider failed and the backup was tried and failed too
+        ...(new Set(run.failed.map(f => f.provider)).size > 1 ? { backupFailed: true } : {}),
+      },
     };
   };
 

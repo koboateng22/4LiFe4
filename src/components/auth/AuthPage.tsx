@@ -197,7 +197,7 @@ const DEMO_ACCOUNTS: AuthAccount[] = !DEMO_ENABLED ? [] : [
       shareLocationInCrisis: true,
       userAvatar: '🌸',
       aiAvatar: '🌿',
-      aiName: 'Gemini Recovery Guide',
+      aiName: 'Recovery Guide',
       contacts: [
         {
           id: 'c_ama_1',
@@ -515,7 +515,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       xpPoints: 250,
       userAvatar: '🌱',
       aiAvatar: '🌿',
-      aiName: 'Gemini Recovery Guide',
+      aiName: 'Recovery Guide',
       contacts: emergencyEmail.trim() ? [
         {
           id: 'c_em_' + Date.now(),

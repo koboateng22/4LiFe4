@@ -31,6 +31,8 @@ Groq answers every message. When Groq is busy or down, rate-limited, out of its 
 3. Run `npm run ai:check`. It sends real messages through the app's own chat code: to Groq alone, to Gemini alone, then in the normal order, and checks that follow-ups keep the context.
 4. In Vercel: **Settings → Environment Variables**, add the same names for **Production** and **Preview**, then **Redeploy**. `https://<your-app>/api/health` then shows `groq: true`, `gemini: true` and both models (never the keys).
 
+**Two backends, one set of keys each.** The app can reach the AI on this site (`/api/chat`, Vercel) and on the Supabase function `chat`. They read their keys separately: Vercel from its Environment Variables, the function from `supabase secrets set GROQ_API_KEY=… GEMINI_API_KEY=…`. Every AI answer carries an `X-4Life-AI: on|off` header saying whether that server has a key. When `/api` says `off`, the app asks the Supabase function instead, so a key set on only one of them still works. Set the keys on both, so each message needs only one trip. Check both: `https://<your-app>/api/health` and `https://<project>.supabase.co/functions/v1/health`.
+
 Keys are read only by the server (`/api/chat` and the Supabase functions). Each reply writes one log line, `[ai] chat ok by=groq/<model>` or `by=gemini/<model> failed=groq:<reason> (fallback)`, with token counts but never the person's words. Without any key, or when both providers fail, the chat says what happened and offers **Try again** where that helps. It never makes up a reply. Google says free-tier Gemini prompts may be used to improve its products; for recovery conversations, consider paid tiers before launch (see LAUNCH.md).
 
 ## Deploy to Vercel

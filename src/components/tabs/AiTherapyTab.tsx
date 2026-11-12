@@ -780,7 +780,7 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
           </Card>
 
           <p className="m-0 px-1 text-sm leading-relaxed text-ink-3">
-            {t("{aiName} is an AI powered by Google Gemini. It supports your recovery but does not replace a counsellor or emergency care. Your chat is saved only on this device; to write a reply, each message is sent to Google’s Gemini AI, so leave out full names and phone numbers.", { aiName })}
+            {t("{aiName} is an AI. It supports your recovery but does not replace a counsellor or emergency care. Your chat is saved only on this device. To write a reply, each message and the recent conversation go through 4Life’s server to Groq, our main AI provider, or to Google Gemini if Groq can’t answer. 4Life doesn’t store them, but these companies process them under their own terms, so leave out full names and phone numbers.", { aiName })}
           </p>
         </aside>
       </div>

@@ -5,6 +5,7 @@
 import { Router, type Request, type Response } from 'express';
 import { cbtSuggest, clientError, firstAidVideos, health, libraryVideos, moderate, readChat, runChat, villageGuide, type Result } from './core/handlers.js';
 import { limit, processEnv, signIn } from './middleware.js';
+import { AI_HEADER, aiHeaderValue } from './core/ai.js';
 
 const ctx = { env: processEnv };
 
@@ -22,7 +23,12 @@ const handle = (fn: (req: Request) => Promise<Result> | Result) => (req: Request
 
 export function apiRoutes() {
   const r = Router();
-  const ai = [limit(), signIn()];
+  // Says whether this server has an AI key (see AI_HEADER), before anything else is sent
+  const markAi = (_req: Request, res: Response, next: () => void) => {
+    res.setHeader(AI_HEADER, aiHeaderValue(ctx.env));
+    next();
+  };
+  const ai = [markAi, limit(), signIn()];
 
   // Open to everyone: no AI cost and nothing personal
   r.get('/health', handle(() => health(ctx)));

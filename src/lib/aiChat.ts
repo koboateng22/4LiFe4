@@ -28,6 +28,8 @@ export interface ChatFailure {
   code: string;
   retryAfter?: number;
   partial?: boolean;
+  /** Groq failed, then Gemini (the backup) was tried and failed too */
+  backupFailed?: boolean;
 }
 
 export class ChatError extends Error {

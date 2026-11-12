@@ -1,6 +1,6 @@
 // GENERATED from src/lib/aiTrailer.ts by scripts/sync-functions.mjs. Do not edit: change the original, then run `npm run sync:functions`.
 /**
- * Gemini ends each chat reply with one hidden line:
+ * The AI (Groq, or Gemini as the backup) ends each chat reply with one hidden line:
  *   <<NEXT>> suggestion | suggestion | suggestion <<RISK>> none|concern|crisis
  * These helpers stream the reply without ever showing that line, then read it.
  */

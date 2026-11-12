@@ -6,7 +6,7 @@
 import { corsHeaders } from './cors.ts';
 import { checkSignIn, rateLimitPerMinute, rateLimiter } from './core/guard.ts';
 import type { Ctx, Result } from './core/handlers.ts';
-import type { Env } from './core/ai.ts';
+import { AI_HEADER, aiHeaderValue, type Env } from './core/ai.ts';
 
 /** Settings come from Supabase secrets: `supabase secrets set NAME=value` */
 export const env: Env = name => Deno.env.get(name);
@@ -38,6 +38,8 @@ interface Options {
   protected?: boolean;
   /** Rate-limited even though it is open to everyone */
   limited?: boolean;
+  /** Uses the AI: every answer says whether this server has an AI key (AI_HEADER) */
+  ai?: boolean;
 }
 
 /**
@@ -48,6 +50,18 @@ export function serveFunction(options: Options, handler: (req: Request, body: an
   const limit = options.protected || options.limited ? rateLimiter(rateLimitPerMinute(env)) : null;
 
   Deno.serve(async (req: Request) => {
+    const res = await answer(req);
+    if (options.ai) {
+      try {
+        res.headers.set(AI_HEADER, aiHeaderValue(env));
+      } catch {
+        /* headers that can't be changed: the app then simply doesn't switch backends */
+      }
+    }
+    return res;
+  });
+
+  async function answer(req: Request): Promise<Response> {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (req.method !== options.method) return json({ error: `Use ${options.method}` }, 405, { Allow: `${options.method}, OPTIONS` });
 
@@ -77,5 +91,5 @@ export function serveFunction(options: Options, handler: (req: Request, body: an
       console.error('Function error:', error);
       return json({ error: 'Something went wrong. Please try again.' }, 500);
     }
-  });
+  }
 }

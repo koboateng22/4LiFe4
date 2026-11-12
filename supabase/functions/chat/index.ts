@@ -20,7 +20,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { ctx, fromResult, json, serveFunction } from '../_shared/http.ts';
 import { readChat, runChat } from '../_shared/core/handlers.ts';
 
-serveFunction({ method: 'POST', protected: true }, async (_req, body) => {
+serveFunction({ method: 'POST', protected: true, ai: true }, async (_req, body) => {
   const read = readChat(body);
   if ('error' in read) return fromResult(read.error);
   const { input } = read;

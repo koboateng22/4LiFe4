@@ -1,7 +1,7 @@
 /**
  * CBT building blocks shared by the app and the server: the thinking traps,
  * the four ways AI therapy can help, and a simple offline guess at which
- * thinking trap a thought shows (used when Gemini is not available).
+ * thinking trap a thought shows (used when no AI is available).
  */
 
 

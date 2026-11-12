@@ -1,5 +1,5 @@
 /**
- * Gemini ends each chat reply with one hidden line:
+ * The AI (Groq, or Gemini as the backup) ends each chat reply with one hidden line:
  *   <<NEXT>> suggestion | suggestion | suggestion <<RISK>> none|concern|crisis
  * These helpers stream the reply without ever showing that line, then read it.
  */
