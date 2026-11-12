@@ -1,3 +1,75 @@
+# 4Life — mobile first: a glass dock on phones, the same look as on computers (12 November 2026)
+
+**Phones and tablets** (narrower than 1024 px):
+- **The dock.** Navigation is a row of floating glass buttons at the bottom of the screen, in the same style as the computer's side rail.
+  - **All six sections are one tap away**, each with its short name under the icon. Learn and Settings used to be behind "More", and the old bar was a solid full-width panel.
+  - The current page is tinted, ringed and marked with a bar; a tap gives a press animation and a short vibration where the phone supports it.
+  - There is no panel behind the buttons, only a soft fade so they stay readable.
+  - On the narrowest phones (320 px) the names still fit whole.
+- **The dock steps aside while you type**, so it never covers the keyboard or the message box. It comes back when you leave the field.
+- **The top bar** keeps what must always be in reach: search, Breathe, SOS and the account menu, with the language choice, Settings, help and log out inside it.
+  - The 4Life mark shows when there is room, and the title uses the section's short name.
+  - The menu button and the side drawer are no longer needed on phones: every section is in the dock and every tool is in the top bar.
+- **Safe areas** at the top and bottom of notched phones are respected. One shared value (`--dock-space`) keeps page ends, the Instant EMS emergency buttons, the "Not saved" notice and the back-to-top button clear of the dock.
+- **AI chat:**
+  - The conversation's height follows what is actually visible (dynamic viewport units), so it shrinks with the keyboard and the browser's bars. With `interactive-widget=resizes-content`, Android keeps the message box above the keyboard.
+  - Focusing the message box keeps it, the microphone and the send button in view.
+  - On a first visit, the four ways to start are compact rows instead of tall cards, so the conversation comes up sooner.
+- **Instant EMS:** Call 112, Text and Nearest help float just above the dock, with a fade behind them.
+- **Therapist workspace:** the same dock (Today, Sessions, Clients, Requests with its count, and More).
+
+**Computers:** unchanged. The column of glass buttons stays, with the name beside each on hover, keyboard focus or a press.
+
+Tests: `npm run test:sidebar` now checks the dock at 768, 390 (dark) and 320 px on emulated phones (touch and mobile viewport). It checks:
+- every section is there, in order, at least 44×48 px, rounded and glassy;
+- whole names show, with no panel behind the buttons and no sideways scrolling;
+- a tap opens each section and marks it current;
+- the end of each page is never hidden behind the dock;
+- the dock steps aside while typing;
+- search, Breathe, SOS and the account menu are in the top bar.
+
+That is 173 checks. The phone checks in `npm run test:mobile` were updated for the dock.
+
+# 4Life — Privacy Policy at /privacy, and privacy fixes found while writing it (12 November 2026)
+
+**The Privacy Policy** is a public page at `/privacy`. It needs no sign-in, works when opened directly or refreshed, and follows the light, dark and system themes. It has a summary, a table of contents (beside the text on computers, folded on phones), search, and 18 sections. Tables become cards on phones.
+- The words are in `src/content/privacyPolicy.ts`, separate from the page, and are written from what the code actually does.
+- The organisation's name, email and address come from `VITE_PRIVACY_*` settings. Until those are set, the page shows marked placeholders, never invented details.
+- It is a **draft for legal review**. It says so, and the few facts still to be decided are marked "To be confirmed".
+- The policy is in English only (a translated legal text needs its own review). The page itself is in all 27 languages.
+
+**Linked from:** sign-in, sign-up (next to the safe-space promise, as information, not consent), onboarding, Settings → Privacy and data, the AI chat disclosure, the app footer, the therapist workspace footer, and quick search. The links open in a new tab, so nothing typed in a form is lost.
+
+**Privacy fixes:**
+- **Therapists no longer see a client's whole profile.**
+  - Before, a linked therapist could read the client's full profile row, including their latest mood and craving, gender and area, even when the client kept check-ins private.
+  - Now they get only community name, age, focus area, streak and location consent.
+  - **Apply migration `20261112000011_privacy.sql`.** The workspace keeps working before it is applied.
+- **AI requests carry only what each prompt uses.** Before, every message sent the whole profile to 4Life's server, including email, support contacts' phone numbers and address (`src/lib/aiProfile.ts`). The prompts are unchanged.
+- **"Download my data" is complete.** It now includes the sign-in email, Village reactions, reports, blocks and circle sign-ups, circle messages, location requests, and a therapist's licence details, services and days off.
+- **Inaccurate statements corrected**:
+  - "Private and confidential" and "Confidential" in the footers;
+  - "Only you — and a counsellor you choose — can see your information";
+  - "my recovery data stays private" in the safe-space promise;
+  - "Only you see it" on the name and faith fields;
+  - "Your information stays on this device unless you choose to share it" in Settings;
+  - "Nobody else" in the FAQ;
+  - "never shared" when booking;
+  - "only you see" on the circle guide.
+
+**Found, not changed (decisions needed; see PRIVACY-AUDIT.md):**
+- A client with a crisis-log entry or signed-note history **cannot be deleted** (append-only records cascade from the account). There is no deletion button.
+- Gemini's free tier and the AI providers' 18+ terms, against a 13+ sign-up.
+- No recorded consent for health data.
+- The retention clean-ups may not be scheduled.
+- Crisis locations go to free public map servers.
+- Processor agreements, Groq zero data retention and Data Protection Commission registration are not yet confirmed.
+
+**Tests:**
+- `npm run test:privacy-db` (24 checks);
+- `npm run test:privacy` (42 checks in Chrome);
+- 13 more unit checks.
+
 # 4Life — the AI chat said "not set up" although the AI was set up (12 November 2026)
 
 **Root cause, checked on the live system.** The live app reaches the AI on two backends with the same code: this site's `/api/chat` (Vercel) and the Supabase function `chat`. They keep their keys separately. Live, `https://4lifeee.vercel.app/api/health` reported `groq: false, gemini: false`, while the Supabase function's health reported `groq: true, gemini: true` (Groq `openai/gpt-oss-120b`, Gemini `gemini-3.5-flash-lite`). The app asks `/api` first and moves to the Supabase function only when `/api` is missing or down. `/api/chat` without a key answers normally (HTTP 200, `error: not_configured`), so the app stopped there and showed "The AI companion isn't set up on this server yet", and the backend that had both keys was never asked.

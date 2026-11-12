@@ -93,7 +93,7 @@ const SIZES: Array<[number, number]> = [[320, 568], [360, 640], [390, 844], [430
 const goEms = async (p: Page, width: number) => {
   await p.locator('button', { hasText: 'Kwame Mensah' }).click();
   await p.locator('#main-content').waitFor();
-  if (width < 1024) await p.locator('nav[aria-label="Quick navigation"] button', { hasText: 'EMS' }).click();
+  if (width < 1024) await p.locator('nav.dock button', { hasText: 'EMS' }).click();
   else await p.locator('#main-navigation nav button', { hasText: 'EMS' }).click();
   await p.locator('#first-aid').waitFor();
 };
@@ -195,8 +195,7 @@ try {
     const { ctx, p } = await open(320, 568);
     await p.locator('button', { hasText: 'Kwame Mensah' }).click();
     await p.locator('#main-content').waitFor();
-    await p.locator('nav[aria-label="Quick navigation"] button').last().click();
-    await p.locator('#main-navigation button', { hasText: 'Settings' }).first().click();
+    await p.locator('nav.dock button[aria-label="Settings"]').click();
     const age = p.locator('#f-age');
     ok((await age.inputValue()) === '19', 'Settings shows the saved age');
     await age.fill('12');

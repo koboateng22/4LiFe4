@@ -31,7 +31,9 @@ import { COUNTRIES, cleanCode, countryByCode, showPhone, toE164 } from '../src/l
 import { friendlyError, __useTestClient } from '../src/lib/supabase';
 import * as clientApiForAuth from '../src/lib/db/clientApi';
 import { needsAccountSetup } from '../src/components/auth/FinishSetup';
-import { chatSystemPrompt } from '../server/core/prompts';
+import { chatSystemPrompt, thoughtRecordPrompt, circleGuidePrompt } from '../server/core/prompts';
+import { chatProfile, suggestProfile, guideProfile } from '../src/lib/aiProfile';
+import { POLICY, privacyContacts, hasPending } from '../src/content/privacyPolicy';
 import { clash, daySlots, freeSlots, isWorkingTime, overlaps } from '../src/lib/schedule';
 
 // A small in-memory localStorage, so the on-device parts can be tested here
@@ -582,5 +584,30 @@ ok(supabaseProjectRef(n => (n === 'VITE_SUPABASE_URL' ? ' https://yveydudfixqifx
   const en = JSON.parse(execFileSync('cat', ['src/locales/en/chat.json']).toString());
   const key = Object.keys(en).find(k => k.startsWith('{aiName} is an AI'))!;
   ok(/Groq, our main AI provider/.test(key) && /Google Gemini if Groq can’t answer/.test(key) && /saved only on this device/.test(key) && !/powered by Google Gemini/.test(key), 'the chat disclosure says Groq first, Gemini as backup, and that chats stay on the device');
+}
+// Privacy: AI requests carry only what the prompts use, and the policy says only what is true
+{
+  const full: any = {
+    id: 'u1', name: 'Kwame Mensah', nickname: 'Kwame_GH', email: 'kwame@example.org', password: 'secret', pinCode: '1234', age: 21, gender: 'Male', address: 'East Legon',
+    contacts: [{ id: 'c', name: 'Sister Mary', phone: '+233240000001' }], region: 'Greater Accra', language: 'tw', aiName: 'Nana', currentTriage: 'substance',
+    currentMood: 'low', currentCraving: 7, belief: 'theist', religionType: 'Christian', sobrietyStreakDays: 5, shareLocationInCrisis: true,
+  };
+  const helped = ['Box breathing', 'Call a friend'];
+  const sent = JSON.stringify(chatProfile(full, helped));
+  ok(!/kwame@example|Kwame Mensah|secret|1234|East Legon|Sister Mary|\+233|"age"|Male|shareLocation/.test(sent), 'the chat sends no email, real name, password, PIN, area, gender, age, contacts or location setting');
+  for (const mode of ['cbt', 'urge_surfing', 'mindfulness', 'accountability'] as const)
+    ok(chatSystemPrompt({ ...full, copingThatHelped: helped }, mode, 'none') === chatSystemPrompt(chatProfile(full, helped), mode, 'none'), `the chat prompt is exactly the same with the smaller profile (${mode})`);
+  ok(JSON.stringify(suggestProfile(full)) === '{"language":"tw"}' && thoughtRecordPrompt('s', 't', 'e', full) === thoughtRecordPrompt('s', 't', 'e', suggestProfile(full)), 'the thought-record helper sends only the language, and its prompt is unchanged');
+  ok(JSON.stringify(guideProfile(full)) === '{"nickname":"Kwame_GH","language":"tw"}' && circleGuidePrompt('q', 'Circle', 'Kwame_GH', full) === circleGuidePrompt('q', 'Circle', 'Kwame_GH', guideProfile(full)), 'the circle guide sends only the community name and language, and its prompt is unchanged');
+
+  const c = privacyContacts({ VITE_PRIVACY_OPERATOR: ' 4Life Ltd ', VITE_PRIVACY_EMAIL: 'privacy@example.org' });
+  ok(c.operator === '4Life Ltd' && c.email === 'privacy@example.org' && c.address === null && privacyContacts({}).operator === null, 'the operator’s details come only from settings; a missing one stays missing (never guessed)');
+  const all = JSON.stringify(POLICY);
+  const ids = POLICY.sections.map(x => x.id);
+  ok(POLICY.sections.length === 18 && new Set(ids).size === ids.length, 'the policy has its 18 sections, each with its own address');
+  ok(/Groq/.test(all) && /backup/.test(all) && /Gemini/.test(all) && /does \*\*not\*\* contact emergency services/.test(all) && /cannot currently be fully deleted/.test(all), 'it names Groq first and Gemini as backup, says 4Life does not call emergency services, and is honest about deletion');
+  ok(!/completely confidential|nobody can access|fully compliant|encrypted at rest|never stored|100% secure|guarantee(s|d)? (your|complete)/i.test(all), 'it makes no absolute promises (completely confidential, nobody can access, fully compliant…)');
+  ok((all.match(/\]\((https?:[^)]+)\)/g) || []).every(l => l.startsWith('](https://')), 'every outside link in it is https');
+  ok(/\{\{operator\}\}/.test(all) && /\{\{email\}\}/.test(all) && hasPending() && POLICY.status === 'draft', 'operator details are placeholders, and the open questions keep it a draft');
 }
 console.log(`All ${n} unit checks passed`);

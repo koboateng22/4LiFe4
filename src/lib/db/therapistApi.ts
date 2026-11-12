@@ -227,7 +227,8 @@ export async function loadTherapistData(therapistId: string): Promise<TherapistD
   let profiles: any[] = [], checkins: any[] = [], goals: any[] = [], homework: any[] = [], plans: any[] = [], privates: any[] = [], sos: any[] = [], thoughts: any[] = [];
   if (clientIds.length) {
     const res = await Promise.all([
-      db().from('profiles').select('id,nickname,age,current_triage,streak_days,share_location_in_crisis').in('id', clientIds),
+      // Only these profile details, through a database function (therapists can't read client profiles directly)
+      db().rpc('my_client_profiles', { p_ids: clientIds }),
       db().from('checkins').select('client_id,day,mood,craving,created_at').in('client_id', clientIds).gte('day', dayKey(since)),
       db().from('goals').select('*').in('client_id', clientIds).order('created_at'),
       db().from('homework').select('*').in('client_id', clientIds).order('created_at'),
@@ -237,6 +238,9 @@ export async function loadTherapistData(therapistId: string): Promise<TherapistD
       // Only records the client chose to share are visible (Row Level Security)
       db().from('thought_records').select('*').in('client_id', clientIds).order('created_at', { ascending: false }).limit(300),
     ]);
+    // Until migration 0011 is applied the function doesn't exist yet: read the same fields the old way
+    const noFunction = (e: any) => !!e && (e.code === 'PGRST202' || e.code === '42883' || /could not find the function/i.test(e.message || ''));
+    if (noFunction(res[0].error)) res[0] = (await db().from('profiles').select('id,nickname,age,current_triage,streak_days,share_location_in_crisis').in('id', clientIds)) as any;
     for (const r of res) if (r.error) throw r.error;
     [profiles, checkins, goals, homework, plans, privates, sos, thoughts] = res.map(r => r.data || []);
   }

@@ -12,6 +12,7 @@ import { GraduationCap, Leaf, Stethoscope } from 'lucide-react';
 import { cx } from '../ui';
 import { LivingBackground } from '../LivingBackground';
 import { LoginArt } from './LoginArt';
+import { PRIVACY_PATH } from '../privacy/PrivacyLink';
 
 import { t, T, msg } from '../../i18n';
 export type AuthRole = 'client' | 'therapist';
@@ -31,7 +32,7 @@ const Brand: React.FC = () => (
 /** Privacy and emergency numbers */
 const FinePrint: React.FC = () => (
   <>
-    <span translate="no">4Life</span> <T text="· Private and confidential · In danger? No account needed: <0>Call 112</0> · <1>Ambulance 193</1>" parts={[<a href="tel:112" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />, <a href="tel:193" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />]} />
+    <span translate="no">4Life</span> <T text="· <0>Privacy Policy</0> · In danger? No account needed: <1>Call 112</1> · <2>Ambulance 193</2>" parts={[<a href={PRIVACY_PATH} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center px-1 font-semibold text-pri-text underline" />, <a href="tel:112" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />, <a href="tel:193" className="inline-flex min-h-11 items-center px-1 font-bold text-danger-text underline" />]} />
   </>
 );
 

@@ -64,7 +64,7 @@ export const FinishSetup: React.FC<{ profile: UserProfile; onDone: (p: UserProfi
         </p>
         <div>
           <h1 className="m-0 text-2xl font-extrabold">{t('Finish setting up')}</h1>
-          <p className="m-0 mt-1 text-base text-ink-2">{t('Two quick things before you start. Only your community name is ever shown to others.')}</p>
+          <p className="m-0 mt-1 text-base text-ink-2">{t('Two quick things before you start. Only your community name is shown to other members.')}</p>
         </div>
         {tooYoung ? (
           <div className="flex flex-col gap-4">

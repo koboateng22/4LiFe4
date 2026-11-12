@@ -1,6 +1,6 @@
 /**
  * One source of truth for the app's sections.
- * The sidebar, the top bar title and the mobile bottom bar all read from here,
+ * The side rail (computers), the dock (phones and tablets) and the top bar title all read from here,
  * so a section is only ever named and ordered in one place.
  */
 import type { LucideIcon } from 'lucide-react';
@@ -15,7 +15,7 @@ export interface NavItem {
   /** English text; show it with t() */
   label: string;
   subtitle: string;
-  /** Short label used in the mobile bottom bar */
+  /** Short label: the dock on phones, and the top bar title on narrow screens */
   shortLabel: string;
   icon: LucideIcon;
   group: NavGroup;
@@ -33,8 +33,5 @@ export const NAV_ITEMS: NavItem[] = [
 export const NAV_GROUP_LABELS: Partial<Record<NavGroup, string>> = {
   support: msg('Support'),
 };
-
-/** Sections shown in the mobile bottom bar (Settings lives under "More"). */
-export const BOTTOM_NAV_IDS: ActiveTab[] = ['dashboard', 'chat', 'community', 'emergency_map'];
 
 export const navItemFor = (id: ActiveTab) => NAV_ITEMS.find(n => n.id === id) || NAV_ITEMS[0];

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { t, T, msg } from '../i18n';
+import { PrivacyLink } from './privacy/PrivacyLink';
 interface OnboardingFlowProps {
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -141,7 +142,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   <T text="<0>Private</0>" parts={[<span className="text-sm font-semibold text-pri-text bg-pri-soft px-2 py-0.5 rounded-md border border-pri/30" />]} />
                 </div>
                 <p className="text-sm text-ink-3 mt-0.5">
-                  {t("This helps AI therapy speak to you in a way that fits you. Only you can see it.")}
+                  {t("This helps the AI companion speak to you in a way that fits you. Other members don’t see it; it goes with your messages to the AI service.")}
                 </p>
               </div>
 
@@ -452,6 +453,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <h2 className="text-lg font-bold text-ink">{t("Privacy and support people")}</h2>
                 <p className="text-sm text-ink-3 mt-0.5">
                   {t("Choose the name others see, and add someone you trust. In an emergency you can text them your location in one tap.")}
+                </p>
+                <p className="text-sm text-ink-3 mt-1">
+                  <T text="See the <0>Privacy Policy</0> for what 4Life stores and who can see it." parts={[<PrivacyLink />]} />
                 </p>
               </div>
 

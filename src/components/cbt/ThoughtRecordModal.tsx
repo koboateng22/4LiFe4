@@ -10,6 +10,7 @@ import { ArrowLeft, ArrowRight, Check, Lightbulb, Phone, Sparkles } from 'lucide
 
 import { t as tr, T, msg, getLanguage } from '../../i18n';
 import { EnglishSafetyNote } from '../ems/EnglishSafetyNote';
+import { suggestProfile } from '../../lib/aiProfile';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -100,7 +101,7 @@ export const ThoughtRecordModal: React.FC<Props> = ({ isOpen, onClose, profile, 
       const res = await apiFetch('/api/cbt/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ situation, thought, emotion, userProfile: profile }),
+        body: JSON.stringify({ situation, thought, emotion, userProfile: suggestProfile(profile) }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();

@@ -615,10 +615,10 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
       <InstallShortcut />
 
       {/* Phones: the three most important actions, always within thumb reach */}
-      <div className="h-20 lg:hidden" aria-hidden="true" />
+      <div className="h-[4.75rem] lg:hidden" aria-hidden="true" />
       <nav
         aria-label={t("Emergency actions")}
-        className="fixed inset-x-0 bottom-[calc(62px+max(env(safe-area-inset-bottom),6px))] z-30 grid grid-cols-3 gap-2 border-t border-line bg-surface/90 px-3 py-2.5 backdrop-blur-xl lg:hidden"
+        className="fixed inset-x-0 bottom-[calc(var(--dock-space)-0.25rem)] z-30 mx-auto grid max-w-[30rem] grid-cols-3 gap-2 bg-gradient-to-t from-bg via-bg/85 to-transparent px-[max(env(safe-area-inset-left),0.625rem)] pb-1.5 pt-5 lg:hidden"
       >
         <a href="tel:112" className="btn-shine flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl bg-danger text-[0.9375rem] font-extrabold text-[#fff] no-underline">
           <Phone className="h-5 w-5" aria-hidden="true" /> {t("Call 112")}

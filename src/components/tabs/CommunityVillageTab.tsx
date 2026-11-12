@@ -52,6 +52,7 @@ import { listCounsellors } from '../../lib/db/clientApi';
 import { isRemote } from '../../lib/supabase';
 
 import { t as tr, T, msg } from '../../i18n';
+import { guideProfile } from '../../lib/aiProfile';
 interface CommunityVillageTabProps {
   profile: UserProfile;
   onOpenSos: () => void;
@@ -1147,7 +1148,7 @@ const CircleRoom: React.FC<{
     if (!q || asking) return;
     setAsking(true);
     try {
-      const a = await askGuide(q, circle.title, profile);
+      const a = await askGuide(q, circle.title, guideProfile(profile));
       if (a.risk === 'crisis') onCrisis();
       setMessages(prev => [
         ...prev,
@@ -1282,7 +1283,7 @@ const CircleRoom: React.FC<{
         isOpen={guideOpen}
         onClose={() => setGuideOpen(false)}
         title={tr("Ask the circle guide")}
-        subtitle={tr("An AI guide answers privately — only you see the question and answer.")}
+        subtitle={tr("An AI guide answers privately: no one else in the circle sees your question or the answer.")}
         size="sm"
         footer={
           <>

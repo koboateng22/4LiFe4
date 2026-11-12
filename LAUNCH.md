@@ -14,6 +14,9 @@ Work through this before you share the link with real users.
 
 - [ ] Environment variables set for Production and Preview (see README): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `GROQ_API_KEY` and `GEMINI_API_KEY` (the AI: Groq first, Gemini as backup), and optionally `YOUTUBE_API_KEY` (first aid and Learn videos), `VIDEO_DAILY_UNITS`, `VITE_AUTH_GOOGLE` / `VITE_AUTH_PHONE` (only after the set-up in SUPABASE.md, section 6), `GROQ_MODEL`, `GEMINI_MODEL`, `PRIMARY_AI_PROVIDER`, `FALLBACK_AI_PROVIDER`, `REQUIRE_SIGN_IN`, `ALLOWED_ORIGINS`, `RATE_LIMIT_PER_MINUTE`.
 - [ ] Supabase: migration `20261106000009_theme_system.sql` applied (the "System default" theme is refused by the database without it).
+- [ ] Supabase: migration `20261112000011_privacy.sql` applied (therapists see only the profile details they need; "Download my data" is complete).
+- [ ] **Privacy Policy** (`/privacy`): set `VITE_PRIVACY_OPERATOR`, `VITE_PRIVACY_EMAIL` and `VITE_PRIVACY_ADDRESS` in Vercel, have the draft reviewed by a Ghanaian data-protection lawyer, settle every "To be confirmed" note (PRIVACY-AUDIT.md, sections 5–7), then set `status: 'final'` in `src/content/privacyPolicy.ts`. Register with the Data Protection Commission (dataprotection.org.gh).
+- [ ] Supabase: schedule the clean-ups with pg_cron (`purge_expired_locations`, `purge_old_circle_messages`, `purge_expired_incidents`; the commands are in the migrations).
 - [ ] Supabase: migration `20261112000010_scheduling.sql` applied (therapist services, breaks and days off, real free times for booking, no double-booking). Without it the therapist workspace can't load its services and days off, and clients can't see free times.
 - [ ] Node.js version: leave Project Settings on 24.x (Node 20 no longer deploys). `package.json` asks for 22 or newer, which Vercel maps to 24.
 - [ ] Framework preset shows **Vite** (set in `vercel.json`).
@@ -31,6 +34,7 @@ npm run test:unit
 npm run test:i18n     # every language has every text
 npm run test:account-db
 npm run test:schedule-db  # free times, breaks, days off, services, no double-booking
+npm run test:privacy-db   # what therapists can see, SOS consent, Download my data
 npm run test:demo-build   # no demo accounts in a production build
 npm audit --omit=dev  # no high or critical
 npm run build

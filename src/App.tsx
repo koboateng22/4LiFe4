@@ -61,6 +61,7 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { WelcomeTour, isWelcomePending, clearWelcomePending } from './components/WelcomeTour';
 
 import { t as tr, T, msg, getLanguage, normalizeLanguage, setLanguage, useLanguage } from './i18n';
+import { PrivacyLink } from './components/privacy/PrivacyLink';
 // Before anyone signs in: the demo person in development and previews (see lib/demo.ts), a blank profile otherwise
 const INITIAL_PROFILE: UserProfile = !DEMO_ENABLED ? { ...STARTER_PROFILE } : {
   id: 'usr_demo_1',
@@ -335,6 +336,7 @@ export default function App() {
       { id: 'lang', group: prefs, label: msg('Change language'), icon: <Globe className={ic} />, keywords: 'twi ga ewe hausa dagbani french translate', run: () => setIsLangModalOpen(true) },
       { id: 'tour', group: prefs, label: msg('Show the welcome tour'), icon: <Sparkles className={ic} />, keywords: 'welcome intro tour help start onboarding', run: () => setShowWelcome(true) },
       { id: 'motion', group: prefs, label: movingBg ? msg('Turn off the moving background') : msg('Turn on the moving background'), icon: <Sparkles className={ic} />, keywords: 'animation ribbon motion battery', run: () => setMovingBg(!movingBg) },
+      { id: 'privacy', group: prefs, label: msg('Privacy Policy'), icon: <ShieldCheck className={ic} />, keywords: 'privacy data policy personal information gdpr act 843 delete download', run: () => window.open('/privacy', '_blank', 'noopener') },
       { id: 'feedback', group: prefs, label: msg('Ask the developers'), icon: <HelpCircle className={ic} />, keywords: 'feedback bug help question faq', run: () => setIsFeedbackOpen(true) },
       { id: 'logout', group: prefs, label: msg('Log out'), icon: <LogOut className={ic} />, keywords: 'sign out exit', run: handleLogout },
     ];
@@ -460,10 +462,9 @@ export default function App() {
           <div className="flex min-w-0 flex-1 flex-col lg:pl-24">
             <TopBar
               title={tr(pageTitle)}
-              shortTitle={profile.language && profile.language !== 'en' ? undefined : nav.id === 'chat' ? tr("AI Therapy") : nav.id === 'community' ? tr("Village") : undefined}
+              shortTitle={tr(nav.shortLabel)}
               subtitle={tr(pageSubtitle)}
               profile={profile}
-              onOpenMenu={() => setIsOpenMobileSidebar(true)}
               onOpenLanguage={() => setIsLangModalOpen(true)}
               onOpenCalm={() => setIsCalmOpen(true)}
               onOpenSos={() => setIsSosOpen(true)}
@@ -474,7 +475,7 @@ export default function App() {
             />
 
 
-            <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-28 pt-6 outline-none sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
+            <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-[calc(var(--dock-space)+1.5rem)] pt-5 outline-none sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
               <ActiveAlertBanner view={incident.view} onOpen={() => setIsSosOpen(true)} />
               {/* each page fades in gently when you open it */}
               <div key={activeTab} className="page-in">
@@ -520,12 +521,13 @@ export default function App() {
               <footer className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-sm text-ink-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="m-0 flex items-center gap-2">
                   <RibbonMark className="h-6 w-4" label={tr("Green ribbon: mental health awareness")} />
-                  <T text="<0>4Life · Mental health matters · Confidential and non-judgmental</0>" parts={[<span />]} />
+                  <T text="<0>4Life · Mental health matters · Non-judgmental support</0>" parts={[<span />]} />
                 </p>
                 <p className="m-0 flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>
                     <T text="In crisis? Call <0>112</0> or <1>193</1> (ambulance)" parts={[<a href="tel:112" className="font-bold text-ink" />, <a href="tel:193" className="font-bold text-ink" />]} />
                   </span>
+                  <PrivacyLink className="inline-flex min-h-11 items-center no-underline hover:underline" />
                   <button type="button" onClick={() => setIsFeedbackOpen(true)} className="min-h-11 font-semibold text-pri-text hover:underline cursor-pointer">
                     {tr("Ask the developers")}
                   </button>
@@ -534,7 +536,7 @@ export default function App() {
             </main>
           </div>
 
-          <BottomNav activeTab={activeTab} onNavigate={navigate} onOpenMore={() => setIsOpenMobileSidebar(true)} />
+          <BottomNav activeTab={activeTab} onNavigate={navigate} />
         </div>
       )}
 
@@ -583,7 +585,7 @@ export default function App() {
 
       <PasswordRecoveryModal isOpen={session.passwordRecovery} onClose={session.closePasswordRecovery} />
       {profileSync.error && (
-        <div role="alert" className="fixed inset-x-4 bottom-24 z-[60] mx-auto flex max-w-xl items-center gap-3 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn shadow-xl lg:bottom-6">
+        <div role="alert" className="fixed inset-x-4 bottom-[calc(var(--dock-space)+0.75rem)] z-[60] mx-auto flex max-w-xl items-center gap-3 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn shadow-xl lg:bottom-6">
           <p className="m-0 min-w-0 flex-1">
             <T text="<0>Not saved.</0> {error}" parts={[<strong />]} vars={{ error: profileSync.error }} />
           </p>

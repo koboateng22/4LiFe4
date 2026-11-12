@@ -104,6 +104,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 - An SOS sets risk to high for every active therapist of that client and starts their escalation record.
 - **No double-booking.** A therapist can never have two booked sessions at the same time. The database checks every new or moved session, whoever writes it, under a lock per therapist so two requests at the same moment can't both get the time (`sessions_no_overlap`). Accepting a request at a time that is taken is refused, and the request stays open.
 - **Free times come from the database.** `therapist_free_slots` works out a verified therapist's free times from their days and hours, minus their daily break, days off and booked sessions, at least 2 hours ahead, with 10 minutes between sessions. Clients get only the times, never whose sessions fill the others. A request can name only an active service of that therapist.
+- **A therapist sees only five profile details of a linked client** (community name, age, focus, streak and location consent), through `my_client_profiles()`. They cannot read the client's profile row, which holds mood, craving, area and other preferences.
 - Days off are seen only by the therapist. Clients see a therapist's active services, as they see the directory.
 
 ### Global Village rules in the database
@@ -146,7 +147,8 @@ Keep `CHECKED_HOTLINES` in `src/lib/ems.ts` (used offline and without Supabase) 
 | `therapist_free_slots(p_therapist, p_days, p_duration)` | anyone signed in | A therapist's free start times for the next `p_days` days (at most 60) |
 | `decline_session_request(p_request, p_reason)` | therapist | Closes the request (the reason is not shown to the client) |
 | `sign_session_note(p_session, p_next_starts_at)` | therapist | See above |
-| `export_my_data()` | anyone signed in | Everything stored about them, as JSON (Settings → Download my data) |
+| `export_my_data()` | anyone signed in | Everything stored about them (including their sign-in email), as JSON (Settings → Download my data). Not included: counsellors' notes and crisis log, and anything about other people |
+| `my_client_profiles(p_ids)` | therapist | Community name, age, focus, streak and location consent of their linked clients |
 | `request_account_deletion()` | anyone signed in | Marks the account; an admin completes it after any required record-keeping |
 | `review_therapist(p_therapist, p_verified, p_note)` | admin | Verify or reject a licence |
 | `purge_expired_locations(p_days)` | scheduled job | Removes old SOS coordinates |

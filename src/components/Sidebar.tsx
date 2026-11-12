@@ -35,7 +35,8 @@ export const BrandMark: React.FC<{ compact?: boolean }> = ({ compact }) => (
  * The one place for navigation.
  * Computers (1024 px and wider): a column of floating glass buttons on the left, each with its
  * name in a label beside it on hover or keyboard focus (and briefly on a press, for touch screens).
- * Phones and tablets: the same items as a drawer with labelled rows, opened from the top bar or "More".
+ * Phones and tablets: the dock at the bottom of the screen (MobileDock) instead. The drawer below
+ * (labelled rows) is kept for a caller that opens it, but the app no longer needs to.
  * Styles: .side-rail / .rail-btn / .rail-label in index.css.
  */
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, isOpenMobile, onCloseMobile, profile, onOpenSos, onOpenSearch, onOpenCalm }) => {
@@ -94,7 +95,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onNavigate, isOpenM
         aria-label={t("Main navigation")}
         className={cx(
           'side-rail glass-bar glass-side fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[272px] flex-col border-r transition-transform duration-300 lg:z-30 lg:w-24 lg:items-center lg:py-5',
-          isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+          // phones and tablets use the dock (MobileDock); the drawer only shows if something opens it
+          isOpenMobile ? 'translate-x-0 shadow-2xl' : 'max-lg:hidden'
         )}
       >
         {/* Brand row (on computers: the logo, as the way home) */}

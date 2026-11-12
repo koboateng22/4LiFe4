@@ -20,7 +20,7 @@ const CATEGORIES = [msg('Something isn’t working'), msg('An idea to make it be
 const FAQS = [
   {
     q: msg('Who can see my AI therapy conversation?'),
-    a: msg('Nobody else. Your conversation with the AI is saved on your phone only. Thought records are private too, unless you switch on “Share with my counsellor” for a record.'),
+    a: msg('No other person using 4Life, including your counsellor. Your conversation with the AI is saved on your phone only. To write each reply, your message and the recent conversation go through 4Life’s server to the AI service (Groq, or Google Gemini as a backup). Thought records are shared with your counsellor only if you switch on “Share with my counsellor” for a record. See the Privacy Policy for details.'),
   },
   {
     q: msg('Is the AI a real therapist?'),

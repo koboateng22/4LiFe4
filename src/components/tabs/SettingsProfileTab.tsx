@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 
 import { t, T, msg } from '../../i18n';
+import { PrivacyLink } from '../privacy/PrivacyLink';
 interface SettingsProfileTabProps {
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -601,7 +602,10 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
           {/* PRIVACY */}
           {section === 'privacy' && (
             <Card as="section" aria-labelledby="s-priv" className="flex flex-col gap-6">
-              <SectionHeader id="s-priv" title={t("Privacy and data")} subtitle={t("Your information stays on this device unless you choose to share it.")} />
+              <SectionHeader id="s-priv" title={t("Privacy and data")} subtitle={t("Your account and recovery records are kept in 4Life’s cloud database, protected by access rules. Your AI chat stays on this device. Counsellors see only what you choose to share.")} />
+              <p className="m-0 -mt-2 text-[0.9375rem] text-ink-2">
+                <T text="Read the <0>Privacy Policy</0> to see exactly what is stored, where, who can see it, and your rights." parts={[<PrivacyLink />]} />
+              </p>
               <Field label={t("4-digit app PIN")} htmlFor="f-pin" hint={t("Protects your private notes if someone else picks up your phone.")}>
                 <input
                   id="f-pin"
@@ -623,7 +627,7 @@ export const SettingsProfileTab: React.FC<SettingsProfileTabProps> = ({ profile,
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="m-0 text-base font-bold text-ink">{t("Download my data")}</p>
-                    <p className="m-0 text-[0.9375rem] text-ink-3">{t("A copy of your profile as a file.")}</p>
+                    <p className="m-0 text-[0.9375rem] text-ink-3">{t("A copy of the information 4Life holds about your account, as a file.")}</p>
                   </div>
                   <Button variant="secondary" onClick={handleExportData} icon={exported ? <Check className="h-5 w-5" /> : <Download className="h-5 w-5" />}>
                     {exported ? t("Downloaded") : t("Download")}

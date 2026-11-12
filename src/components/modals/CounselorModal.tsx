@@ -318,7 +318,7 @@ export const CounselorModal: React.FC<CounselorModalProps> = ({ counselor, isOpe
           <span>
             <T text="<0>Share my check-ins with this counsellor</0>" parts={[<strong className="text-ink" />]} />
             <br />
-            {t("Your streak, mood and craving scores help them prepare. Your chats with the AI companion are never shared. You can stop sharing any time.")}
+            {t("Your streak, mood and craving scores help them prepare. Your chats with the AI companion are never shared with counsellors. You can stop sharing any time.")}
           </span>
         </label>
 

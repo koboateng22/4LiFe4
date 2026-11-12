@@ -1,4 +1,4 @@
-import {StrictMode} from 'react';
+import {StrictMode, Suspense, lazy} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
@@ -26,12 +26,22 @@ if ((import.meta as any).env?.PROD) {
   }, 15000);
 }
 
+// The Privacy Policy is its own page at /privacy: open to everyone, no sign-in, none of the app around it
+const PrivacyPage = lazy(() => import('./components/privacy/PrivacyPage'));
+const isPrivacyPage = /^\/privacy\/?$/.test(window.location.pathname);
+
 // Start in the language chosen last time (its words load first, so nothing flashes in English)
 setLanguage(savedLanguage()).finally(() =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AppErrorBoundary>
-        <App />
+        {isPrivacyPage ? (
+          <Suspense fallback={null}>
+            <PrivacyPage />
+          </Suspense>
+        ) : (
+          <App />
+        )}
       </AppErrorBoundary>
     </StrictMode>,
   )

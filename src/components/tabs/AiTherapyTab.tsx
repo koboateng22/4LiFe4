@@ -21,6 +21,8 @@ import { celebrateFrom } from '../LivingBackground';
 import { t, T, msg } from '../../i18n';
 import { EnglishSafetyNote } from '../ems/EnglishSafetyNote';
 import { RichText } from '../../lib/richText';
+import { chatProfile } from '../../lib/aiProfile';
+import { PrivacyLink } from '../privacy/PrivacyLink';
 interface AiTherapyTabProps {
   profile: UserProfile;
   setProfile?: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -211,7 +213,7 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
     try {
       const done = await streamChat(
         // the steps that helped before travel with the message, so the AI can suggest them first
-        { message: text, mode: activeMode, history, userProfile: { ...profile, copingThatHelped: helped.map(stepLabel) } },
+        { message: text, mode: activeMode, history, userProfile: chatProfile(profile, helped.map(stepLabel)) },
         { onRisk: raiseRisk, onText: soFar => update({ text: soFar }) },
         controller.signal
       );
@@ -381,7 +383,7 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
                 return (
                   <ChoiceCard
                     key={m.id}
-                    className="lift"
+                    className="lift max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:p-3.5"
                     selected={activeMode === m.id}
                     onClick={() => setActiveMode(m.id)}
                     icon={<Icon className="h-6 w-6" />}
@@ -566,7 +568,7 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
             </Notice>
           )}
 
-          <div ref={scrollRef} className="flex h-[56vh] min-h-[340px] flex-col gap-5 overflow-y-auto bg-bg p-4 sm:h-[460px] sm:p-6" aria-live="polite" aria-label={t("Messages")}>
+          <div ref={scrollRef} className="chat-messages flex min-h-[280px] flex-col gap-5 overflow-y-auto overscroll-contain bg-bg p-4 sm:p-6" aria-live="polite" aria-label={t("Messages")}>
             {messages.map((msg, idx) => {
               const isUser = msg.sender === 'user';
               const streaming = isLoading && idx === messages.length - 1 && !isUser;
@@ -693,6 +695,11 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
                 }
               }}
               placeholder={t("How are you feeling?")}
+              // Phones: once the keyboard is up, keep the message box (and the send button) in view
+              onFocus={e => {
+                const el = e.currentTarget;
+                if (window.matchMedia('(max-width: 1023.98px)').matches) setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 250);
+              }}
               ref={inputRef}
               className={cx(textareaClass, 'max-h-40 min-h-[52px] resize-none overflow-y-auto')}
             />
@@ -780,7 +787,8 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
           </Card>
 
           <p className="m-0 px-1 text-sm leading-relaxed text-ink-3">
-            {t("{aiName} is an AI. It supports your recovery but does not replace a counsellor or emergency care. Your chat is saved only on this device. To write a reply, each message and the recent conversation go through 4Life’s server to Groq, our main AI provider, or to Google Gemini if Groq can’t answer. 4Life doesn’t store them, but these companies process them under their own terms, so leave out full names and phone numbers.", { aiName })}
+            {t("{aiName} is an AI. It supports your recovery but does not replace a counsellor or emergency care. Your chat is saved only on this device. To write a reply, each message and the recent conversation go through 4Life’s server to Groq, our main AI provider, or to Google Gemini if Groq can’t answer. 4Life doesn’t store them, but these companies process them under their own terms, so leave out full names and phone numbers.", { aiName })}{' '}
+            <PrivacyLink />
           </p>
         </aside>
       </div>

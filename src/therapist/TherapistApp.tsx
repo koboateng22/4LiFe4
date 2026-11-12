@@ -29,6 +29,8 @@ import { updateTherapistProfile } from '../lib/db/therapistApi';
 import { RibbonMark } from '../components/RibbonMark';
 
 import { t as tr, T, msg } from '../i18n';
+import { PrivacyLink } from '../components/privacy/PrivacyLink';
+import { MobileDock } from '../components/MobileDock';
 interface NavDef {
   id: TherapistTab;
   label: string;
@@ -317,7 +319,7 @@ export const TherapistApp: React.FC<TherapistAppProps> = ({ therapist, setTherap
           </div>
         )}
 
-        <main id="t-main" ref={mainRef} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
+        <main id="t-main" ref={mainRef} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-[calc(var(--dock-space)+1.5rem)] pt-6 sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
           {syncProblem && (
             <div role="alert" className="mb-6 flex flex-wrap items-center gap-3 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn">
               <p className="m-0 min-w-0 flex-1">
@@ -372,7 +374,8 @@ export const TherapistApp: React.FC<TherapistAppProps> = ({ therapist, setTherap
           <footer className="mt-12 flex items-start gap-2 border-t border-line pt-6 text-sm text-ink-3">
             <RibbonMark className="mt-0.5 h-6 w-4" label={tr("Green ribbon: mental health awareness")} />
             <span>
-            <T text="4Life therapist workspace · Client information is confidential. In an emergency call <0>112</0> or the ambulance on <1>193</1>." parts={[<strong className="text-ink" />, <strong className="text-ink" />]} />
+            <T text="4Life therapist workspace · Keep client information confidential. In an emergency call <0>112</0> or the ambulance on <1>193</1>." parts={[<strong className="text-ink" />, <strong className="text-ink" />]} />{' '}
+            · <PrivacyLink />
             </span>
           </footer>
         </main>
@@ -380,44 +383,33 @@ export const TherapistApp: React.FC<TherapistAppProps> = ({ therapist, setTherap
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} placeholder={tr("Search sections, clients or crisis steps…")} />
 
-      {/* Mobile bottom bar */}
-      <nav
-        aria-label={tr("Quick navigation")}
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface/85 px-1 pb-[max(env(safe-area-inset-bottom),6px)] pt-1 backdrop-blur-xl lg:hidden"
-      >
-        {BOTTOM.map(id => {
-          const n = NAV.find(x => x.id === id)!;
-          const Icon = n.icon;
-          const active = tab === id && !session;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => nav.go(id)}
-              aria-current={active ? 'page' : undefined}
-              className={cx('relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs cursor-pointer', active ? 'font-bold text-pri-text' : 'font-semibold text-ink-3')}
-            >
-              <span className={cx('flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-200', active && 'bg-pri-soft')}>
-                <Icon className="h-6 w-6" aria-hidden="true" />
-              </span>
-              {tr(n.short)}
-              {id === 'requests' && newRequests > 0 && (
-                <span className="absolute right-[22%] top-1 rounded-full bg-pri px-1.5 text-[0.6875rem] font-bold leading-5 text-[#fff]">{newRequests}</span>
-              )}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className={cx('flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-xs cursor-pointer', !BOTTOM.includes(tab) ? 'font-bold text-pri-text' : 'font-semibold text-ink-3')}
-        >
-          <span className={cx('flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-200', !BOTTOM.includes(tab) && 'bg-pri-soft')}>
-            <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
-          </span>
-          {tr("More")}
-        </button>
-      </nav>
+      {/* Phones and tablets: the same floating glass dock as the client app */}
+      <MobileDock
+        label={tr('Quick navigation')}
+        items={[
+          ...BOTTOM.map(id => {
+            const n = NAV.find(x => x.id === id)!;
+            return {
+              id,
+              label: tr(n.label),
+              short: tr(n.short),
+              icon: n.icon,
+              active: tab === id && !session,
+              onSelect: () => nav.go(id),
+              badge: id === 'requests' && newRequests > 0 ? newRequests : undefined,
+            };
+          }),
+          {
+            id: 'more',
+            label: tr('More'),
+            short: tr('More'),
+            icon: MoreHorizontal,
+            active: !BOTTOM.includes(tab) && !session,
+            onSelect: () => setDrawerOpen(true),
+            extra: { 'aria-controls': 't-nav', 'aria-expanded': drawerOpen },
+          },
+        ]}
+      />
     </div>
   );
 };

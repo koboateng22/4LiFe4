@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { Avatar, cx, IconButton } from './ui';
 import { WORLD_LANGUAGES } from '../data/religionsData';
-import { Menu, Globe, Languages, Wind, Phone, Settings, HelpCircle, LogOut } from 'lucide-react';
+import { Globe, Languages, Wind, Phone, Settings, HelpCircle, LogOut, Search, Leaf } from 'lucide-react';
 import { PaletteTrigger } from './CommandPalette';
 import { useScrolled, haptic } from '../lib/motion';
 
@@ -16,7 +16,6 @@ interface TopBarProps {
   titleTranslate?: 'no';
   subtitleTranslate?: 'no';
   profile: UserProfile;
-  onOpenMenu: () => void;
   onOpenLanguage: () => void;
   onOpenCalm: () => void;
   onOpenSos: () => void;
@@ -28,8 +27,10 @@ interface TopBarProps {
 }
 
 /**
- * The top bar holds the page title and a few actions:
- * Translate, breathe, SOS and the account menu (the theme is in Settings → Appearance). Everything else lives in the sidebar.
+ * The top bar: the page title and the tools that must always be in reach.
+ * Phones: search, breathe, SOS and the account menu (with language, settings, help and log out); the
+ * sections are in the dock at the bottom. Wider screens add the language button and labels.
+ * The theme is in Settings → Appearance.
  */
 export const TopBar: React.FC<TopBarProps> = ({
   shortTitle,
@@ -38,7 +39,6 @@ export const TopBar: React.FC<TopBarProps> = ({
   titleTranslate,
   subtitleTranslate,
   profile,
-  onOpenMenu,
   onOpenLanguage,
   onOpenCalm,
   onOpenSos,
@@ -85,13 +85,17 @@ export const TopBar: React.FC<TopBarProps> = ({
   );
 
   return (
-    <header data-scrolled={scrolled} className="topbar sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-surface/80 px-3 py-3 backdrop-blur-xl sm:gap-3 sm:px-6 lg:px-10">
+    <header
+      data-scrolled={scrolled}
+      className="topbar sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-line bg-surface/80 px-3 pb-2.5 pt-[max(env(safe-area-inset-top),0.625rem)] backdrop-blur-xl sm:gap-3 sm:px-6 sm:py-3 lg:px-10"
+    >
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        <IconButton label={t("Open menu")} onClick={onOpenMenu} className="glass-btn lg:hidden" aria-controls="main-navigation">
-          <Menu className="h-5 w-5" />
-        </IconButton>
+        {/* the 4Life mark, on phones with room for it (computers have it in the side rail) */}
+        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pri text-[#fff] min-[380px]:flex lg:hidden" aria-hidden="true">
+          <Leaf className="h-5 w-5" />
+        </span>
         <div className="min-w-0">
-          <p className="m-0 truncate text-lg font-bold leading-tight text-ink sm:text-xl" translate={titleTranslate}>
+          <p className="m-0 truncate text-[1.0625rem] font-bold leading-tight text-ink sm:text-xl" translate={titleTranslate}>
             {shortTitle ? (
               <>
                 <span className="sm:hidden">{t(shortTitle)}</span>
@@ -106,12 +110,15 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <IconButton label={t("Search")} onClick={onOpenSearch} className="glass-btn sm:hidden">
+          <Search className="h-5 w-5 text-pri-text" />
+        </IconButton>
         <span className="hidden xl:block"><PaletteTrigger onClick={onOpenSearch} className="glass-btn w-60" /></span>
         <span className="hidden sm:block xl:hidden"><PaletteTrigger onClick={onOpenSearch} className="glass-btn" compact /></span>
         <button
           type="button"
           onClick={onOpenLanguage}
-          className="glass-btn inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-2 sm:h-11 sm:min-w-11 text-[0.9375rem] font-semibold text-ink hover:bg-muted sm:px-3.5 cursor-pointer"
+          className="glass-btn hidden h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-[0.9375rem] font-semibold text-ink hover:bg-muted sm:inline-flex cursor-pointer"
           aria-label={t("Translate. Language: {v0}. Change language", { v0: lang?.name || 'English' })}
           title={t("Translate")}
         >
@@ -124,7 +131,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         <button
           type="button"
           onClick={onOpenCalm}
-          className="glass-btn hidden h-10 min-w-10 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-2 text-[0.9375rem] font-semibold text-ink hover:bg-muted sm:inline-flex sm:h-auto sm:min-h-11 sm:px-3.5 cursor-pointer"
+          className="glass-btn inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-2 text-[0.9375rem] font-semibold text-ink hover:bg-muted sm:h-auto sm:min-h-11 sm:px-3.5 cursor-pointer"
           aria-label={t("Breathe: start a 4-7-8 calming exercise")}
         >
           <Wind className="h-5 w-5 text-pri-text" aria-hidden="true" />
@@ -137,7 +144,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             haptic(20);
             onOpenSos();
           }}
-          className="glass-sheen inline-flex h-10 items-center gap-1.5 rounded-xl bg-danger px-2.5 text-[0.9375rem] sm:h-auto sm:min-h-11 font-bold sm:gap-2 sm:px-4 text-[#fff] hover:bg-danger-hover cursor-pointer"
+          className="glass-sheen inline-flex h-11 items-center gap-1.5 rounded-xl bg-danger px-2.5 text-[0.9375rem] sm:h-auto sm:min-h-11 font-bold sm:gap-2 sm:px-4 text-[#fff] hover:bg-danger-hover cursor-pointer"
         >
           <Phone className="h-5 w-5" aria-hidden="true" />
           SOS
@@ -150,9 +157,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             aria-label={t("Account menu")}
-            className="glass-btn hidden rounded-full border p-[3px] sm:block cursor-pointer"
+            className="glass-btn block rounded-full border p-[2px] sm:p-[3px] cursor-pointer"
           >
-            <Avatar name={profile.name || profile.nickname} tone="pri" size={38} />
+            <Avatar name={profile.name || profile.nickname} tone="pri" size={36} />
           </button>
 
           {menuOpen && (

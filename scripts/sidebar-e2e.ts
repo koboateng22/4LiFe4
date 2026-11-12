@@ -32,7 +32,7 @@ const ITEMS: Array<[string, RegExp]> = [
 ];
 
 const open = async (width: number, scheme: 'light' | 'dark', theme?: 'light' | 'dark' | 'system', touch = false) => {
-  const ctx = await browser.newContext({ viewport: { width, height: 820 }, colorScheme: scheme, hasTouch: touch, serviceWorkers: 'block', reducedMotion: 'reduce' });
+  const ctx = await browser.newContext({ viewport: { width, height: 820 }, colorScheme: scheme, hasTouch: touch, isMobile: touch && width < 1024, deviceScaleFactor: touch && width < 1024 ? 2 : 1, serviceWorkers: 'block', reducedMotion: 'reduce' });
   await ctx.route('**/*', r => (r.request().url().startsWith(URL) ? r.continue() : r.abort()));
   if (theme) await ctx.addInitScript(t => localStorage.setItem('4life_user_theme', t), theme);
   const p = await ctx.newPage();
@@ -134,20 +134,59 @@ try {
     await ctx.close();
   }
 
-  // ---------- Tablets and phones: the drawer still works ----------
-  for (const width of [768, 390]) {
-    const { ctx, p, errors } = await open(width, 'light', 'light');
-    const at = `${width}px`;
-    ok(!(await onScreen(p)), `${at}: no column on screen; the drawer is closed`);
-    await p.getByRole('button', { name: 'Open menu' }).click();
+  // ---------- Tablets and phones: the dock of glass buttons at the bottom ----------
+  for (const [width, scheme] of [[768, 'light'], [390, 'dark'], [320, 'light']] as const) {
+    const { ctx, p, errors } = await open(width, scheme, scheme, true);
+    const at = `${width}px ${scheme}`;
+    const dock = p.locator('nav.dock');
+    ok(!(await rail(p).isVisible()), `${at}: the side column is not shown`);
+    ok(!(await p.getByRole('button', { name: 'Open menu' }).count()), `${at}: no menu button needed: every section is in the dock`);
+    const btns = await dock.locator('button.dock-btn').evaluateAll(els =>
+      els.map(el => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const label = el.querySelector('.dock-label') as HTMLElement;
+        return { name: el.getAttribute('aria-label'), w: r.width, h: r.height, x: r.left, right: r.right, bottom: r.bottom, radius: parseFloat(cs.borderTopLeftRadius), blur: cs.backdropFilter, cut: label.scrollWidth > label.clientWidth + 1, text: label.innerText };
+      })
+    );
+    ok(btns.map(b => b.name).join() === ITEMS.map(([n]) => n).join(), `${at}: the dock has every section, in order`);
+    ok(btns.every(b => b.h >= 48 && b.w >= 44 && b.radius >= 14 && /blur/.test(b.blur)), `${at}: each is its own rounded glass button, big enough to tap (${Math.round(Math.min(...btns.map(b => b.w)))}×${Math.round(btns[0].h)}px)`);
+    ok(btns.every(b => b.x >= 0 && b.right <= width && b.bottom <= 820), `${at}: all of them fit on the screen`);
+    ok(btns.every(b => !b.cut && b.text.length > 0), `${at}: each shows its whole short name (${btns.map(b => b.text).join(', ')})`);
+    ok((await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1, `${at}: no sideways scrolling`);
+    const panel = await dock.evaluate(el => getComputedStyle(el.querySelector('.dock-row')!).backgroundColor);
+    ok(/rgba\(0, 0, 0, 0\)|transparent/.test(panel), `${at}: no panel behind the buttons`);
+    for (const [name, heading] of ITEMS) {
+      await dock.locator(`button[aria-label="${name}"]`).tap();
+      await p.locator('#main-content').getByText(heading).first().waitFor();
+      ok((await dock.locator(`button[aria-label="${name}"]`).getAttribute('aria-current')) === 'page' && (await dock.locator('[aria-current="page"]').count()) === 1, `${at}: tapping “${name}” opens it and marks it as current`);
+    }
+    const [onBg, offBg] = await Promise.all([
+      dock.locator('[aria-current="page"]').evaluate(el => getComputedStyle(el).backgroundImage + getComputedStyle(el).boxShadow),
+      dock.locator('button[aria-label="Home"]').evaluate(el => getComputedStyle(el).backgroundImage + getComputedStyle(el).boxShadow),
+    ]);
+    ok(onBg !== offBg, `${at}: the current page's button stands out`);
+    // the page's last line is never hidden behind the dock
+    await p.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await p.waitForTimeout(300);
+    const gap = await p.evaluate(() => {
+      const top = document.querySelector('nav.dock .dock-row')!.getBoundingClientRect().top;
+      const last = document.querySelector('#main-content')!.lastElementChild!.getBoundingClientRect().bottom;
+      return top - last;
+    });
+    ok(gap >= 0, `${at}: at the end of a page nothing is hidden behind the dock (${Math.round(gap)}px clear)`);
+    // typing: the dock moves away so it never covers the keyboard or the message box
+    await dock.locator('button[aria-label="AI CBT Therapy"]').tap();
+    await p.locator('#chat-input').focus();
     await p.waitForTimeout(400);
-    ok(await onScreen(p), `${at}: the menu button opens the drawer`);
-    const names = await rail(p).locator('button.rail-btn').evaluateAll(els => els.map(el => (el as HTMLElement).innerText.split('\n')[0].trim()));
-    ok(['Home', 'AI CBT Therapy', 'Global Village', 'Learn', 'Instant EMS', 'Settings'].every(x => names.includes(x)), `${at}: the drawer lists every section with its name`);
-    await rail(p).locator('button[aria-label="Learn"]').click();
-    await p.locator('#main-content').getByText(/Short videos to help you understand recovery/).waitFor();
-    ok(!(await onScreen(p)), `${at}: choosing a section opens it and closes the drawer`);
-    ok(errors.length === 0, `${at}: no page errors`);
+    const away = await dock.evaluate(el => ({ away: el.hasAttribute('data-away'), inert: el.hasAttribute('inert') }));
+    ok(away.away && away.inert, `${at}: while typing, the dock steps aside`);
+    await p.locator('#chat-input').blur();
+    await p.waitForTimeout(400);
+    ok(!(await dock.evaluate(el => el.hasAttribute('data-away'))), `${at}: …and comes back afterwards`);
+    // the header keeps search, breathing, SOS and the account menu within reach
+    for (const name of [/search/i, /^Breathe/, /SOS/, /Account menu/]) ok(await p.locator('header').getByRole('button', { name }).first().isVisible(), `${at}: the top bar has ${name.source.replace(/[\^$\/]/g, '')}`);
+    ok(errors.length === 0, `${at}: no page errors${errors.length ? ': ' + errors.join('; ') : ''}`);
     await ctx.close();
   }
   console.log(`All ${n} side navigation checks passed`);

@@ -64,6 +64,7 @@ import type { TherapistProfile } from '../../therapist/types';
 import { Stethoscope } from 'lucide-react';
 
 import { t as tr, T, msg } from '../../i18n';
+import { PrivacyLink } from '../privacy/PrivacyLink';
 interface AuthPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
   /** The theme choice on this device (light, dark or system) */
@@ -620,7 +621,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
       ? tr('Sign in, or join in five short steps. New accounts are checked before clients can book.')
       : authMode === 'login'
         ? tr('Sign in to AI therapy, the Global Village and Instant EMS.')
-        : tr('Four short steps. Only you — and a counsellor you choose — can see your information.');
+        : tr('Four short steps. A counsellor sees your details only after you send them a request.');
 
   return (
     <>
@@ -913,7 +914,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                 {/* STEP 1 — About you */}
                 {signupStep === 1 && (
                   <div key="s1" className="flex flex-col gap-5 animate-fadeIn lg:gap-4">
-                    <Field label={tr("Your name")} htmlFor="su-name" hint={tr("Your real name or any name you are comfortable with. Only you see it.")}>
+                    <Field label={tr("Your name")} htmlFor="su-name" hint={tr("Your real name or any name you are comfortable with. Other members don’t see it.")}>
                       <input
                         id="su-name"
                         type="text"
@@ -1099,9 +1100,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({
                         className="mt-1 h-5 w-5 shrink-0 cursor-pointer"
                       />
                       <span>
-                        <T text="I agree to the <0>safe-space promise</0>: my recovery data stays private, and I will treat others in the community with respect." parts={[<strong className="text-ink" />]} />
+                        <T text="I agree to the <0>safe-space promise</0>: I will treat others in the community with respect and keep what they share private." parts={[<strong className="text-ink" />]} />
                       </span>
                     </label>
+                    <p className="m-0 mt-3 text-[0.9375rem] leading-relaxed text-ink-2">
+                      <T
+                        text="Before you create your account, please read the <0>Privacy Policy</0>. It explains what 4Life stores, where, who can see it, and which AI services process your messages."
+                        parts={[<PrivacyLink />]}
+                      />
+                    </p>
                   </div>
                 )}
 
