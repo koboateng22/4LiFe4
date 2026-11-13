@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { UserProfile } from '../types';
 import { Avatar, cx, IconButton } from './ui';
 import { WORLD_LANGUAGES } from '../data/religionsData';
-import { Globe, Languages, Wind, Phone, Settings, HelpCircle, LogOut, Search, Leaf } from 'lucide-react';
+import { Globe, Languages, Wind, Phone, Settings, HelpCircle, LogOut, Search, Leaf, ShieldCheck } from 'lucide-react';
 import { PaletteTrigger } from './CommandPalette';
 import { useScrolled, haptic } from '../lib/motion';
 
@@ -24,6 +24,8 @@ interface TopBarProps {
   onLogout: () => void;
   /** Open quick search (Ctrl/⌘ K) */
   onOpenSearch: () => void;
+  /** Show the "Admin dashboard" link (a hint only: the database decides who can use it) */
+  isAdmin?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenFeedback,
   onLogout,
   onOpenSearch,
+  isAdmin,
 }) => {
   const scrolled = useScrolled();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -173,6 +176,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               </div>
               <div className="my-1 h-px bg-line" />
               {menuItem(msg('Settings and profile'), <Settings className="h-5 w-5 text-ink-2" />, onOpenSettings)}
+              {isAdmin && menuItem(msg('Admin dashboard'), <ShieldCheck className="h-5 w-5 text-pri-text" />, () => window.location.assign('/admin'))}
               <div className="sm:hidden">{menuItem(msg('Change language'), <Globe className="h-5 w-5 text-ink-2" />, onOpenLanguage)}</div>
               {menuItem(msg('Ask the developers'), <HelpCircle className="h-5 w-5 text-ink-2" />, onOpenFeedback)}
               <div className="my-1 h-px bg-line" />

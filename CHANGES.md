@@ -1,3 +1,32 @@
+# 4Life — admin dashboard at /admin (13 November 2026)
+
+**Built on the existing admin role.** An admin is `profiles.role = 'admin'`, checked by `public.is_admin()`. The project owner makes the first one in the SQL editor (SUPABASE.md, step 7). A trigger stops anyone changing their own role, and sign-up ignores `role` in its data. No second role system was added.
+
+**The dashboard** (`/admin`, `src/admin/`) is separate from the client app and the therapist workspace. It follows the light, dark and system themes. Phones get a scrollable row of sections and cards; computers get a labelled column and tables. Admins reach it from "Admin dashboard" in the account menu or quick search. Sections are in the address (`/admin#people`), so they survive a refresh. Its sections:
+- **Overview:** real counts (people, signed in in 30 days, therapists, sessions, requests, Village, reports, SOS), alerts that link to what needs doing, a 30-day chart (sign-ups, sessions, posts, SOS) and recent admin actions. "SOS open now" means raised in the last 24 hours and not closed; older alerts are shown as history.
+- **People:** search, filters, an account's details with activity as counts only, suspend or restore (with a reason, shown to the person), and give or remove admin rights (client accounts only).
+- **Therapists:** licence details to check, approve or reject (a rejection needs a reason), suspend or restore, plus services and caseload numbers.
+- **Appointments:** sessions, requests (flagging those waiting over 48 hours), double bookings and overdue sessions. Never topics or notes.
+- **Moderation:** reports grouped by item, with keep, hide or remove (with a reason), suspending the author, and a link to the moderation history.
+- **SOS:** status and timing only, explaining initiated, contact notified and acknowledged, and that 4Life does not dispatch anyone. No locations or contact numbers. Who raised an alert is shown only after the admin gives a reason.
+- **Content:** switch group circles on or off; mark helplines and emergency centres as checked (with how they were checked). Only checked helplines are shown in the app.
+- **System:** this server's AI and video keys (never the keys themselves), which database updates are applied, whether the clean-ups are scheduled, and the list of admins.
+- **Admin log:** filterable, and it cannot be edited or deleted.
+
+**Security, enforced by the database** (migration `20261113000012_admin.sql`):
+- Every admin function checks `is_admin()` and refuses everyone else; signed-out visitors cannot call them at all. The app's own role check only decides what to show.
+- **`admin_actions`:** append-only, readable by admins, written only by the admin functions. It records who, what, which record, when, why, and a short excerpt for moderation.
+  - Direct table changes by an admin (role, verification, Village content), and making an admin in the SQL editor, are logged automatically by triggers.
+  - Looking at a person's details or at an SOS's details is logged too.
+- **Suspension (`account_suspensions`):** enforced with restrictive access rules. No posting, reacting, requesting or booking; suspended therapists are hidden from the directory, offer no free times and cannot accept requests.
+  - SOS, the emergency tools and the person's own data keep working.
+  - The person sees a notice with the reason, in the app and in the therapist workspace.
+- `review_therapist` keeps its signature, is now logged, and needs a reason to reject. The free-times and accept-request functions gained the suspension check.
+
+**Tests:**
+- `npm run test:admin-db`: 66 checks, run as separate admin, client, therapist and signed-out accounts. They cover escalation attempts (role update, sign-up data, editable settings, writing the log or suspensions directly), real record changes, the log, and that no notes, topics or SOS locations come out.
+- `npm run test:admin`: 35 checks in Chrome. Signed out, client and therapist are refused with no admin calls made, even with "admin" written into the browser; the admin flows work, reasons are required, sections survive a refresh, and there's a 390px dark layout.
+
 # 4Life — the AI companion talks like a warm counsellor (13 November 2026)
 
 The companion's instructions (`chatSystemPrompt` in `server/core/prompts.ts`) now describe how a good counsellor responds:

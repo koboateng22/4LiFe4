@@ -29,16 +29,17 @@ if ((import.meta as any).env?.PROD) {
 // The Privacy Policy is its own page at /privacy: open to everyone, no sign-in, none of the app around it
 const PrivacyPage = lazy(() => import('./components/privacy/PrivacyPage'));
 const isPrivacyPage = /^\/privacy\/?$/.test(window.location.pathname);
+// The admin dashboard is its own page at /admin (the database decides who may use it)
+const AdminApp = lazy(() => import('./admin/AdminApp'));
+const isAdminPage = /^\/admin\/?$/.test(window.location.pathname);
 
 // Start in the language chosen last time (its words load first, so nothing flashes in English)
 setLanguage(savedLanguage()).finally(() =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AppErrorBoundary>
-        {isPrivacyPage ? (
-          <Suspense fallback={null}>
-            <PrivacyPage />
-          </Suspense>
+        {isPrivacyPage || isAdminPage ? (
+          <Suspense fallback={null}>{isAdminPage ? <AdminApp /> : <PrivacyPage />}</Suspense>
         ) : (
           <App />
         )}

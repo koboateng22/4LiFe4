@@ -62,6 +62,8 @@ import { WelcomeTour, isWelcomePending, clearWelcomePending } from './components
 
 import { t as tr, T, msg, getLanguage, normalizeLanguage, setLanguage, useLanguage } from './i18n';
 import { PrivacyLink } from './components/privacy/PrivacyLink';
+import { SuspensionNotice } from './components/SuspensionNotice';
+import { adminSession } from './lib/db/adminApi';
 // Before anyone signs in: the demo person in development and previews (see lib/demo.ts), a blank profile otherwise
 const INITIAL_PROFILE: UserProfile = !DEMO_ENABLED ? { ...STARTER_PROFILE } : {
   id: 'usr_demo_1',
@@ -154,6 +156,16 @@ export default function App() {
   const [isSosOpen, setIsSosOpen] = useState<boolean>(false);
   const [isCalmOpen, setIsCalmOpen] = useState<boolean>(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
+  // Admins get a link to the admin dashboard (the database decides what they can do there)
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!isRemote || !profile.id) return setIsAdmin(false);
+    let live = true;
+    adminSession().then(s => live && setIsAdmin(s.isAdmin)).catch(() => live && setIsAdmin(false));
+    return () => {
+      live = false;
+    };
+  }, [profile.id]);
   const [isLangModalOpen, setIsLangModalOpen] = useState<boolean>(false);
   // The welcome tour shows once, the first time a new account opens the app
   const [showWelcome, setShowWelcome] = useState<boolean>(false);
@@ -336,12 +348,13 @@ export default function App() {
       { id: 'lang', group: prefs, label: msg('Change language'), icon: <Globe className={ic} />, keywords: 'twi ga ewe hausa dagbani french translate', run: () => setIsLangModalOpen(true) },
       { id: 'tour', group: prefs, label: msg('Show the welcome tour'), icon: <Sparkles className={ic} />, keywords: 'welcome intro tour help start onboarding', run: () => setShowWelcome(true) },
       { id: 'motion', group: prefs, label: movingBg ? msg('Turn off the moving background') : msg('Turn on the moving background'), icon: <Sparkles className={ic} />, keywords: 'animation ribbon motion battery', run: () => setMovingBg(!movingBg) },
+      ...(isAdmin ? [{ id: 'admin', group: prefs, label: msg('Admin dashboard'), icon: <ShieldCheck className={ic} />, keywords: 'admin manage moderate users therapists', run: () => window.location.assign('/admin') }] : []),
       { id: 'privacy', group: prefs, label: msg('Privacy Policy'), icon: <ShieldCheck className={ic} />, keywords: 'privacy data policy personal information gdpr act 843 delete download', run: () => window.open('/privacy', '_blank', 'noopener') },
       { id: 'feedback', group: prefs, label: msg('Ask the developers'), icon: <HelpCircle className={ic} />, keywords: 'feedback bug help question faq', run: () => setIsFeedbackOpen(true) },
       { id: 'logout', group: prefs, label: msg('Log out'), icon: <LogOut className={ic} />, keywords: 'sign out exit', run: handleLogout },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDarkMode, movingBg, profile.theme]);
+  }, [isDarkMode, movingBg, profile.theme, isAdmin]);
 
   if (session.checking) {
     return (
@@ -472,10 +485,12 @@ export default function App() {
               onOpenFeedback={() => setIsFeedbackOpen(true)}
               onLogout={handleLogout}
               onOpenSearch={openPalette}
+              isAdmin={isAdmin}
             />
 
 
             <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-[calc(var(--dock-space)+1.5rem)] pt-5 outline-none sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
+              <SuspensionNotice userId={profile.id} />
               <ActiveAlertBanner view={incident.view} onOpen={() => setIsSosOpen(true)} />
               {/* each page fades in gently when you open it */}
               <div key={activeTab} className="page-in">

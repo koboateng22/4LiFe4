@@ -58,6 +58,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
    update public.profiles set role = 'admin'
    where id = (select id from auth.users where email = 'you@example.com');
    ```
+   Use a client account (sign up as a person in recovery), not a therapist account: one account has one role. The change is written to the admin log automatically. Then open **/admin** (or "Admin dashboard" in the account menu). From there, admins can give or remove admin rights for other client accounts; nobody can give themselves admin rights.
 8. **Schedule location clean-up** (Database → Extensions → enable `pg_cron`, then in the SQL editor):
    ```sql
    select cron.schedule('purge-old-locations', '15 3 * * *', $$select public.purge_expired_locations()$$);
@@ -82,7 +83,7 @@ Nothing else changes for the user. If the settings are missing, the app keeps wo
 | AI therapy | `thought_records` (client-owned; a linked therapist sees only records marked shared). AI chat conversations are **not** stored — they stay on the phone. |
 | Global Village | `village_posts`, `village_replies`, `village_support`, `village_reports`, `village_blocks`, `village_circles`, `circle_messages` |
 | Instant EMS | `emergency_centers`, `emergency_hotlines` (only numbers with `verified_at` are shown), `emergency_incidents`, `emergency_notifications`, `emergency_incident_events` (see EMERGENCY.md) |
-| Oversight | `audit_log`: who changed sensitive records and when. It never copies the content. |
+| Oversight | `audit_log`: who changed sensitive records and when. It never copies the content. `admin_actions`: every admin action, by whom, when and why (append-only). `account_suspensions`: suspended accounts and the reason. |
 
 ### Who can see what
 
@@ -150,7 +151,8 @@ Keep `CHECKED_HOTLINES` in `src/lib/ems.ts` (used offline and without Supabase) 
 | `export_my_data()` | anyone signed in | Everything stored about them (including their sign-in email), as JSON (Settings → Download my data). Not included: counsellors' notes and crisis log, and anything about other people |
 | `my_client_profiles(p_ids)` | therapist | Community name, age, focus, streak and location consent of their linked clients |
 | `request_account_deletion()` | anyone signed in | Marks the account; an admin completes it after any required record-keeping |
-| `review_therapist(p_therapist, p_verified, p_note)` | admin | Verify or reject a licence |
+| `review_therapist(p_therapist, p_verified, p_note)` | admin | Verify or reject a licence (a rejection needs a note); logged |
+| `admin_*` (overview, list_users, user_detail, set_suspension, set_admin, list_therapists, appointments, reports, moderate, sos, sos_detail, content, set_circle_active, verify_contact, system, list_actions) | admin | The admin dashboard (/admin). Each checks `is_admin()` and refuses everyone else; changes, and views of a person or an SOS, go into `admin_actions` (append-only) |
 | `purge_expired_locations(p_days)` | scheduled job | Removes old SOS coordinates |
 
 ---

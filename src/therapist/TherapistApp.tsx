@@ -31,6 +31,7 @@ import { RibbonMark } from '../components/RibbonMark';
 import { t as tr, T, msg } from '../i18n';
 import { PrivacyLink } from '../components/privacy/PrivacyLink';
 import { MobileDock } from '../components/MobileDock';
+import { SuspensionNotice } from '../components/SuspensionNotice';
 interface NavDef {
   id: TherapistTab;
   label: string;
@@ -320,6 +321,7 @@ export const TherapistApp: React.FC<TherapistAppProps> = ({ therapist, setTherap
         )}
 
         <main id="t-main" ref={mainRef} className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-[calc(var(--dock-space)+1.5rem)] pt-6 sm:px-6 sm:pt-8 lg:px-10 lg:pb-16">
+          <SuspensionNotice userId={therapist.id} />
           {syncProblem && (
             <div role="alert" className="mb-6 flex flex-wrap items-center gap-3 rounded-xl bg-warn-soft px-4 py-3 text-[0.9375rem] text-warn">
               <p className="m-0 min-w-0 flex-1">
