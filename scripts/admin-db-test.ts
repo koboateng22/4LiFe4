@@ -36,6 +36,7 @@ ok((await log()).some(a => a.action === 'role_change' && a.details.via === 'sql_
 for (const [who, name] of [[CLIENT, 'a client'], [THERAPIST, 'a therapist']] as const)
   ok(await refused(rpc(who, 'admin_overview')), `${name} gets “Admins only” from the admin functions`);
 ok(await refused(rpc(null, 'admin_overview')), 'a signed-out visitor cannot call them at all');
+ok(await refused(rpc(null, 'is_suspended', { p_user: CLIENT })), 'a signed-out visitor cannot ask whether an account is suspended');
 ok(await refused(rpc(CLIENT, 'admin_set_suspension', { p_user: OTHER, p_suspend: true, p_reason: 'test' })) && !(await rpc(ADMIN, 'is_suspended', { p_user: OTHER })), 'a client cannot suspend anyone');
 ok(await refused(rpc(THERAPIST, 'review_therapist', { p_therapist: OTHER_THERAPIST, p_verified: true })), 'a therapist cannot approve a therapist (even themselves)');
 ok(await refused(asUser(pg, CLIENT, `update public.profiles set role = 'admin' where id = auth.uid()`), /Only an admin can change a role/), 'a client cannot make themselves admin');
