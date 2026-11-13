@@ -1,3 +1,18 @@
+# 4Life — the AI companion talks like a warm counsellor (13 November 2026)
+
+The companion's instructions (`chatSystemPrompt` in `server/core/prompts.ts`) now describe how a good counsellor responds:
+- **Feelings first:** reflect what happened and name the feeling, then say why it makes sense, before any advice.
+- **Care in its words**, varied rather than repeated.
+- **Pace:** gentle and slow when someone is hurting; specific celebration of wins; listening when they just need to vent.
+- **Asks before starting an exercise.** Uses open questions, reflections and summaries, and draws out the person's own reasons without arguing.
+- **Slips are met with curiosity, not shame.**
+
+It stays honest that it is an AI. It expresses care and concern in words, but never claims a body, a past, its own recovery, memories or needs ("I've been there" is out). It also points people to their support person, a counsellor and the Village, never suggesting it is all they need.
+
+Every safety rule is unchanged: no medicine advice or diagnosis, it cannot contact anyone, 112/193/SOS in a crisis, one question, short replies. Five unit checks guard these.
+
+To take effect in production, deploy both copies: Vercel, and the Supabase function (`supabase functions deploy chat`, plus `cbt-suggest` and `village-guide`, which share the code).
+
 # 4Life — mobile first: a glass dock on phones, the same look as on computers (12 November 2026)
 
 **Phones and tablets** (narrower than 1024 px):

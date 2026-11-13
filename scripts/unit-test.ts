@@ -551,6 +551,15 @@ ok(supabaseProjectRef(n => (n === 'VITE_SUPABASE_URL' ? ' https://yveydudfixqifx
   ok(!!clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }]) && !clash('2026-11-16T11:30:00Z', 50, [{ start: '2026-11-16T11:00:00Z', durationMin: 50 }], '2026-11-16T11:00:00Z'), 'a clash is found, and a session moving within its own time does not clash with itself');
   ok(isWorkingTime(new Date('2026-11-16T10:00:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-16T13:30:00Z'), hours, []) && !isWorkingTime(new Date('2026-11-17T10:00:00Z'), hours, [{ id: 'o', startsOn: '2026-11-17', endsOn: '2026-11-17' }]) && !isWorkingTime(new Date('2026-11-16T18:00:00Z'), hours, []), 'the calendar shades breaks, days off and closed hours');
 }
+// The companion speaks like a warm counsellor, honestly as an AI, with every safety rule kept
+{
+  const sp = chatSystemPrompt({ nickname: 'Ama_K', currentTriage: 'substance' }, 'urge_surfing', 'none');
+  ok(/Feelings first/.test(sp) && /name the feeling/.test(sp) && /Match their pace/.test(sp) && /celebrate it warmly/.test(sp) && /just need to be heard/.test(sp), 'the companion is told to meet feelings first, match their pace, listen, and celebrate wins');
+  ok(/You are an AI, not a person, doctor or licensed therapist/.test(sp) && /never claim a body, a past, your own addiction/.test(sp) && /Never say "I've been there"/.test(sp), 'it stays honest that it is an AI: care in words, but no invented life, past or feelings');
+  ok(/Never suggest you are all they need/.test(sp) && /Talk to a counsellor/.test(sp), 'it points people to real people too, and never fosters dependence');
+  ok(/call 112 now \(193 for an ambulance\)/.test(sp) && /red SOS button/.test(sp) && /You cannot contact anyone/.test(sp) && /Never give advice about medicines/.test(sp) && /Ask at most one question/.test(sp), 'every safety and format rule is still there');
+  ok(chatSystemPrompt({}, 'cbt', 'crisis').includes('SAFETY: Their latest message suggests they may be in danger right now') && !sp.includes('SAFETY: Their latest'), 'the crisis instruction is added only when danger words are found');
+}
 // Two backends: each AI answer says whether its server has an AI key, so the app can use the one that does
 {
   const { aiHeaderValue, AI_HEADER } = await import('../server/core/ai');
