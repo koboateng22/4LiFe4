@@ -69,7 +69,6 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
     setViewRaw(v);
     keep('ems_view2', v);
   };
-  const [texting, setTexting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   // Free OpenStreetMap services (lib/osm.ts): places nearby, your street name, and road routes
@@ -190,23 +189,7 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
   const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
   const directionsHref = (c: EmergencyCenter) => `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
 
-  /* Thumb-zone actions on phones */
-  const textMyPerson = async () => {
-    if (!contact || texting) return;
-    let f = isFreshFix(fix) ? fix : null;
-    if (!f) {
-      setTexting(true);
-      try {
-        f = await getPosition(5000);
-        setFix(f);
-        setLocState('found');
-      } catch {
-        /* send without a location; the message says so */
-      }
-      setTexting(false);
-    }
-    window.location.href = smsHref(contact.phone, locationMessage(myName, f, undefined, f === fix ? near : null));
-  };
+  /* Nearest help: directions to the nearest hospital, or the list of places if none is known yet */
   const goNearest = () => {
     if (nearestHospital) {
       window.open(directionsHref(nearestHospital.c), '_blank', 'noopener');
@@ -248,6 +231,9 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
               {t("Breathe")}
             </Button>
           )}
+          <Button variant="secondary" size="lg" onClick={goNearest} icon={<Navigation className="h-5 w-5 text-pri-text" />} className="col-span-2 lg:hidden">
+            {t("Nearest help")}
+          </Button>
         </div>
       </Card>
 
@@ -614,32 +600,6 @@ export const EmergencyMapTab: React.FC<EmergencyMapTabProps> = ({ profile, onOpe
       {/* One tap from the phone's home screen */}
       <InstallShortcut />
 
-      {/* Phones: the three most important actions, always within thumb reach */}
-      <div className="h-[4.75rem] lg:hidden" aria-hidden="true" />
-      <nav
-        aria-label={t("Emergency actions")}
-        className="fixed inset-x-0 bottom-[calc(var(--dock-space)-0.25rem)] z-30 mx-auto grid max-w-[30rem] grid-cols-3 gap-2 bg-gradient-to-t from-bg via-bg/85 to-transparent px-[max(env(safe-area-inset-left),0.625rem)] pb-1.5 pt-5 lg:hidden"
-      >
-        <a href="tel:112" className="btn-shine flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl bg-danger text-[0.9375rem] font-extrabold text-[#fff] no-underline">
-          <Phone className="h-5 w-5" aria-hidden="true" /> {t("Call 112")}
-        </a>
-        <button
-          type="button"
-          onClick={contact ? textMyPerson : onOpenSos}
-          disabled={texting}
-          className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 border-danger bg-danger-soft text-[0.9375rem] font-extrabold text-danger-text cursor-pointer disabled:cursor-wait"
-        >
-          <MessageSquare className="h-5 w-5" aria-hidden="true" />
-          <span className="max-w-full truncate px-1">{texting ? t("Finding you…") : contact ? t("Text {v0}", { v0: contactFirstName?.split(' ').slice(-1)[0] }) : 'SOS'}</span>
-        </button>
-        <button
-          type="button"
-          onClick={goNearest}
-          className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl bg-pri text-[0.9375rem] font-extrabold text-[#fff] cursor-pointer"
-        >
-          <Navigation className="h-5 w-5" aria-hidden="true" /> {t("Nearest help")}
-        </button>
-      </nav>
     </div>
   );
 };

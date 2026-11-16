@@ -771,6 +771,33 @@ p, li { text-wrap: pretty; }
 .chat-messages { height: 56vh; height: 52dvh; }
 @media (min-width: 640px) { .chat-messages { height: 460px; } }
 
+/* The AI chat in focus mode (phones): the same card, filling what is visible above the keyboard.
+   --chat-vv-* come from the visual viewport (set while it is open); 100dvh is the fallback. */
+.chat-card-expanded {
+  position: fixed !important;
+  inset-inline: 0;
+  top: var(--chat-vv-top, 0px);
+  height: 100vh;
+  height: var(--chat-vv-h, 100dvh);
+  z-index: 65; /* above the page, the top bar and the dock; below pop-ups (70), so SOS and dialogs open on top */
+  margin: 0;
+  max-width: none;
+  border-radius: 0 !important;
+  border-width: 0 !important;
+  /* its own short entrance, instead of the scroll-linked one cards normally have */
+  animation: chat-expand 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both !important;
+  animation-timeline: auto !important;
+  translate: none !important;
+  scale: none !important;
+  opacity: 1;
+}
+.chat-card-expanded .chat-messages { height: auto; flex: 1 1 0; min-height: 0; }
+.chat-card-expanded .chat-head { padding-top: max(env(safe-area-inset-top), 0.75rem); padding-left: max(env(safe-area-inset-left), 0.75rem); padding-right: max(env(safe-area-inset-right), 0.75rem); }
+.chat-card-expanded .chat-composer { padding-bottom: max(env(safe-area-inset-bottom), 0.875rem); padding-left: max(env(safe-area-inset-left), 1rem); padding-right: max(env(safe-area-inset-right), 1rem); }
+@keyframes chat-expand { from { opacity: 0.4; transform: scale(0.98); } to { opacity: 1; transform: none; } }
+html.chat-focus-open, html.chat-focus-open body { overflow: hidden; overscroll-behavior: none; }
+@media (prefers-reduced-motion: reduce) { .chat-card-expanded { animation: none !important; } }
+
 /* Back-to-top button: glides in, sits above the phone dock */
 .back-to-top { bottom: calc(var(--dock-space) + 0.75rem); transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, box-shadow 0.2s ease; }
 @media (min-width: 1024px) { .back-to-top { bottom: 2rem; } }

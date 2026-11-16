@@ -27,6 +27,7 @@
     "test:demo-build": "tsx scripts/demo-build-test.ts",
     "test:learn": "tsx scripts/learn-e2e.ts",
     "test:chat": "tsx scripts/chat-e2e.ts",
+    "test:focus-chat": "tsx scripts/focus-chat-e2e.ts",
     "test:ai-backend": "tsx scripts/ai-backend-e2e.ts",
     "test:privacy": "tsx scripts/privacy-e2e.ts",
     "test:admin": "tsx scripts/admin-e2e.ts",

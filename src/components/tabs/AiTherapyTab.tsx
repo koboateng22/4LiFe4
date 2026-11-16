@@ -1,7 +1,7 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { UserProfile, ChatMessage } from '../../types';
 import { Card, ChoiceCard, Button, IconButton, Modal, Notice, Switch, textareaClass, cx } from '../ui';
-import { Send, Volume2, VolumeX, Shield, Check, Copy, Waves, Lightbulb, Wind, Lock, Mic, Leaf, Square, RotateCcw, Phone, NotebookPen, Trash2, Timer, Flag, X, History } from 'lucide-react';
+import { Send, Volume2, VolumeX, Shield, Check, Copy, Waves, Lightbulb, Wind, Lock, Mic, Leaf, Square, RotateCcw, Phone, NotebookPen, Trash2, Timer, Flag, X, History, Maximize2, Minimize2 } from 'lucide-react';
 import { ChatError, streamChat } from '../../lib/aiChat';
 import { localiseSuggestions } from '../../lib/aiFallback';
 import { ChatFailureNotice } from '../cbt/ChatFailureNotice';
@@ -23,6 +23,7 @@ import { EnglishSafetyNote } from '../ems/EnglishSafetyNote';
 import { RichText } from '../../lib/richText';
 import { chatProfile } from '../../lib/aiProfile';
 import { PrivacyLink } from '../privacy/PrivacyLink';
+import { isolate } from '../../lib/isolate';
 interface AiTherapyTabProps {
   profile: UserProfile;
   setProfile?: React.Dispatch<React.SetStateAction<UserProfile>>;
@@ -273,6 +274,69 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
 
   // Ride the wave: a 20-minute timer that checks in every 5 minutes
   const chatRef = useRef<HTMLElement>(null);
+
+  /* ---------- Focus mode (phones): the same chat, filling the screen ----------
+     The chat card itself changes size (a class), so nothing is re-created: the conversation, the unsent
+     message, the scroll position and a reply still arriving all carry on. The rest of the page is made
+     inert while it is open, and the page goes back to where it was when it closes. */
+  const [expanded, setExpanded] = useState(false);
+  const expandBtnRef = useRef<HTMLButtonElement>(null);
+  const exitBtnRef = useRef<HTMLButtonElement>(null);
+  const pageY = useRef(0);
+  const msgY = useRef(0);
+  const expandChat = () => {
+    pageY.current = window.scrollY;
+    msgY.current = scrollRef.current?.scrollTop ?? 0;
+    setExpanded(true);
+  };
+  const minimizeChat = useCallback(() => {
+    msgY.current = scrollRef.current?.scrollTop ?? 0;
+    setExpanded(false);
+  }, []);
+  useEffect(() => {
+    if (!expanded) return;
+    const card = chatRef.current;
+    if (!card) return;
+    const root = document.documentElement;
+    const restore = isolate(card);
+    root.classList.add('chat-focus-open');
+    // the part of the screen above the on-screen keyboard (iOS Safari doesn't shrink the page for it)
+    const vv = window.visualViewport;
+    const fit = () => {
+      if (!vv) return;
+      card.style.setProperty('--chat-vv-h', `${Math.round(vv.height)}px`);
+      card.style.setProperty('--chat-vv-top', `${Math.round(vv.offsetTop)}px`);
+    };
+    fit();
+    vv?.addEventListener('resize', fit);
+    vv?.addEventListener('scroll', fit);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('[role="dialog"]') && minimizeChat();
+    document.addEventListener('keydown', onKey);
+    // computers keep the normal layout: going wide closes focus mode
+    const wide = window.matchMedia('(min-width: 1024px)');
+    const onWide = () => wide.matches && minimizeChat();
+    wide.addEventListener('change', onWide);
+    requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = msgY.current;
+      // someone typing keeps the keyboard; otherwise focus goes to the way out (the expand button itself is gone)
+      if (document.activeElement !== inputRef.current) exitBtnRef.current?.focus({ preventScroll: true });
+    });
+    return () => {
+      restore();
+      root.classList.remove('chat-focus-open');
+      vv?.removeEventListener('resize', fit);
+      vv?.removeEventListener('scroll', fit);
+      document.removeEventListener('keydown', onKey);
+      wide.removeEventListener('change', onWide);
+      card.style.removeProperty('--chat-vv-h');
+      card.style.removeProperty('--chat-vv-top');
+      requestAnimationFrame(() => {
+        window.scrollTo(0, pageY.current);
+        if (scrollRef.current) scrollRef.current.scrollTop = msgY.current;
+        expandBtnRef.current?.focus({ preventScroll: true });
+      });
+    };
+  }, [expanded, minimizeChat]);
   const startWave = () => {
     const level = ratings.after ?? ratings.before ?? 5;
     setWave({ startedAt: new Date().toISOString(), points: [{ m: 0, level }] });
@@ -451,13 +515,34 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* 2. Conversation */}
-        <Card as="section" raised padded={false} aria-label={t("Conversation")} className="flex min-w-0 flex-col overflow-hidden" ref={chatRef as React.Ref<HTMLElement>}>
-          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-5">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pri text-[#fff]" aria-hidden="true">
-                <Leaf className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
+        <Card
+          as="section"
+          raised
+          padded={false}
+          aria-label={t("Conversation")}
+          className={cx('flex min-w-0 flex-col overflow-hidden', expanded && 'chat-card-expanded')}
+          ref={chatRef as React.Ref<HTMLElement>}
+          {...(expanded ? { role: 'region', 'aria-roledescription': t('Expanded chat') } : {})}
+        >
+          <div className="chat-head flex items-center justify-between gap-2 border-b border-line px-3 py-3 sm:gap-3 sm:px-5 sm:py-3.5">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              {expanded ? (
+                <button
+                  ref={exitBtnRef}
+                  type="button"
+                  onClick={minimizeChat}
+                  aria-label={t("Exit expanded chat")}
+                  className="glass-btn inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[0.9375rem] font-bold text-ink cursor-pointer"
+                >
+                  <Minimize2 className="h-5 w-5 text-pri-text" aria-hidden="true" />
+                  <span className="hidden min-[360px]:inline">{t("Minimize")}</span>
+                </button>
+              ) : (
+                <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pri text-[#fff] min-[400px]:flex" aria-hidden="true">
+                  <Leaf className="h-5 w-5" />
+                </span>
+              )}
+              <div className={cx('min-w-0', expanded && 'hidden min-[400px]:block')}>
                 <p className="m-0 truncate text-[1.0625rem] font-bold text-ink">{aiName}</p>
                 <p className="m-0 hidden items-center gap-1.5 text-sm text-ink-3 sm:flex">
                   <Lock className="h-3.5 w-3.5" aria-hidden="true" /> {t("Saved on this device only")}
@@ -476,8 +561,35 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
               <IconButton label={t("Start a new conversation")} onClick={() => setConfirmClear(true)} disabled={messages.length <= 1}>
                 <RotateCcw className="h-5 w-5" />
               </IconButton>
+              {expanded ? (
+                // help stays one tap away while the rest of the screen is hidden
+                <button type="button" onClick={onOpenSos} className="glass-sheen inline-flex h-11 shrink-0 items-center gap-1 rounded-xl bg-danger px-2.5 text-[0.9375rem] font-bold text-[#fff] cursor-pointer">
+                  <Phone className="h-4 w-4" aria-hidden="true" /> SOS
+                </button>
+              ) : (
+                <button
+                  ref={expandBtnRef}
+                  type="button"
+                  onClick={expandChat}
+                  aria-label={t("Expand chat")}
+                  title={t("Expand chat")}
+                  className="glass-btn inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 text-[0.9375rem] font-bold text-ink cursor-pointer lg:hidden"
+                >
+                  <Maximize2 className="h-5 w-5 text-pri-text" aria-hidden="true" />
+                  <span className="hidden min-[360px]:inline">{t("Expand")}</span>
+                </button>
+              )}
             </div>
           </div>
+          {/* In focus mode the crisis box above the chat is hidden, so its two actions come inside */}
+          {expanded && risk === 'crisis' && (
+            <div role="alert" className="flex flex-wrap items-center gap-2 border-b border-danger/40 bg-danger-soft px-3 py-2.5 text-[0.9375rem] text-ink sm:px-5">
+              <span lang="en" className="min-w-0 flex-1 font-bold">Your safety comes first. Call 112 now, or press SOS.</span>
+              <a href="tel:112" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-danger px-3.5 font-bold text-[#fff] no-underline">
+                <Phone className="h-4 w-4" aria-hidden="true" /> {t("Call 112")}
+              </a>
+            </div>
+          )}
 
           {/* Mode chips: switch what kind of help, without leaving the chat */}
           {!firstVisit && (
@@ -674,7 +786,7 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
           )}
 
           <form
-            className="flex items-end gap-2 border-t border-line px-4 py-4 sm:gap-2.5 sm:px-5"
+            className="chat-composer flex items-end gap-2 border-t border-line px-4 py-4 sm:gap-2.5 sm:px-5"
             onSubmit={e => {
               e.preventDefault();
               handleSendMessage();
@@ -698,7 +810,8 @@ export const AiTherapyTab: React.FC<AiTherapyTabProps> = ({ profile, setProfile,
               // Phones: once the keyboard is up, keep the message box (and the send button) in view
               onFocus={e => {
                 const el = e.currentTarget;
-                if (window.matchMedia('(max-width: 1023.98px)').matches) setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 250);
+                // (not in focus mode: the chat already fits above the keyboard, and the page behind must not move)
+                if (!expanded && window.matchMedia('(max-width: 1023.98px)').matches) setTimeout(() => el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 250);
               }}
               ref={inputRef}
               className={cx(textareaClass, 'max-h-40 min-h-[52px] resize-none overflow-y-auto')}

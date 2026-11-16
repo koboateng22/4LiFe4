@@ -1,3 +1,26 @@
+# 4Life — chat focus mode on phones, and Instant EMS without floating buttons (16 November 2026)
+
+**AI chat: Expand chat (phones and tablets).**
+- An "Expand chat" button in the chat's header makes the chat fill the screen: just its header, the conversation and the message box with its controls.
+  - The rest of the page, the dock and the top bar are hidden and made unreachable for keyboards and screen readers.
+  - The page can't scroll behind it.
+- "Minimize" (labelled, in the expanded header, at least 44 px) returns it in one tap, to the same place on the page, with focus back on "Expand chat". Escape also works.
+- It is the same chat, only resized, so the conversation, the unsent message, the scroll position and a reply still arriving all carry on. Nothing reloads or is sent twice.
+- It fits what is visible above the keyboard (the visual viewport, needed for iOS Safari) and respects the screen's safe areas. The conversation scrolls on its own.
+- The entrance is a short fade and zoom, with none when "reduce motion" is on.
+- **SOS stays in the expanded header**, and if danger words appear, a compact "Call 112" strip shows inside the chat, because the page's crisis box is hidden in this mode.
+- Computers are unchanged: the button isn't shown there, and widening the window closes focus mode.
+
+**Instant EMS on phones: the floating Call 112 / SOS / Nearest help group is gone,** with its spacer.
+- Its actions are all in the page, without duplicates:
+  - Call 112 is the main red button at the top;
+  - SOS is the "Alert <name>" / "Open SOS" button;
+  - texting the support person is the "Text <name>" link in "Share where you are";
+  - **Nearest help**, which only the floating group had, is now a secondary button in the emergency box (phones), with the same handler.
+- The top EMS tab, emergency numbers, SOS, location and computers are unchanged.
+
+Tests: `npm run test:focus-chat`, 68 checks in Chrome emulating phones at 390 and 320 px (light and dark) and 844×390 landscape, with a simulated keyboard, reduced motion, EMS and computer checks. Actions are stubbed: nothing is dialled or sent.
+
 # 4Life — admin dashboard at /admin (13 November 2026)
 
 **Built on the existing admin role.** An admin is `profiles.role = 'admin'`, checked by `public.is_admin()`. The project owner makes the first one in the SQL editor (SUPABASE.md, step 7). A trigger stops anyone changing their own role, and sign-up ignores `role` in its data. No second role system was added.
